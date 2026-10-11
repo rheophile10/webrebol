@@ -2,6 +2,7 @@
 import { makeDatum } from "../data/datum.mjs";
 import { NONE, isList, isSeries, isText, makeSeries, readAll, readRest, writeAll } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
+import { readField } from "../store/parts.mjs";
 import { failMachine, giveValue, makeLogic, makeWord } from "../machine/machine.mjs";
 
 
@@ -45,14 +46,36 @@ export const pickItem = (store, series, offset) => {
  * @param {Object<string, Function>} natives
  * @returns {Object<string, Function>}
  * @standard guard - A first argument that is not a series gives the error "script expect-arg".
- * @uses isSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs)
+ * @uses isSeries (src/store/store.mjs), OTHER_TYPES, failMachine (src/machine/machine.mjs),
+ *   giveValue (src/machine/machine.mjs)
  * @usedby NATIVES, SERIES_NATIVES
  */
 export const guardSeries = (natives) => {
-  // TODO: REBOL accepts more types for some of these functions (pair!, tuple!, time!).
-  const guard = (native) => (machine, args, options) =>
-    isSeries(args[0]) ? native(machine, args, options) : failMachine(machine, "script expect-arg");
-  return Object.fromEntries(Object.entries(natives).map(([name, native]) => [name, guard(native)]));
+  // TODO: REBOL accepts more types for some of these functions (pair!, time!).
+  const guard = (native, name) => (machine, args, options) => {
+    if (isSeries(args[0])) return native(machine, args, options);
+    const other = OTHER_TYPES[`${name} ${args[0].type}`];
+    return other === undefined ? failMachine(machine, "script expect-arg") : giveValue(machine, other(args));
+  };
+  return Object.fromEntries(Object.entries(natives).map(([name, native]) => [name, guard(native, name)]));
+};
+
+const DAY = 86400e9;
+
+/**
+ * @uses DAY
+ * @usedby OTHER_TYPES
+ */
+const readMoment = (date) => date.value.days * DAY + (date.value.time ?? 0) - date.value.zone;
+
+/**
+ * @uses makeDatum (src/data/datum.mjs), readField (src/store/parts.mjs), NONE (src/store/store.mjs), readMoment
+ * @usedby guardSeries
+ */
+const OTHER_TYPES = {
+  "length? tuple": ([tuple]) => makeDatum("integer", tuple.value.length),
+  "pick tuple": ([tuple, index]) => readField(tuple, index) ?? NONE,
+  "difference date": ([first, second]) => makeDatum("time", readMoment(first) - readMoment(second)),
 };
 
 /**
@@ -71,12 +94,15 @@ const takeFromObject = (machine, object, offset) => {
 };
 
 /**
- * @uses takeFromObject, isSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs), pickItem,
- *   giveValue (src/machine/machine.mjs)
+ * @uses takeFromObject, readField (src/store/parts.mjs), makeDatum (src/data/datum.mjs),
+ *   giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs), isSeries (src/store/store.mjs),
+ *   failMachine (src/machine/machine.mjs), pickItem
  * @usedby takeLast, SERIES_NATIVES
  */
 const takeItem = (offset) => (machine, [series]) => {
   if (series.type === "object") return takeFromObject(machine, series, offset);
+  const field = readField(series, makeDatum("integer", offset + 1));
+  if (field !== undefined) return giveValue(machine, field ?? NONE);
   if (!isSeries(series)) return failMachine(machine, "script expect-arg");
   const item = pickItem(machine.store, series, offset);
   return item === null ? failMachine(machine, "script past-end") : giveValue(machine, item);

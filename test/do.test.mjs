@@ -102,3 +102,7 @@ test("interpretSource reference: the parse cases agree with REBOL 2.7.8", () => 
 test("interpretSource reference: the bitset cases agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/bitset.txt"), []);
 });
+
+test("interpretSource reference: the char, time, pair, tuple, money and date cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/scalar.txt"), []);
+});

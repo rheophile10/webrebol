@@ -13,7 +13,7 @@ export const GLOBAL = 0;
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 30 declarations in call, path, bitsets, control, faults, flow, globals, interpret, loops, objects, parse, report, search, series
+ * @usedby 33 declarations in call, path, bitsets, control, faults, flow, globals, interpret, loops, objects, parse, report, search, series
  */
 export const NONE = makeDatum("none", null);
 /**
@@ -35,7 +35,7 @@ export const makeKey = (name) => `$${name.toLowerCase()}`;
  * @param {Datum} value
  * @returns {boolean}
  * @uses LIST_TYPES
- * @usedby 23 declarations in path, compare, control, convert, edit, objects, search, series, text, mold, store
+ * @usedby 24 declarations in path, compare, control, convert, edit, objects, search, series, text, mold, store
  */
 export const isList = (value) => LIST_TYPES.includes(value.type);
 
@@ -44,7 +44,7 @@ export const isList = (value) => LIST_TYPES.includes(value.type);
  * @param {Datum} value
  * @returns {boolean}
  * @uses TEXT_TYPES
- * @usedby 13 declarations in path, bitsets, compare, convert, faults, parse, series, store
+ * @usedby 14 declarations in path, bitsets, compare, convert, faults, parse, series, store
  */
 export const isText = (value) => TEXT_TYPES.includes(value.type);
 
@@ -108,7 +108,7 @@ export const allocate = (store, datum) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @usedby 47 declarations in path, bitsets, compare, control, convert, edit, faults, flow, loops, objects, parse, search, series, strings, text, mold, store
+ * @usedby 49 declarations in path, bitsets, compare, control, convert, edit, faults, flow, loops, objects, parse, search, series, strings, text, mold, store
  */
 export const readRest = (store, series) => store.series[series.value.id].slice(series.value.index);
 
@@ -154,9 +154,7 @@ export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(wor
  * @param {Datum} value
  * @returns {Store}
  * @uses makeKey
- * @usedby stepSet (src/machine/evaluate.mjs), assignWords (src/natives/loops.mjs),
- *   finishList (src/natives/loops.mjs), setWords (src/natives/objects.mjs), OBJECT_NATIVES (src/natives/objects.mjs),
- *   matchCopy (src/natives/parse.mjs), matchSet (src/natives/parse.mjs), matchMark (src/natives/parse.mjs)
+ * @usedby 9 declarations in evaluate, path, loops, objects, parse
  */
 export const writeWord = (store, word, value) => ({
   ...store,

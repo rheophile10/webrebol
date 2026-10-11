@@ -78,7 +78,7 @@ const stepLoad = (state, token) => (state.error === null ? (STEPS[token.kind] ??
  * @todo Read date, money, base-64 binary, and a path that has a paren.
  * @todo Keep the line ends of the source, because `mold` shows them.
  * @uses scanTokens, stepLoad, START, MISSING, CLOSERS
- * @usedby doText (src/natives/control.mjs), toBlock (src/natives/convert.mjs),
+ * @usedby doText (src/natives/control.mjs), toBlock (src/natives/convert.mjs), readLoaded (src/natives/convert.mjs),
  *   makeFunction (src/natives/globals.mjs), interpretSource (src/natives/interpret.mjs),
  *   moldSource (test/load.test.mjs), makeReady (test/machine.test.mjs)
  */

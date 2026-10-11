@@ -9,8 +9,8 @@
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
  * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError
- * @changedby 13 declarations in datum, bitsets, series, store
- * @readby 34 declarations in call, machine, path, spec, bitsets, compare, control, edit, faults, report, series, mold, store
+ * @changedby 17 declarations in datum, bitsets, scalars, series, parts, store
+ * @readby 35 declarations in call, machine, path, spec, bitsets, compare, control, edit, faults, report, scalars, series, mold, store
  */
 
 /**

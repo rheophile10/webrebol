@@ -1,6 +1,7 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, isList, isText, makeKey, readAll, readRest, readWord, writeAll, writeContext } from "../store/store.mjs";
+import { NONE, isList, isText, makeKey, readAll, readRest, readWord, writeAll, writeContext, writeWord } from "../store/store.mjs";
+import { readField, writeField } from "../store/parts.mjs";
 import { failMachine, giveValue, isFunction, popFrame, pushFrame } from "./machine.mjs";
 import { startCall } from "./call.mjs";
 
@@ -39,14 +40,17 @@ const selectInText = (text, part) => {
 
 /**
  * @uses makeKey (src/store/store.mjs), isList (src/store/store.mjs), selectInList, readRest (src/store/store.mjs),
- *   isText (src/store/store.mjs), selectInText
+ *   isText (src/store/store.mjs), selectInText, readField (src/store/parts.mjs), NONE (src/store/store.mjs)
  * @usedby walkPart, stepSetPath
  */
 const selectPart = (store, value, part) => {
   // Give null if the value has no part with this name.
   if (value.type === "object") return store.contexts[value.value.context][makeKey(String(part.value))] ?? null;
   if (isList(value)) return selectInList(readRest(store, value), part);
-  return isText(value) ? selectInText(readRest(store, value), part) : null;
+  if (isText(value)) return selectInText(readRest(store, value), part);
+  // A value that is not a series can have fields. A position without a field gives none.
+  const field = readField(value, part);
+  return field === null && part.type === "integer" ? NONE : (field ?? null);
 };
 
 /**
@@ -134,7 +138,7 @@ const assignPart = (store, container, change) => {
 
 /**
  * @uses readRest (src/store/store.mjs), selectPart, resolvePart, readWord (src/store/store.mjs), failMachine,
- *   popFrame, assignPart
+ *   popFrame, writeField (src/store/parts.mjs), writeWord (src/store/store.mjs), assignPart
  * @usedby startSetPath
  */
 const stepSetPath = (machine, frame) => {
@@ -144,6 +148,9 @@ const stepSetPath = (machine, frame) => {
     current === null ? null : selectPart(machine.store, current, resolvePart(machine.store, part));
   const container = parts.slice(0, -1).reduce(select, readWord(machine.store, head));
   if (container === null) return failMachine(popFrame(machine), "script invalid-path");
+  // A field of a value that is not a series changes the value of the word.
+  const changed = parts.length === 1 ? writeField(container, resolvePart(machine.store, parts[0]), machine.value) : null;
+  if (changed !== null) return { ...popFrame(machine), store: writeWord(machine.store, head, changed) };
   // The last part gets the value. The value is also the result.
   const change = { part: resolvePart(machine.store, parts[parts.length - 1]), value: machine.value };
   const made = assignPart(machine.store, container, change);

@@ -1,6 +1,7 @@
 import { makeDatum } from "../data/datum.mjs";
 import { failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
 import { complementBitset } from "./bitsets.mjs";
+import { changeScalar, readNumbers } from "./scalars.mjs";
 
 const DEGREES = Math.PI / 180;
 
@@ -12,10 +13,10 @@ const giveDecimal = (machine, result) =>
   Number.isFinite(result) ? giveValue(machine, makeDatum("decimal", result)) : failMachine(machine, "math overflow");
 
 /**
- * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs)
+ * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs), readNumbers
  * @usedby NUMBER_NATIVES
  */
-const testNumber = (test) => (machine, [number]) => giveValue(machine, makeLogic(test(number.value)));
+const testNumber = (test) => (machine, [number]) => giveValue(machine, makeLogic(readNumbers(number).every(test)));
 
 /**
  * @uses giveDecimal
@@ -72,10 +73,11 @@ const ROUNDERS = {
 const roundAway = (number) => Math.sign(number) * Math.floor(Math.abs(number) + 0.5);
 
 /**
- * @uses makeDatum (src/data/datum.mjs), ROUNDERS, roundAway, giveValue (src/machine/machine.mjs)
+ * @uses giveValue (src/machine/machine.mjs), changeScalar, roundAway, makeDatum (src/data/datum.mjs), ROUNDERS
  * @usedby NUMBER_NATIVES
  */
 const roundNumber = (machine, [number], options) => {
+  if (number.type === "money") return giveValue(machine, changeScalar(number, roundAway));
   // With /to, the result is a multiple of the scale. An integer scale gives an integer.
   const scale = options.$to === undefined ? makeDatum("integer", 1) : options.$to[0];
   const name = Object.keys(ROUNDERS).find((key) => options[key] !== undefined);
@@ -98,12 +100,13 @@ const combineBits = (logic, bits) => (machine, [left, right]) => {
 };
 
 /**
- * @uses giveValue (src/machine/machine.mjs), complementBitset, makeLogic (src/machine/machine.mjs),
- *   makeDatum (src/data/datum.mjs)
+ * @uses giveValue (src/machine/machine.mjs), complementBitset, makeDatum (src/data/datum.mjs),
+ *   makeLogic (src/machine/machine.mjs)
  * @usedby NUMBER_NATIVES
  */
 const complementValue = (machine, [value]) => {
   if (value.type === "bitset") return giveValue(machine, complementBitset(value));
+  if (value.type === "tuple") return giveValue(machine, makeDatum("tuple", value.value.map((byte) => 255 - byte)));
   return giveValue(machine, value.type === "logic" ? makeLogic(!value.value) : makeDatum("integer", ~value.value));
 };
 

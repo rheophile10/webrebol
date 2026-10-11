@@ -1,6 +1,7 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { escapeBraces, escapeControls, escapeInLines } from "../data/escape.mjs";
 import { isList, readRest } from "./store.mjs";
+import { MONTHS, readDays } from "../data/dates.mjs";
 
 const DIGITS = 15;
 const QUOTE_LIMIT = 50;
@@ -67,7 +68,7 @@ const moldString = (text) =>
 const moldChar = (code) => `#"${code === QUOTE_CODE ? '^"' : escapeControls(String.fromCharCode(code))}"`;
 
 /**
- * @usedby moldSeconds, moldTime
+ * @usedby moldSeconds, moldTime, moldZone
  */
 const padField = (number) => String(number).padStart(2, "0");
 
@@ -85,7 +86,7 @@ const moldSeconds = (nanoseconds) => {
 
 /**
  * @uses NANOSECONDS, padField, moldSeconds
- * @usedby MOLDERS
+ * @usedby moldDate, MOLDERS
  */
 const moldTime = (nanoseconds) => {
   // Divide the time into hours, minutes, and the remaining nanoseconds.
@@ -106,6 +107,32 @@ const encodeHex = (character) => `%${character.charCodeAt(0).toString(16).toUppe
 const moldByte = (byte) => byte.toString(16).toUpperCase().padStart(2, "0");
 
 const INDENT = "    ";
+
+/**
+ * @usedby MOLDERS
+ */
+const moldMoney = (money) => `${money.amount < 0 ? "-" : ""}${money.code}$${Math.abs(money.amount).toFixed(2)}`;
+
+/**
+ * @uses NANOSECONDS, padField
+ * @usedby moldDate
+ */
+const moldZone = (zone) => {
+  const minutes = Math.abs(zone) / (60 * NANOSECONDS);
+  return `${zone < 0 ? "-" : "+"}${Math.floor(minutes / 60)}:${padField(minutes % 60)}`;
+};
+
+/**
+ * @uses readDays (src/data/dates.mjs), MONTHS (src/data/dates.mjs), moldTime, moldZone
+ * @usedby MOLDERS
+ */
+const moldDate = (date) => {
+  // The time and the time zone show only if the date has them.
+  const parts = readDays(date.days);
+  const day = `${parts.day}-${MONTHS[parts.month - 1]}-${String(parts.year).padStart(4, "0")}`;
+  if (date.time === null) return day;
+  return `${day}/${moldTime(date.time)}${date.zone === 0 ? "" : moldZone(date.zone)}`;
+};
 
 /**
  * @uses readRest, moldValue
@@ -141,7 +168,7 @@ const moldObject = (store, object, depth) => {
 
 /**
  * @uses moldDecimal, moldString, readRest, moldChar, moldName, moldRest, moldPath, encodeHex, moldRaw, moldTime,
- *   moldByte, moldObject, moldValue
+ *   moldByte, moldObject, moldMoney, moldDate, moldValue
  * @usedby moldValue
  */
 const MOLDERS = {
@@ -174,6 +201,8 @@ const MOLDERS = {
   datatype: (store, datatype) => `${datatype.value}!`,
   error: (store, error) => `make error! [${error.value}]`,
   object: moldObject,
+  money: (store, money) => moldMoney(money.value),
+  date: (store, date) => moldDate(date.value),
   bitset: (store, bitset) => `make bitset! #{\n${bitset.value.map(moldByte).join("")}\n}`,
   function: (store, callee) => `func ${moldValue(store, callee.value.spec)}${moldValue(store, callee.value.body)}`,
 };

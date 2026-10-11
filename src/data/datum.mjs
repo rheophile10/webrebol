@@ -2,6 +2,7 @@
 /** @import { Token } from "../types/results.mjs" */
 /** @import { Datum } from "../types/states.mjs" */
 import { unescapeText } from "./escape.mjs";
+import { countDays, makeDate, readDays } from "./dates.mjs";
 
 const INTEGER_LIMIT = 2147483648;
 const NANOSECONDS = 1e9;
@@ -14,18 +15,18 @@ const CONSTRUCTS = { "#[true]": ["logic", true], "#[false]": ["logic", false], "
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 51 declarations in datum, load, machine, path, bitsets, compare, control, convert, faults, globals, loops, math, numbers, objects, parse, series, store
+ * @usedby 77 declarations in datum, load, machine, path, bitsets, compare, control, convert, faults, globals, loops, math, numbers, objects, parse, scalars, series, parts, store
  */
 export const makeDatum = (type, value) => ({ type, value });
 
 /**
  * @uses makeDatum
- * @usedby readTuple, readFile, readPath, readRun, readBinary, readConstruct, TOKEN_READERS
+ * @usedby 9 declarations in datum
  */
 const INVALID = makeDatum("error", "syntax invalid");
 
 /**
- * @usedby readInteger, readDecimal
+ * @usedby readInteger, readDecimal, readMoney
  */
 const readNumber = (text) => Number(text.replace(/'/g, "").replace(",", "."));
 
@@ -74,6 +75,73 @@ const readTime = (text) => {
 };
 
 /**
+ * @uses makeDatum, readNumber
+ * @usedby RUN_READERS
+ */
+const readMoney = (text) => {
+  // A money value has an optional sign, an optional currency of 3 letters, and an amount.
+  const [, sign, code, amount] = text.match(/^([+-]?)([A-Za-z]{0,3})\$(.*)$/);
+  return makeDatum("money", { code: code.toUpperCase(), amount: (sign === "-" ? -1 : 1) * readNumber(amount) });
+};
+
+const MONTH_NAMES = [
+  ...["january", "february", "march", "april", "may", "june"],
+  ...["july", "august", "september", "october", "november", "december"],
+];
+
+/**
+ * @uses MONTH_NAMES
+ * @usedby readDateParts
+ */
+const readMonth = (text) => {
+  // A month is a number, or the first 3 or more letters of its name.
+  if (/^\d+$/.test(text)) return Number(text);
+  return MONTH_NAMES.findIndex((name) => name.startsWith(text.toLowerCase())) + 1;
+};
+
+/**
+ * @uses NANOSECONDS
+ * @usedby readDate
+ */
+const readClock = (text) => {
+  // The time of a date can have a time zone after it.
+  const match = text.match(/^(\d{1,2}):(\d{1,2})(?::(\d{1,2}(?:\.\d+)?))?(?:([+-])(\d{1,2}):(\d{2}))?$/);
+  if (match === null || Number(match[1]) > 23 || Number(match[2]) > 59) return null;
+  const time = Math.round((Number(match[1]) * 3600 + Number(match[2]) * 60 + Number(match[3] ?? 0)) * NANOSECONDS);
+  const zone = (match[4] === "-" ? -1 : 1) * (Number(match[5] ?? 0) * 3600 + Number(match[6] ?? 0) * 60) * NANOSECONDS;
+  return { time, zone };
+};
+
+/**
+ * @uses readMonth
+ * @usedby readDate
+ */
+const readDateParts = (text) => {
+  // The year is first if it has 4 digits. If not, the day is first.
+  const [first, middle, last] = text.split(/[-/]/);
+  const yearFirst = first.length === 4;
+  const year = Number(yearFirst ? first : last);
+  const full = !yearFirst && last.length <= 2 ? year + 2000 : year;
+  return { year: full, month: readMonth(middle), day: Number(yearFirst ? last : first) };
+};
+
+/**
+ * @uses readDateParts, countDays, readDays, readClock, makeDatum, makeDate, INVALID
+ * @usedby RUN_READERS
+ */
+const readDate = (text) => {
+  // TODO: REBOL selects the century of a year of 2 digits from the current year. WebRebol adds 2000.
+  const [, date, clock] = text.match(/^(\d+[-/][A-Za-z0-9]+[-/]\d+)(?:\/(.*))?$/);
+  const parts = readDateParts(date);
+  const days = countDays(parts.year, parts.month, parts.day);
+  const back = readDays(days);
+  // A day that the month does not have is not valid.
+  const valid = parts.month >= 1 && parts.day >= 1 && back.month === parts.month && back.day === parts.day;
+  const time = clock === undefined ? { time: null, zone: 0 } : readClock(clock);
+  return valid && time !== null ? makeDatum("date", makeDate(days, time.time, time.zone)) : INVALID;
+};
+
+/**
  * @usedby readFile
  */
 const decodeHex = (code, digits) => String.fromCharCode(parseInt(digits, 16));
@@ -93,8 +161,8 @@ const readPath = (text) => {
   // A colon at the end makes a set-path.
   const body = text.endsWith(":") ? text.slice(0, -1) : text;
   const items = body.split("/").map(readRun);
-  // A path is invalid if one of its parts is invalid.
-  if (items.some((item) => item.type === "error")) return INVALID;
+  // A path is invalid if one of its parts is invalid, or if it does not start with a word.
+  if (items.some((item) => item.type === "error") || typeof items[0].value !== "string") return INVALID;
   if (body !== text) return makeDatum("set-path", items);
   // A lit-word at the start makes a lit-path. The first item becomes a word.
   return items[0].type === "lit-word"
@@ -103,7 +171,8 @@ const readPath = (text) => {
 };
 
 /**
- * @uses readInteger, readDecimal, readPair, readTuple, readTime, makeDatum, readFile, WORD, readPath
+ * @uses readInteger, readDecimal, readPair, readTuple, readTime, readMoney, readDate, makeDatum, readFile, WORD,
+ *   readPath
  * @usedby readRun
  */
 const RUN_READERS = [
@@ -112,6 +181,8 @@ const RUN_READERS = [
   [/^[+-]?\d+[xX][+-]?\d+$/, readPair],
   [/^\d+(?:\.\d+){2,}$/, readTuple],
   [/^[+-]?\d*:\d+(?::\d+(?:[.,]\d*)?)?$/, readTime],
+  [/^[+-]?[A-Za-z]{0,3}\$\d[\d']*(?:[.,]\d*)?$/, readMoney],
+  [/^\d{1,4}[-/](?:\d{1,2}|[A-Za-z]{3,9})[-/]\d{1,4}(?:\/.*)?$/, readDate],
   [/^#/, (text) => makeDatum("issue", text.slice(1))],
   [/^%/, readFile],
   [/^\/[^/]+$/, (text) => makeDatum("refinement", text.slice(1))],
@@ -125,14 +196,38 @@ const RUN_READERS = [
   [/^[^/].*\//, readPath],
 ];
 
+const GUESSES = [
+  [/^[+-]?\d[\d']*[A-Za-z]*$/, "integer"],
+  [/^\d+(?:\.\d+){2,}/, "tuple"],
+  [/^[+-]?\d+[-/]/, "date"],
+  [/^[+-]?\d*:/, "time"],
+  [/^[+-]?[\d.,]+/, "decimal"],
+  [/\$/, "money"],
+  [/@/, "email"],
+  [/[<>]/, "tag"],
+  [/^%/, "file"],
+  [/\//, "path"],
+];
+
 /**
- * @uses RUN_READERS, INVALID
+ * @uses GUESSES, INVALID
+ * @usedby readRun
+ */
+const makeInvalid = (text) => {
+  // The error names the type that the text is most similar to, as REBOL does.
+  const guess = GUESSES.find(([pattern]) => pattern.test(text));
+  return { ...INVALID, args: [guess === undefined ? "word" : guess[1], text] };
+};
+
+/**
+ * @uses RUN_READERS, INVALID, makeInvalid
  * @usedby readPath, TOKEN_READERS
  */
 const readRun = (text) => {
   // The first pattern that agrees with the text gives the reader.
   const entry = RUN_READERS.find(([pattern]) => pattern.test(text));
-  return entry === undefined ? INVALID : entry[1](text);
+  const datum = entry === undefined ? INVALID : entry[1](text);
+  return datum === INVALID ? makeInvalid(text) : datum;
 };
 
 /**
@@ -158,26 +253,26 @@ const readConstruct = (text) =>
   CONSTRUCTS[text] === undefined ? INVALID : makeDatum(...CONSTRUCTS[text]);
 
 /**
- * @uses makeDatum, unescapeText, readBinary, readConstruct, readRun, INVALID
+ * @uses makeDatum, unescapeText, readBinary, readConstruct, INVALID, readRun
  * @usedby readToken
  */
 const TOKEN_READERS = {
   char: (text) => makeDatum("char", unescapeText(text.slice(2, -1)).charCodeAt(0)),
   binary: readBinary,
-  construct: readConstruct,
+  construct: (text) => (readConstruct(text) === INVALID ? { ...INVALID, args: ["construct", text] } : readConstruct(text)),
   quotedFile: (text) => makeDatum("file", text.slice(2, -1)),
   string: (text) => makeDatum("string", unescapeText(text.slice(1, -1))),
   braces: (text) => makeDatum("string", unescapeText(text.slice(1, -1))),
   tag: (text) => makeDatum("tag", text.slice(1, -1)),
   run: readRun,
-  invalid: () => INVALID,
+  invalid: (text) => ({ ...INVALID, args: ["string", text] }),
 };
 
 /**
  * Reads the REBOL value that one token shows.
  * @param {Token} token - A token that is not a bracket.
  * @returns {Datum}
- * @standard invalid - A token that shows no REBOL value gives an error datum with the text "syntax invalid".
+ * @standard invalid - A token that shows no REBOL value gives an error datum with the text "syntax invalid". Its fields are a type name and the text of the token.
  * @uses TOKEN_READERS
  * @usedby addToken
  */

@@ -56,7 +56,7 @@ test("loadSource missing: a block without its end gives the error", () => {
 });
 
 test("readToken invalid: a number with a letter gives the error", () => {
-  assert.deepEqual(readToken({ kind: "run", text: "1a" }), { type: "error", value: "syntax invalid" });
+  assert.deepEqual(readToken({ kind: "run", text: "1a" }), { type: "error", value: "syntax invalid", args: ["integer", "1a"] });
 });
 
 test("moldValue reference: a decimal of 16 digits shows 15 digits and an exponent", () => {

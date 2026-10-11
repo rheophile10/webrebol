@@ -1,7 +1,7 @@
 # WebRebol
 
 WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaScript.
-At this time, it evaluates REBOL source text with 195 of the 443 Core functions: arithmetic, comparison, control, loops, functions, objects, paths, binding, errors, series, text, and `parse`.
+At this time, it evaluates REBOL source text with 205 of the 443 Core functions: arithmetic for all scalar types, comparison, control, loops, functions, objects, paths, binding, errors, series, text, and `parse`.
 
 ## Use
 
@@ -41,7 +41,7 @@ WebRebol has the MIT licence. See `LICENSE`.
 
 <!-- ste-doc -->
 - [`scanTokens`](src/data/tokens.mjs#L56) — Divides a source text into its lexical parts, without the spaces and the comments.
-- [`readToken`](src/data/datum.mjs#L184) — Reads the REBOL value that one token shows.
+- [`readToken`](src/data/datum.mjs#L279) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L85) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L96) — Moves a loaded value into a store.
 - [`makeMachine`](src/machine/machine.mjs#L188) — Makes a machine that is ready to evaluate a block.
@@ -51,5 +51,5 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`startCall`](src/machine/call.mjs#L164) — Starts the call of a function.
 - [`interpretSource`](src/natives/interpret.mjs#L28) — Evaluates a REBOL source text in a new session.
 - [`showResult`](src/natives/interpret.mjs#L46) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L191) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L220) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

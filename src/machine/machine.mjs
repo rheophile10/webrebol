@@ -65,7 +65,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 75 declarations in call, evaluate, machine, path, bitsets, compare, control, convert, edit, faults, flow, loops, math, numbers, objects, parse, search, series, strings, text
+ * @usedby 80 declarations in call, evaluate, machine, path, bitsets, compare, control, convert, edit, faults, flow, loops, math, numbers, objects, parse, search, series, strings, text
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -87,7 +87,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 20 declarations in call, evaluate, path, compare, control, convert, edit, math, numbers, objects, series
+ * @usedby 21 declarations in call, evaluate, path, compare, control, convert, edit, math, numbers, objects, series
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -97,7 +97,7 @@ export const failMachine = (machine, text, args = []) =>
  * @param {string} name
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby failArgument, startCall, disarmError (src/natives/faults.mjs), calculate (src/natives/math.mjs),
+ * @usedby failArgument, startCall, disarmError (src/natives/faults.mjs), giveScalar (src/natives/math.mjs),
  *   matchSet (src/natives/parse.mjs), takeFromObject (src/natives/series.mjs)
  */
 export const makeWord = (name) => makeDatum("word", name);
