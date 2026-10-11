@@ -16,6 +16,7 @@ import { runMachine, stepMachine } from "../src/machine/run.mjs";
 import { startReduce } from "../src/natives/control.mjs";
 import { START_STORE } from "../src/natives/globals.mjs";
 import { interpretSource, showResult } from "../src/natives/interpret.mjs";
+import { findError, formatError } from "../src/natives/report.mjs";
 
 const BATCHES = 100;
 
@@ -191,4 +192,20 @@ test("guardSeries guard: a first argument that is not a series gives the error",
   const guarded = guardSeries({ sample: (machine) => machine });
   const machine = guarded.sample(makeReady("1"), [UNSET], {});
   assert.equal(machine.thrown.value.value, "script expect-arg");
+});
+
+test("formatError header: a word without a value gives a Script Error", () => {
+  const machine = interpretSource("zzz", BATCHES);
+  const message = formatError(machine.store, findError(machine));
+  assert.equal(message, '** Script Error: The word "zzz" has no value. Set the word before you use it. (script no-value)');
+});
+
+test("formatError identity: an id without a message shows the type, the id and the fields", () => {
+  const message = formatError(EMPTY_STORE, { type: "error", value: "access cannot-open", args: [] });
+  assert.match(message, /^\*\* Access Error: .*Fields: none none none \(access cannot-open\)$/);
+});
+
+test("findError result: an error value that is the result is the error", () => {
+  assert.equal(findError(interpretSource("try [1 / 0]", BATCHES)).value, "math zero-divide");
+  assert.equal(findError(interpretSource("1", BATCHES)), null);
 });

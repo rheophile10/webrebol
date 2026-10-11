@@ -6,6 +6,7 @@ import { makeMachine } from "../machine/machine.mjs";
 import { failSyntax } from "./control.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { START_STORE } from "./globals.mjs";
+import { findError } from "./report.mjs";
 
 /**
  * @uses allocate (src/store/store.mjs), START_STORE
@@ -39,14 +40,14 @@ export const interpretSource = (source, batches) => {
  * @param {Machine} machine
  * @returns {string}
  * @standard error - An error shows as "!", its type, its id, and its three molded fields.
- * @uses moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
+ * @uses findError, moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
  * @usedby bin/webrebol.mjs, showRun (test/do.test.mjs)
  */
 export const showResult = (machine) => {
   if (machine.mode !== "done") return "! budget";
   // An error value that is the result of the source text is also an error.
-  const fault = machine.thrown?.value ?? machine.value;
-  if (fault.type !== "error") return moldValue(machine.store, machine.value);
+  const fault = findError(machine);
+  if (fault === null) return moldValue(machine.store, machine.value);
   const fields = [0, 1, 2].map((place) => moldValue(machine.store, fault.args?.[place] ?? NONE));
   return `! ${fault.value} ${fields.join(" ")}`;
 };

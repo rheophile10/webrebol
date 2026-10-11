@@ -94,7 +94,10 @@ const failArgument = (machine, frame, param) => {
   if (absent) return failMachine(machine, "script no-arg", names);
   // The third field of the error is the block of the types that the parameter accepts.
   const made = makeSeries(machine.store, "block", (param.types ?? []).map(makeWord));
-  return failMachine({ ...machine, store: made.store }, "script expect-arg", [...names, made.value]);
+  // The message for a person also tells the type of the value that the function got.
+  const failed = failMachine({ ...machine, store: made.store }, "script expect-arg", [...names, made.value]);
+  const given = frame.args[frame.order.indexOf(param)].type;
+  return { ...failed, thrown: { ...failed.thrown, value: { ...failed.thrown.value, given } } };
 };
 
 /**

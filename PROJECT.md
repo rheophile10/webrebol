@@ -25,6 +25,7 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 - The interpreter is a machine with an explicit stack, because a browser cannot block for `view` and `wait`.
 - The interpreter passes an immutable store for the series, because STE-JS permits no mutation.
 
+- Error messages: WebRebol has its own message texts in `src/natives/report.mjs`. They obey ASD-STE100, they tell the cause, and they end with the REBOL type and id. WebRebol does not copy the message texts of REBOL (decision of Ian, 2026-10-11).
 - Files (later): the interpreter keeps a disk as an immutable tree of paths and bytes. An edge module saves the disk: IndexedDB in a browser, a folder in Node.js. OPFS does not work at `file://` (see `~/projects/plastron-vfs` and the blog post "SQLite in the browser that reads pages on demand" on rheophile.ca).
 - Networks (later): `http` and `https` use `fetch` from an edge module, and the machine stops until the answer comes. A browser cannot open a socket, thus `tcp`, `ftp`, `smtp` and `pop` give a REBOL error.
 - Email is not planned. It needs an external service with secret keys, and Ian sees this as a security risk. `README.md` lists the limits.
@@ -39,7 +40,7 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 - Loader: `date!`, `money!`, base-64 binary, a path that has a paren, `/a/b` as two refinements.
 - Loader: keep the line ends of a block, because `mold` shows them. Remove the limit of 16 levels for nested braces.
 - Loader: the fields of a "syntax invalid" error (the type name and the text).
-- Errors: the `near` and `where` fields, and the REBOL message texts. Ian must decide if WebRebol can copy the message texts of REBOL.
+- Errors: the `near` and `where` fields, and a `** Near:` line in the message.
 - Evaluator: get-arguments (`:x`), `catch/name`, `case/all`, a `for` with a bump of zero.
 - Series: `find/any`, `select/skip`, `sort/skip`, `sort/compare`, `parse`. The sequence of mixed types in `sort`.
 - Natives: many REBOL functions accept more types than WebRebol does (for example `first` of a pair). Such a call can stop JavaScript with an exception. Each native must give a REBOL error.

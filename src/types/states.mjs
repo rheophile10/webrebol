@@ -8,9 +8,9 @@
  * @property {number | string | boolean | null | number[] | Datum[] | object} value - The data of the value. A time is in nanoseconds. A series in a store has its number and its index.
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
- * @madeby readToken, loadSource, makeLogic, makeWord, readItem
+ * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError
  * @changedby 12 declarations in datum, series, store
- * @readby 31 declarations in call, machine, path, spec, compare, control, edit, faults, series, mold, store
+ * @readby 32 declarations in call, machine, path, spec, compare, control, edit, faults, report, series, mold, store
  */
 
 /**
@@ -22,7 +22,7 @@
  * @property {string} output - The text that the session printed.
  * @madeby START_STORE
  * @changedby 9 declarations in store
- * @readby 13 declarations in machine, compare, series, mold, store
+ * @readby 14 declarations in machine, compare, report, series, mold, store
  */
 
 /**
@@ -36,7 +36,7 @@
  * @property {{ kind: string, value: Datum } | null} thrown - The error, the return or the break that moves up the stack.
  * @madeby makeMachine, interpretSource
  * @changedby 21 declarations in call, evaluate, machine, path, run, control, edit, faults, series
- * @readby atEnd, readItem, showResult
+ * @readby atEnd, readItem, showResult, findError
  */
 
 export {};

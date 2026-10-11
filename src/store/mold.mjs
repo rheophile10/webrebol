@@ -185,7 +185,7 @@ const MOLDERS = {
  * @returns {string}
  * @standard reference - The text is the text that `mold` of REBOL 2.7.8 gives.
  * @uses MOLDERS
- * @usedby 9 declarations in interpret, text, mold
+ * @usedby 10 declarations in interpret, report, text, mold
  */
 export const moldValue = (store, value, depth = 0) =>
   (MOLDERS[value.type] ?? (() => "?function?"))(store, value, depth);
@@ -221,7 +221,7 @@ const FORMERS = {
  * @returns {string}
  * @standard reference - The text is the text that `form` of REBOL 2.7.8 gives.
  * @uses isList, readRest, FORMERS, moldValue
- * @usedby 9 declarations in convert, search, series, text
+ * @usedby 10 declarations in convert, report, search, series, text
  */
 export const formValue = (store, value) => {
   // The items of a block are formed and joined, without brackets.
