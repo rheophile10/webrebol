@@ -23,7 +23,7 @@ const failState = (state) => ({ ...state, ok: false });
 
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby matchSet, matchScan, MATCHERS
+ * @usedby matchSet, matchScan, matchInner, MATCHERS
  */
 const throwState = (state, text, args) => ({
   ...state,
@@ -242,14 +242,27 @@ const matchEnd = (rules, state) => {
   return ready.pos >= sizeOf(rules, ready) ? ready : failState(state);
 };
 
+const RULE_DEPTH = 400;
+
 /**
- * @uses matchValue, matchBlock, matchSkip, matchEnd, matchRepeat, matchCopy, matchSet, matchScan, matchInto,
+ * @uses RULE_DEPTH, throwState, matchBlock
+ * @usedby MATCHERS
+ */
+const matchInner = (rules, state, term) => {
+  // A rule that names itself without an end is an error, as in REBOL.
+  const depth = (rules.depth ?? 0) + 1;
+  if (depth > RULE_DEPTH) return throwState(state, "internal stack-overflow", []);
+  return matchBlock({ ...rules, depth }, state, term.block);
+};
+
+/**
+ * @uses matchValue, matchInner, matchSkip, matchEnd, matchRepeat, matchCopy, matchSet, matchScan, matchInto,
  *   matchMark, matchJump, matchParen, throwState
  * @usedby matchTerm
  */
 const MATCHERS = {
   value: matchValue,
-  block: (rules, state, term) => matchBlock(rules, state, term.block),
+  block: matchInner,
   skip: matchSkip,
   end: matchEnd,
   none: (rules, state) => state,
@@ -392,7 +405,7 @@ const splitChoices = (items) =>
 
 /**
  * @uses matchSequence, splitChoices, readRest (src/store/store.mjs), failState
- * @usedby MATCHERS, parseSeries
+ * @usedby matchInner, parseSeries
  */
 const matchBlock = (rules, state, block) => {
   // The first choice that matches gives the result. A later choice keeps the changes that a failed choice made to words.

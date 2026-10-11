@@ -143,7 +143,7 @@ const CONSTANTS = {
 };
 
 // REBOL has these types, and WebRebol does not. Their words are there, thus a script can compare a type with them.
-const ABSENT_TYPES = ["routine", "library", "struct", "port", "event", "image", "hash", "list", "symbol"];
+const ABSENT_TYPES = ["routine", "library", "struct", "port", "event", "image", "symbol"];
 
 /**
  * @usedby makeFunction
@@ -203,7 +203,7 @@ const bootStore = (store) => {
 
 /**
  * @uses bootStore, EMPTY_STORE (src/store/store.mjs), GLOBALS
- * @usedby runTest (bin/conform.mjs), actual (bin/conform.mjs), EMPTY_BLOCK, startSource,
- *   makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
+ * @usedby runTest (bin/conform.mjs), bin/conform.mjs, EMPTY_BLOCK, startSource, makeReady (test/machine.test.mjs),
+ *   readGlobal (test/machine.test.mjs)
  */
 export const START_STORE = bootStore({ ...EMPTY_STORE, base: GLOBALS });

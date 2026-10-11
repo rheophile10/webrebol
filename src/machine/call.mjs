@@ -1,5 +1,5 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
-import { makeSeries, NONE, readContext, readWord, UNSET, writeContext } from "../store/store.mjs";
+import { makeSeries, NONE, readContext, readWord, UNSET, writeContext, bindCopy, makeContext } from "../store/store.mjs";
 import { advance, atEnd, failMachine, giveValue, makeLogic, makeWord, popFrame, pushFrame, readItem, replaceTop, throwUnused } from "./machine.mjs";
 import { acceptsType } from "./spec.mjs";
 
@@ -39,7 +39,7 @@ const unwindBody = (machine, frame) => {
 
 /**
  * @uses NONE (src/store/store.mjs), makeLogic
- * @usedby invokeBody
+ * @usedby invokeBody, invokeClosure
  */
 const makeArguments = (frame) => {
   // Each word of the function is none, but a used refinement is true and a parameter has its argument.
@@ -101,7 +101,39 @@ const failArgument = (machine, frame, param) => {
 };
 
 /**
- * @uses acceptsType, failArgument, invokeBody, makeOptions
+ * @uses atEnd, popFrame, throwUnused
+ * @usedby invokeClosure
+ */
+const stepClosure = (machine, frame) => {
+  if (atEnd(machine)) return { ...popFrame(machine), cursor: frame.cursor };
+  return throwUnused(machine) ?? { ...machine, mode: "next" };
+};
+
+/**
+ * @uses popFrame, giveValue
+ * @usedby invokeClosure
+ */
+const unwindClosure = (machine, frame) => {
+  const popped = { ...popFrame(machine), cursor: frame.cursor };
+  return machine.thrown.kind === "return" ? { ...giveValue(popped, machine.thrown.value), thrown: null } : popped;
+};
+
+/**
+ * @uses makeContext (src/store/store.mjs), makeArguments, bindCopy (src/store/store.mjs), stepClosure, unwindClosure,
+ *   pushFrame, UNSET (src/store/store.mjs)
+ * @usedby invoke
+ */
+const invokeClosure = (machine, frame) => {
+  // Each call of a closure has a new context and a new copy of the body. Thus a value from the call can keep its words.
+  const callee = frame.callee.value;
+  const made = makeContext(machine.store, makeArguments(frame));
+  const bound = bindCopy(made.store, callee.body, { id: made.id, keys: callee.keys });
+  const body = { step: stepClosure, unwind: unwindClosure, cursor: machine.cursor };
+  return { ...pushFrame(machine, body), store: bound.store, cursor: { ...bound.value.value }, value: UNSET, mode: "give" };
+};
+
+/**
+ * @uses acceptsType, failArgument, makeOptions, invokeClosure, invokeBody
  * @usedby requestArgument, callFunction, stepInfix
  */
 const invoke = (machine, frame, checked) => {
@@ -110,7 +142,8 @@ const invoke = (machine, frame, checked) => {
   const refused = checked ? frame.order.find(refuses) : undefined;
   if (refused !== undefined) return failArgument(machine, frame, refused);
   const native = frame.callee.value.native;
-  return native === undefined ? invokeBody(machine, frame) : native(machine, frame.args, makeOptions(frame));
+  if (native !== undefined) return native(machine, frame.args, makeOptions(frame));
+  return frame.callee.value.closure === true ? invokeClosure(machine, frame) : invokeBody(machine, frame);
 };
 
 /**

@@ -37,15 +37,18 @@ export const isFunction = (value) => FUNCTION_TYPES.includes(value.type);
  * @param {Machine} machine
  * @param {Frame} frame
  * @returns {Machine}
- * @usedby 22 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
+ * @usedby 23 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
-export const pushFrame = (machine, frame) => ({ ...machine, frames: { top: frame, below: machine.frames } });
+export const pushFrame = (machine, frame) => ({
+  ...machine,
+  frames: { top: frame, below: machine.frames, depth: (machine.frames?.depth ?? 0) + 1 },
+});
 
 /**
  * Removes the top frame of the stack.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby 25 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
+ * @usedby 27 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below });
 
@@ -58,14 +61,14 @@ export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below
  *   stepCompose (src/natives/flow.mjs), stepList (src/natives/loops.mjs), stepEach (src/natives/loops.mjs),
  *   stepWhile (src/natives/loops.mjs)
  */
-export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: frame, below: machine.frames.below } });
+export const replaceTop = (machine, frame) => ({ ...machine, frames: { ...machine.frames, top: frame } });
 
 /**
  * Gives a value to the top frame at the next step.
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 126 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
+ * @usedby 128 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -87,7 +90,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 38 declarations in call, evaluate, path, bitsets, compare, control, convert, digest, edit, encode, files, items, math, numbers, random, series, words
+ * @usedby 42 declarations in call, evaluate, path, run, bitsets, compare, control, convert, digest, edit, encode, files, items, math, numbers, objects, random, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -140,7 +143,7 @@ export const answerRequest = (machine, answer) => machine.request.resume({ ...ma
  * @param {Machine} machine
  * @returns {boolean}
  * @uses readEntry (src/store/table.mjs)
- * @usedby 12 declarations in call, evaluate, machine, control, flow
+ * @usedby 13 declarations in call, evaluate, machine, control, flow
  */
 export const atEnd = (machine) => machine.cursor.index >= readEntry(machine.store.series, machine.cursor.id).length;
 
@@ -167,7 +170,7 @@ export const advance = (machine) => ({ ...machine, cursor: { ...machine.cursor, 
  * @returns {Machine | null}
  * @standard error - An error value that no function uses becomes a thrown error. Without it, the result is null.
  * @uses atEnd, throwValue
- * @usedby stepBody, stepBlock
+ * @usedby stepBody, stepClosure, stepBlock
  */
 export const throwUnused = (machine) =>
   !atEnd(machine) && machine.value.type === "error" ? throwValue(machine, "error", machine.value) : null;

@@ -34,7 +34,7 @@ Three comparisons run the same code in REBOL 2.7.8 and in WebRebol:
 |---|---|---|
 | Recorded cases of this project | `npm test` | All 1851 cases agree. |
 | Load of downloaded REBOL scripts | `node bin/compare.mjs` | 529 of 538 scripts agree (143726 lines of code). |
-| The public REBOL core test suite | `node bin/conform.mjs` | 4024 of 4586 tests give the same outcome (87.7%). 141 of the other tests use types or features that WebRebol does not have. |
+| The public REBOL core test suite | `node bin/conform.mjs` | 4061 of 4586 tests give the same outcome (88.6%). |
 
 The downloaded scripts and the reports are in `corpus/`, which is not in git. REBOL View runs in Docker without a network.
 
@@ -65,7 +65,8 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | Files: `read`, `write`, `load`, `save`, `do`, the directory functions | Available. The files are on a disk in memory. In Node.js, the environment variable `WEBREBOL_DISK` names a folder that keeps the disk. In a browser, the host page keeps the disk: see "Use in a page". A script cannot read other files of the computer. |
 | `random` | The numbers are random, but the same seed does not give the same numbers as REBOL 2. REBOL does not publish its algorithm. |
 | `call` | Not available. A browser page cannot start a program. |
-| `library!`, `routine!`, `struct!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
+| `library!`, `routine!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
+| `image!`, `event!`, `struct!` | Not available at this time. These types are possible, and they are planned. |
 | View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. `view` shows each face as a DOM element with CSS, and a click runs the action of a button. `draw`, `effect`, timers and keyboard events are not available at this time. The pixels are not equal to REBOL 2, because a browser draws the elements and the fonts. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
 | `parse` with a loop that does not move | REBOL 2 does not end if a `some` or `any` rule matches and does not move the position. WebRebol stops the loop. |
@@ -90,12 +91,12 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`readToken`](src/data/datum.mjs#L309) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L183) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L124) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L210) — Makes a machine that is ready to evaluate a block.
-- [`runMachine`](src/machine/run.mjs#L58) — Does steps until the evaluation is done or the budget is used.
-- [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
+- [`makeMachine`](src/machine/machine.mjs#L213) — Makes a machine that is ready to evaluate a block.
+- [`runMachine`](src/machine/run.mjs#L72) — Does steps until the evaluation is done or the budget is used.
+- [`stepMachine`](src/machine/run.mjs#L52) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L52) — Evaluates the value at the cursor, without a look for an operator after it.
-- [`startCall`](src/machine/call.mjs#L175) — Starts the call of a function.
+- [`startCall`](src/machine/call.mjs#L208) — Starts the call of a function.
 - [`interpretSource`](src/session/interpret.mjs#L45) — Evaluates a REBOL source text in a new session, without an edge.
 - [`showResult`](src/session/interpret.mjs#L56) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L235) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L237) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

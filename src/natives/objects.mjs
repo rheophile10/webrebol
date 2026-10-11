@@ -2,7 +2,7 @@ import { makeDatum } from "../data/datum.mjs";
 import { bindCopy, bindInPlace, GLOBAL, isList, isSeries, makeContext, makeKey, makeSeries, NONE, readContext, readRest, readWord, UNSET, writeContext, writeWord } from "../store/store.mjs";
 import { CONVERT_NATIVES, convertValue } from "./convert.mjs";
 import { makeError } from "./faults.mjs";
-import { giveValue, makeLogic, popFrame, pushFrame, startBlock } from "../machine/machine.mjs";
+import { giveValue, makeLogic, popFrame, pushFrame, startBlock, failMachine } from "../machine/machine.mjs";
 
 /**
  * @uses makeKey (src/store/store.mjs)
@@ -49,7 +49,7 @@ const copyParent = (store, parent, context) => {
  *   makeDatum (src/data/datum.mjs), SELF, makeKey (src/store/store.mjs), copyParent, NONE (src/store/store.mjs),
  *   writeContext (src/store/store.mjs), bindCopy (src/store/store.mjs), giveValue (src/machine/machine.mjs),
  *   popFrame (src/machine/machine.mjs), startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs)
- * @usedby MAKERS, makeValue, OBJECT_NATIVES
+ * @usedby MAKERS, mergeObjects, makeValue, OBJECT_NATIVES
  */
 const makeObject = (machine, parent, block) => {
   // The words of the object are the words of its parent and the set-words of the block.
@@ -79,7 +79,7 @@ const giveSeries = (type, empty) => (machine, spec) => {
   return giveValue({ ...machine, store: made.store }, made.value);
 };
 
-const LIST_NAMES = ["block", "paren", "path", "set-path", "lit-path"];
+const LIST_NAMES = ["block", "paren", "path", "set-path", "lit-path", "hash", "list"];
 /**
  * @uses LIST_NAMES
  * @usedby makeValue
@@ -100,12 +100,30 @@ const MAKERS = {
 };
 
 /**
- * @uses makeObject, CONVERT_NATIVES, MAKERS, SERIES_NAMES, convertValue, makeSeries (src/store/store.mjs),
- *   LIST_NAMES, giveValue (src/machine/machine.mjs)
+ * @uses makeSeries (src/store/store.mjs), makeBodyItems, makeObject
+ * @usedby makeValue
+ */
+const mergeObjects = (machine, parent, other) => {
+  // An object as the specification gives its words and values to the new object.
+  const made = makeSeries(machine.store, "block", makeBodyItems(machine.store, other));
+  return makeObject({ ...machine, store: made.store }, parent, made.value);
+};
+
+/**
+ * @uses makeDatum (src/data/datum.mjs), readContext (src/store/store.mjs), makeKey (src/store/store.mjs)
+ * @usedby mergeObjects
+ */
+const makeBodyItems = (store, object) =>
+  object.value.words.flatMap((word) => [makeDatum("set-word", word), readContext(store, object.value.context)[makeKey(word)]]);
+
+/**
+ * @uses mergeObjects, makeObject, failMachine (src/machine/machine.mjs), CONVERT_NATIVES, MAKERS, SERIES_NAMES,
+ *   convertValue, makeSeries (src/store/store.mjs), LIST_NAMES, giveValue (src/machine/machine.mjs)
  * @usedby OBJECT_NATIVES
  */
 const makeValue = (machine, [type, spec]) => {
-  if (type.type === "object") return makeObject(machine, type, spec);
+  if (type.type === "object" && spec.type === "object") return mergeObjects(machine, type, spec);
+  if (type.type === "object") return spec.type === "block" ? makeObject(machine, type, spec) : failMachine(machine, "script bad-make-arg", [type, spec]);
   if (type.value === "block" && spec.type === "string") return CONVERT_NATIVES["to-block"](machine, [spec]);
   const maker = type.type === "datatype" ? MAKERS[type.value] : undefined;
   if (maker !== undefined) return maker(machine, spec);
@@ -141,13 +159,17 @@ const setFields = (machine, object, value) => {
   return giveValue({ ...machine, store: writeContext(machine.store, object.value.context, { ...old, ...fields }) }, value);
 };
 
+const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
+
 /**
- * @uses setFields, readRest (src/store/store.mjs), writeWord (src/store/store.mjs), NONE (src/store/store.mjs),
- *   giveValue (src/machine/machine.mjs)
+ * @uses setFields, readRest (src/store/store.mjs), WORD_TYPES, failMachine (src/machine/machine.mjs),
+ *   writeWord (src/store/store.mjs), NONE (src/store/store.mjs), giveValue (src/machine/machine.mjs)
  * @usedby OBJECT_NATIVES
  */
 const setWords = (machine, [target, value]) => {
   if (target.type === "object") return setFields(machine, target, value);
+  const targets = target.type === "block" ? readRest(machine.store, target) : [target];
+  if (targets.some((item) => !WORD_TYPES.includes(item.type))) return failMachine(machine, "script invalid-arg", [target]);
   // A block of words takes the items of a block of values. Without a block of values, each word gets the value.
   const words = target.type === "block" ? readRest(machine.store, target) : [target];
   const values = target.type === "block" && value.type === "block" ? readRest(machine.store, value) : null;
@@ -161,28 +183,45 @@ const setWords = (machine, [target, value]) => {
  */
 const findContext = (store, target) => {
   // All words can go to the global context. A different context accepts only its words.
-  const id = target.type === "object" ? target.value.context : target.bind;
-  return { id, keys: id === GLOBAL ? null : Object.keys(readContext(store, id)).filter((key) => key.startsWith("$")) };
+  const id = target.type === "object" ? target.value.context : (target.bind ?? GLOBAL);
+  const values = id === GLOBAL ? undefined : readContext(store, id);
+  return { id, keys: values === undefined ? null : Object.keys(values).filter((key) => key.startsWith("$")) };
 };
 
 /**
- * @uses findContext, giveValue (src/machine/machine.mjs), bindInPlace (src/store/store.mjs),
- *   bindCopy (src/store/store.mjs)
+ * @uses findContext, isList (src/store/store.mjs), makeKey (src/store/store.mjs),
+ *   giveValue (src/machine/machine.mjs), bindInPlace (src/store/store.mjs), bindCopy (src/store/store.mjs)
  * @usedby OBJECT_NATIVES
  */
 const bindBlock = (machine, [block, target], options) => {
   const context = findContext(machine.store, target);
+  // One word gets the context if the context has that word.
+  if (!isList(block)) {
+    const known = context.keys === null || context.keys.includes(makeKey(String(block.value)));
+    return giveValue(machine, known ? { ...block, bind: context.id } : block);
+  }
   if (options.$copy === undefined) return giveValue({ ...machine, store: bindInPlace(machine.store, block, context) }, block);
   const bound = bindCopy(machine.store, block, context);
   return giveValue({ ...machine, store: bound.store }, bound.value);
 };
 
 /**
- * @uses readRest (src/store/store.mjs), makeKey (src/store/store.mjs), makeContext (src/store/store.mjs),
- *   NONE (src/store/store.mjs), bindCopy (src/store/store.mjs), startBlock (src/machine/machine.mjs)
+ * @uses makeSeries (src/store/store.mjs), useBlock
  * @usedby OBJECT_NATIVES
  */
-const useWords = (machine, [words, body]) => {
+const useWords = (machine, [given, body]) => {
+  // One word is the same as a block of one word.
+  const single = makeSeries(machine.store, "block", [given]);
+  const words = given.type === "block" ? given : single.value;
+  return useBlock({ ...machine, store: single.store }, [words, body]);
+};
+
+/**
+ * @uses readRest (src/store/store.mjs), makeKey (src/store/store.mjs), makeContext (src/store/store.mjs),
+ *   NONE (src/store/store.mjs), bindCopy (src/store/store.mjs), startBlock (src/machine/machine.mjs)
+ * @usedby useWords
+ */
+const useBlock = (machine, [words, body]) => {
   // The words are in a new context. The body is a copy that uses this context.
   const keys = readRest(machine.store, words).map((word) => makeKey(word.value));
   const made = makeContext(machine.store, Object.fromEntries(keys.map((key) => [key, NONE])));

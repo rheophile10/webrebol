@@ -61,7 +61,7 @@ export const performRequest = (request) => HANDLERS[request.kind](request);
  * @returns {Promise<Machine>}
  * @standard answer - A machine that waits for a digest continues with the bytes of the digest.
  * @uses runMachine (src/machine/run.mjs), HANDLERS, performRequest, answerRequest (src/machine/machine.mjs)
- * @usedby interpretWithEdge
+ * @usedby runTest (bin/conform.mjs), interpretWithEdge
  */
 export const driveMachine = async (machine, batches) => {
   const stopped = runMachine(machine, batches);

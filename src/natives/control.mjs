@@ -25,7 +25,7 @@ const readSpecItem = (store) => (item) => (isList(item) ? { type: "block", value
  * @uses parseSpec (src/machine/spec.mjs), readRest (src/store/store.mjs), readSpecItem,
  *   makeContext (src/store/store.mjs), bindCopy (src/store/store.mjs), makeDatum (src/data/datum.mjs),
  *   giveValue (src/machine/machine.mjs)
- * @usedby makeWithLocals, makeDoes, CONTROL_NATIVES
+ * @usedby makeClosure, makeWithLocals, makeDoes, CONTROL_NATIVES
  */
 const makeFunction = (machine, [spec, body]) => {
   // The function gets a context for its words. The body is a copy that uses this context.
@@ -34,6 +34,16 @@ const makeFunction = (machine, [spec, body]) => {
   const bound = bindCopy(made.store, body, { id: made.id, keys: parsed.keys });
   const callee = makeDatum("function", { ...parsed, context: made.id, body: bound.value, spec });
   return giveValue({ ...machine, store: bound.store }, callee);
+};
+
+/**
+ * @uses makeFunction, giveValue (src/machine/machine.mjs)
+ * @usedby CONTROL_NATIVES
+ */
+const makeClosure = (machine, args) => {
+  // A closure is a function that makes a new context for each call.
+  const made = makeFunction(machine, args);
+  return giveValue(made, { ...made.value, value: { ...made.value.value, closure: true } });
 };
 
 /**
@@ -181,9 +191,9 @@ const chooseBlock = (wanted) => (machine, [condition, block]) =>
 /**
  * The natives for control of the evaluation. Each entry has the name of REBOL and the function.
  * @uses chooseBlock, startBlock (src/machine/machine.mjs), isTrue (src/machine/machine.mjs),
- *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), makeFunction, makeDoes, makeHas,
+ *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), makeFunction, makeDoes, makeClosure, makeHas,
  *   makeWithLocals, doValue, reduceValue, tryBlock
- * @usedby makeFunct, WORD_NATIVES, NATIVES (src/session/globals.mjs)
+ * @usedby makeFunct, NATIVES (src/session/globals.mjs)
  */
 export const CONTROL_NATIVES = {
   "if": chooseBlock(true),
@@ -193,6 +203,7 @@ export const CONTROL_NATIVES = {
   exit: (machine) => throwValue(machine, "return", UNSET),
   func: makeFunction,
   does: makeDoes,
+  closure: makeClosure,
   has: makeHas,
   function: makeWithLocals,
   "do": doValue,

@@ -30,15 +30,20 @@ const makeSpan = (store, series, size) => {
   return { from, upto: Math.min(Math.max(index, index + size), readAll(store, series).length) };
 };
 
+const COPY_LIMIT = 200;
+
 /**
- * @uses makeSeries (src/store/store.mjs), isSeries (src/store/store.mjs), readRest (src/store/store.mjs)
+ * @uses COPY_LIMIT, makeSeries (src/store/store.mjs), isSeries (src/store/store.mjs), readRest (src/store/store.mjs)
  * @usedby copySeries
  */
-const copyDeep = (store, type, content) => {
-  // Each series in a list is also copied.
+const copyDeep = (store, series, depth) => {
+  // Each series in a list is also copied. A block that holds itself has no end, thus the copy stops at a large depth.
+  const { type, content } = series;
+  if (depth > COPY_LIMIT) return makeSeries(store, type, type === "binary" || typeof content !== "string" ? [] : "");
   if (typeof content === "string" || type === "binary") return makeSeries(store, type, content);
   const copyItem = (made, item) => {
-    const next = isSeries(item) ? copyDeep(made.store, item.type, readRest(made.store, item)) : { store: made.store, value: item };
+    const inner = { type: item.type, content: isSeries(item) ? readRest(made.store, item) : null };
+    const next = isSeries(item) ? copyDeep(made.store, inner, depth + 1) : { store: made.store, value: item };
     return { store: next.store, values: [...made.values, next.value] };
   };
   const made = content.reduce(copyItem, { store, values: [] });
@@ -54,7 +59,7 @@ const copySeries = (machine, [series], options) => {
   const size = options.$part === undefined ? Infinity : readPart(series, options.$part[0]);
   const span = makeSpan(machine.store, series, size);
   const content = readAll(machine.store, series).slice(span.from, span.upto);
-  const made = options.$deep === undefined ? makeSeries(machine.store, series.type, content) : copyDeep(machine.store, series.type, content);
+  const made = options.$deep === undefined ? makeSeries(machine.store, series.type, content) : copyDeep(machine.store, { type: series.type, content }, 0);
   return giveValue({ ...machine, store: made.store }, made.value);
 };
 

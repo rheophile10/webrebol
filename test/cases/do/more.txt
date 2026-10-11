@@ -295,3 +295,23 @@ round/half-ceiling -2.5
 round/even/to 1.15 0.1
 lesser? #{0141} #{0161}
 -2147483648x-2147483648 + -2147483648x-2147483648
+make-counter: closure [n] [does [n: n + 1]] c1: make-counter 10 c2: make-counter 100 reduce [c1 c1 c2 c1]
+c: closure [x] [x * 2] c 4
+make hash! [1 2]
+make list! [a b]
+hash? make hash! []
+list? make list! []
+find to-hash [1 2 3] 2
+length? make hash! [a 1 b 2]
+select make hash! [a 1 b 2] 'b
+blk: [do blk] error? try blk
+blk: [if true blk] error? try blk
+a: copy [] insert/only a a equal? a a
+bind 'print 'first
+case/all [true [1] false [2] true [3]]
+o: make object! [a: 0x0] o/a/x: 7 o/a
+x: #{0201} x/2
+do :abs -1
+a-value: 'b-value b-value: 1 do :a-value
+:abs = :absolute
+#"^!" = #"^(1E)"

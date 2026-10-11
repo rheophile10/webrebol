@@ -95,10 +95,17 @@ const REFLECTORS = {
 };
 
 /**
- * @uses giveNew, REFLECTORS
+ * @usedby reflectOn
+ */
+const canReflect = (value, field) =>
+  value.type === "object" || (value.type === "function" && value.value.spec !== undefined && field !== "values");
+
+/**
+ * @uses canReflect, giveNew, REFLECTORS, failMachine (src/machine/machine.mjs)
  * @usedby WORD_NATIVES
  */
-const reflectOn = (field) => (machine, [value]) => giveNew(machine, "block", REFLECTORS[field](machine.store, value));
+const reflectOn = (field) => (machine, [value]) =>
+  canReflect(value, field) ? giveNew(machine, "block", REFLECTORS[field](machine.store, value)) : failMachine(machine, "script invalid-arg", [value]);
 
 /**
  * @uses REFLECTORS, failMachine (src/machine/machine.mjs), giveNew
@@ -193,13 +200,12 @@ const stopMachine = (machine) => throwValue(machine, "quit", makeDatum("unset", 
 
 /**
  * The natives for functions, words and objects that are not basic. Each entry has the name of REBOL and the function.
- * @uses makeFunct, CONTROL_NATIVES, applyFunction, setDefault, reflectOn, reflectValue, findOwner, constructObject,
- *   causeError, assertBlock, loadText, giveValue (src/machine/machine.mjs), stopMachine
+ * @uses makeFunct, applyFunction, setDefault, reflectOn, reflectValue, findOwner, constructObject, causeError,
+ *   assertBlock, loadText, giveValue (src/machine/machine.mjs), stopMachine
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WORD_NATIVES = {
   funct: makeFunct,
-  closure: CONTROL_NATIVES.func,
   apply: applyFunction,
   default: setDefault,
   "words-of": reflectOn("words"),

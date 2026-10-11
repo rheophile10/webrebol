@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 import { loadSource } from "../src/data/load.mjs";
 import { allocate, readRest } from "../src/store/store.mjs";
 import { makeMachine } from "../src/machine/machine.mjs";
-import { runMachine } from "../src/machine/run.mjs";
+import { driveMachine } from "../src/edge/drive.mjs";
 import { START_STORE } from "../src/session/globals.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -20,7 +20,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const SUITE = `${ROOT}corpus/github/rebolsource_rebol-test/core-tests.r`;
 const LIMITS = { encoding: "latin1", timeout: 600000, maxBuffer: 256 * 1024 * 1024 };
 const SKIP_FLAGS = ["#r3only", "#r3", "#64bit", "#long"];
-const BATCHES = 300;
+const BATCHES = 3000;
 
 /**
  * @usedby runDocker
@@ -89,19 +89,20 @@ const showOutcome = (machine) => {
 
 /**
  * @uses START_STORE (src/session/globals.mjs), loadSource (src/data/load.mjs), allocate (src/store/store.mjs),
- *   runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), readRest (src/store/store.mjs), BATCHES,
- *   showOutcome
- * @usedby actual
+ *   driveMachine (src/edge/drive.mjs), makeMachine (src/machine/machine.mjs), readRest (src/store/store.mjs),
+ *   BATCHES, showOutcome
+ * @usedby bin/conform.mjs
  */
-const runTest = (stops) => (given, test) => {
+const runTest = (stops) => async (before, test) => {
   // The tests run in one session, as in REBOL. After a test that stops REBOL, the session is new, as in REBOL.
+  const given = await before;
   const state = stops.includes(test.index - 1) || stops.includes(test.index) ? { ...given, store: START_STORE } : given;
   try {
     const loaded = loadSource(test.source);
     if (loaded.type === "error") return { store: state.store, outcomes: { ...state.outcomes, [test.index]: `ERROR ${loaded.value}` } };
-    // The text of a test is one block. The machine evaluates the content of that block.
+    // The text of a test is one block. The machine evaluates the content of that block, with the edge for the clock and Web Crypto.
     const made = allocate(state.store, loaded);
-    const done = runMachine(makeMachine(made.store, readRest(made.store, made.value)[0]), BATCHES);
+    const done = await driveMachine(makeMachine(made.store, readRest(made.store, made.value)[0]), BATCHES);
     return { store: done.mode === "done" ? done.store : state.store, outcomes: { ...state.outcomes, [test.index]: showOutcome(done) } };
   } catch (fault) {
     return { store: state.store, outcomes: { ...state.outcomes, [test.index]: `CRASH ${String(fault.message).slice(0, 60)}` } };
@@ -110,7 +111,7 @@ const runTest = (stops) => (given, test) => {
 
 /**
  * @uses readTests, SUITE
- * @usedby reference, stops, actual, judged, summary
+ * @usedby reference, bin/conform.mjs, stops, writeReport
  */
 const tests = readTests(readFileSync(SUITE, "latin1"));
 /**
@@ -130,52 +131,55 @@ const CACHE = `${ROOT}corpus/tests-reference.json`;
 const cached = process.argv[2] !== "record" && existsSync(CACHE);
 /**
  * @uses cached, CACHE, runReference, tests
- * @usedby bin/conform.mjs, stops, judged, same, different, lines
+ * @usedby bin/conform.mjs, stops, writeReport
  */
 const reference = cached ? JSON.parse(readFileSync(CACHE, "utf8")) : runReference(tests);
 writeFileSync(CACHE, JSON.stringify(reference));
 /**
  * @uses tests, reference
- * @usedby actual, summary
+ * @usedby bin/conform.mjs, writeReport
  */
 const stops = tests.filter((test) => reference[test.index] === "STOP").map((test) => test.index);
 /**
  * @uses tests, runTest, stops, START_STORE (src/session/globals.mjs)
  * @usedby same, different, lines
  */
-const actual = tests.reduce(runTest(stops), { store: START_STORE, outcomes: {} }).outcomes;
 /**
- * @uses tests, reference
- * @usedby same, different, summary
- */
-const judged = tests.filter((test) => reference[test.index] !== undefined && reference[test.index] !== "STOP");
-/**
- * @uses judged, reference, actual
- * @usedby summary
- */
-const same = judged.filter((test) => reference[test.index] === actual[test.index]);
-/**
- * @uses judged, reference, actual
- * @usedby lines, summary
- */
-const different = judged.filter((test) => reference[test.index] !== actual[test.index]);
-/**
- * @uses different, reference, actual
+ * @uses tests, reference, stops, ROOT
  * @usedby bin/conform.mjs
  */
-const lines = different.map((test) => `${test.index}: REBOL ${reference[test.index]} | WebRebol ${actual[test.index]} | ${test.source.replace(/\s+/g, " ").slice(0, 110)}`);
-/**
- * @uses tests, stops, judged, same, different
- * @usedby bin/conform.mjs
- */
-const summary = [
-  `Tests for REBOL 2 in the suite: ${tests.length}`,
-  `Tests that stop REBOL 2.7.8 itself: ${stops.length}`,
-  `Tests with an outcome from REBOL: ${judged.length}`,
-  `Same outcome in WebRebol: ${same.length}`,
-  `Different outcome in WebRebol: ${different.length}`,
-];
+const writeReport = (actual) => {
+  const judged = tests.filter((test) => reference[test.index] !== undefined && reference[test.index] !== "STOP");
+  /**
+   * @uses judged, reference, actual
+   * @usedby summary
+   */
+  const same = judged.filter((test) => reference[test.index] === actual[test.index]);
+  /**
+   * @uses judged, reference, actual
+   * @usedby lines, summary
+   */
+  const different = judged.filter((test) => reference[test.index] !== actual[test.index]);
+  /**
+   * @uses different, reference, actual
+   * @usedby bin/conform.mjs
+   */
+  const lines = different.map((test) => `${test.index}: REBOL ${reference[test.index]} | WebRebol ${actual[test.index]} | ${test.source.replace(/\s+/g, " ").slice(0, 110)}`);
+  /**
+   * @uses tests, stops, judged, same, different
+   * @usedby bin/conform.mjs
+   */
+  const summary = [
+    `Tests for REBOL 2 in the suite: ${tests.length}`,
+    `Tests that stop REBOL 2.7.8 itself: ${stops.length}`,
+    `Tests with an outcome from REBOL: ${judged.length}`,
+    `Same outcome in WebRebol: ${same.length}`,
+    `Different outcome in WebRebol: ${different.length}`,
+  ];
+  
+  writeFileSync(`${ROOT}corpus/tests-report.txt`, `${[...summary, "", ...lines].join("\n")}\n`);
+  console.log(summary.join("\n"));
+  console.log("The full report is in corpus/tests-report.txt");
+};
 
-writeFileSync(`${ROOT}corpus/tests-report.txt`, `${[...summary, "", ...lines].join("\n")}\n`);
-console.log(summary.join("\n"));
-console.log("The full report is in corpus/tests-report.txt");
+tests.reduce(runTest(stops), Promise.resolve({ store: START_STORE, outcomes: {} })).then((state) => writeReport(state.outcomes));

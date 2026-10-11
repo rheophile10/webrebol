@@ -2,7 +2,7 @@
 import { makeKey } from "../store/store.mjs";
 
 const PARAMETER_KINDS = { word: "normal", "lit-word": "lit", "get-word": "get" };
-const LISTS = ["block", "paren", "path", "set-path", "lit-path"];
+const LISTS = ["block", "paren", "path", "set-path", "lit-path", "hash", "list"];
 const TEXTS = ["string", "file", "email", "url", "tag", "issue"];
 /**
  * @uses LISTS, TEXTS

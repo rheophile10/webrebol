@@ -213,6 +213,8 @@ const MOLDERS = {
   datatype: (store, datatype) => `${datatype.value}!`,
   error: (store, error) => `make error! [${error.value}]`,
   object: moldObject,
+  hash: (store, hash, depth) => `make hash! [${moldRest(store, hash, depth + 1)}]`,
+  list: (store, list, depth) => `make list! [${moldRest(store, list, depth + 1)}]`,
   native: () => "native",
   action: () => "action",
   "op": () => "op",

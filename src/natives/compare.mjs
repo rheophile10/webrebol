@@ -16,10 +16,21 @@ const DAY = 86400e9;
 export const TYPES = [
   ...["integer", "decimal", "string", "char", "word", "set-word", "get-word", "lit-word", "refinement", "block"],
   ...["paren", "path", "set-path", "lit-path", "issue", "file", "email", "url", "tag", "tuple", "pair", "time"],
-  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date", "action"],
+  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date", "action", "hash", "list"],
 ];
 
 const FUNCTIONS = ["native", "action", "op", "function"];
+
+/**
+ * @usedby areEqual, areSame, areIdentical
+ */
+const isSeriesValue = (value) => typeof value.value === "object" && value.value !== null && value.value.id !== undefined;
+
+/**
+ * @uses isSeriesValue, areSame
+ * @usedby COMPARE_NATIVES
+ */
+
 
 /**
  * @usedby areEqual
@@ -44,11 +55,15 @@ const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(M
  * @param {Datum} right
  * @returns {boolean}
  * @standard case - Two texts or two words are equal without regard to the case of the letters.
- * @uses NUMBERS, isNear, WORDS, isText (src/store/store.mjs), readRest (src/store/store.mjs),
+ * @uses isSeriesValue, NUMBERS, isNear, WORDS, isText (src/store/store.mjs), readRest (src/store/store.mjs),
  *   isList (src/store/store.mjs), areSameLists, RECORDS, FUNCTIONS, trimTuple
  * @usedby areSame, areSameLists, COMPARE_NATIVES, switchValue, matchesItem, makeSearch, makeUnique, combine
  */
 export const areEqual = (store, left, right) => {
+  // A series is equal to itself. This also stops the comparison of a block that holds itself.
+  if (isSeriesValue(left) && isSeriesValue(right) && left.value.id === right.value.id && left.value.index === right.value.index) {
+    return left.type === right.type;
+  }
   // Numbers of the two number types can be equal. REBOL ignores a very small difference.
   if (NUMBERS.includes(left.type) && NUMBERS.includes(right.type)) return isNear(left.value, right.value);
   // A char is equal to the integer of its code.
@@ -79,11 +94,13 @@ export const areEqual = (store, left, right) => {
  * @param {Datum} right
  * @returns {boolean}
  * @standard strict - Two texts with different case are not equal.
- * @uses isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS, isList (src/store/store.mjs), areEqual
+ * @uses isSeriesValue, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS,
+ *   isList (src/store/store.mjs), areEqual
  * @usedby areIdentical, COMPARE_NATIVES, makeSearch
  */
 export const areSame = (store, left, right) => {
   if (left.type !== right.type) return false;
+  if (isSeriesValue(left) && left.value.id === right.value.id) return left.value.index === right.value.index;
   if (isText(left)) return readRest(store, left) === readRest(store, right);
   if (WORDS.includes(left.type)) return left.value === right.value;
   if (!isList(left)) return areEqual(store, left, right);
@@ -97,7 +114,7 @@ export const areSame = (store, left, right) => {
  * @usedby areEqual
  */
 const areSameLists = (store, left, right) =>
-  left.length === right.length && left.every((item, place) => areEqual(store, item, right[place]));
+  left.length === right.length && left.every((item, place) => item === right[place] || areEqual(store, item, right[place]));
 
 /**
  * @uses NUMBERS, isText (src/store/store.mjs), readRest (src/store/store.mjs), ORDERED
@@ -147,11 +164,6 @@ const equate = (test, wanted) => (machine, [left, right]) =>
   giveValue(machine, makeLogic(test(machine.store, left, right) === wanted));
 
 /**
- * @usedby areIdentical
- */
-const isSeriesValue = (value) => typeof value.value === "object" && value.value !== null && value.value.id !== undefined;
-
-/**
  * @uses isSeriesValue, areSame
  * @usedby COMPARE_NATIVES
  */
@@ -190,7 +202,7 @@ const choose = (wanted) => (machine, [left, right]) => {
  */
 const testType = (type) => (machine, [value]) => giveValue(machine, makeLogic(value.type === type));
 
-const ABSENT_TYPES = ["routine", "struct", "library", "port", "event", "image", "hash", "list", "map", "typeset", "closure", "get-path"];
+const ABSENT_TYPES = ["routine", "struct", "library", "port", "event", "image", "map", "typeset", "closure", "get-path"];
 
 /**
  * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs), TYPESETS (src/machine/spec.mjs)

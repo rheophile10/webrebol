@@ -227,6 +227,8 @@ export const CONVERT_NATIVES = {
   "to-binary": toBinary,
   "as-binary": toBinary,
   "to-paren": toList("paren"),
+  "to-hash": toList("hash"),
+  "to-list": toList("list"),
   "to-path": toList("path"),
   "to-set-path": toList("set-path"),
   "to-lit-path": toList("lit-path"),

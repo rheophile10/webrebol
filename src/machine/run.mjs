@@ -1,14 +1,16 @@
 /** @import { Machine } from "../types/states.mjs" */
-import { popFrame, pushFrame } from "./machine.mjs";
+import { failMachine, popFrame, pushFrame } from "./machine.mjs";
 import { stepLook } from "./call.mjs";
 import { evaluateOperand } from "./evaluate.mjs";
 
 const BATCH = Array.from({ length: 1000 });
 /**
  * @uses stepLook
- * @usedby MODES
+ * @usedby startExpression
  */
 const LOOK = { step: stepLook };
+
+const DEPTH_LIMIT = 20000;
 
 /**
  * @usedby MODES
@@ -16,11 +18,21 @@ const LOOK = { step: stepLook };
 const finish = (machine) => ({ ...machine, mode: "done" });
 
 /**
- * @uses pushFrame, LOOK, evaluateOperand, finish, popFrame
+ * @uses DEPTH_LIMIT, failMachine, pushFrame, LOOK
+ * @usedby MODES
+ */
+const startExpression = (machine) =>
+  // REBOL gives an error when the evaluation is too deep, for example for a block that evaluates itself.
+  (machine.frames?.depth ?? 0) > DEPTH_LIMIT
+    ? failMachine(machine, "internal stack-overflow")
+    : { ...pushFrame(machine, LOOK), mode: "operand" };
+
+/**
+ * @uses startExpression, evaluateOperand, finish, popFrame
  * @usedby stepMachine
  */
 const MODES = {
-  next: (machine) => ({ ...pushFrame(machine, LOOK), mode: "operand" }),
+  next: startExpression,
   operand: evaluateOperand,
   give: (machine) => (machine.frames === null ? finish(machine) : machine.frames.top.step(machine, machine.frames.top)),
   throw: (machine) =>
@@ -53,7 +65,9 @@ const stepBatch = (machine) => BATCH.reduce(stepMachine, machine);
  * @standard budget - An evaluation that does not end stops when the budget is used, and its mode is not "done".
  * @standard wait - A machine that waits for the edge stops, and its mode is "wait".
  * @uses stepBatch
- * @usedby 9 declarations in conform, drive, page, parse, globals, interpret, windows, disk
+ * @usedby driveMachine (src/edge/drive.mjs), advance (src/edge/page.mjs), matchParen (src/natives/parse.mjs),
+ *   bootStore (src/session/globals.mjs), interpretSource (src/session/interpret.mjs),
+ *   renderWindows (src/view/windows.mjs), runAction (src/view/windows.mjs), makeScript (test/disk.test.mjs)
  */
 export const runMachine = (machine, batches) =>
   ["done", "wait"].includes(machine.mode) || batches <= 0 ? machine : runMachine(stepBatch(machine), batches - 1);

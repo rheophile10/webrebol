@@ -4,14 +4,14 @@ import { EMPTY_CHUNKS, joinChunks, pushItem } from "../data/chunks.mjs";
 import { EMPTY_DISK } from "./disk.mjs";
 import { EMPTY_TABLE, readEntry, writeEntry } from "./table.mjs";
 
-const LIST_TYPES = ["block", "paren", "path", "set-path", "lit-path"];
+const LIST_TYPES = ["block", "paren", "path", "set-path", "lit-path", "hash", "list"];
 const TEXT_TYPES = ["string", "file", "email", "url", "tag", "issue"];
 const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
 
 export const GLOBAL = 0;
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 22 declarations in call, evaluate, machine, control, files, items, loops, objects, random, text, store, windows
+ * @usedby 23 declarations in call, evaluate, machine, control, files, items, loops, objects, random, text, store, windows
  */
 export const UNSET = makeDatum("unset", null);
 /**
@@ -42,7 +42,7 @@ export const EMPTY_STORE = {
  * Makes the key of a word in a context. The key ignores the case of the letters.
  * @param {string} name - The spelling of the word.
  * @returns {string}
- * @usedby 21 declarations in path, spec, loops, objects, words, globals, store
+ * @usedby 23 declarations in path, spec, loops, objects, words, globals, store
  */
 export const makeKey = (name) => `$${name.toLowerCase()}`;
 
@@ -59,7 +59,7 @@ const hashKey = (key) => [...key].reduce((sum, char) => (Math.imul(sum, 31) + ch
  * @param {Datum} value
  * @returns {boolean}
  * @uses LIST_TYPES
- * @usedby 36 declarations in compare, path, control, convert, edit, encode, files, items, objects, random, search, series, text, words, mold, store, elements
+ * @usedby 37 declarations in compare, path, control, convert, edit, encode, files, items, objects, random, search, series, text, words, mold, store, elements
  */
 export const isList = (value) => LIST_TYPES.includes(value.type);
 
@@ -88,7 +88,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 39 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, layout, windows
+ * @usedby 41 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, layout, windows
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
@@ -189,7 +189,7 @@ export const readWord = (store, word) => {
  * @param {number} context - The number of the context.
  * @returns {Object<string, Datum> | undefined}
  * @uses readEntry
- * @usedby 17 declarations in call, path, objects, series, words, mold, elements, layout, windows
+ * @usedby 18 declarations in call, path, objects, series, words, mold, elements, layout, windows
  */
 export const readContext = (store, context) => readEntry(store.contexts, context);
 
@@ -253,9 +253,7 @@ const copyBound = (store, item, context) =>
  * @returns {{ store: Store, value: Datum }}
  * @standard original - The first block does not change.
  * @uses copyBound, readRest, makeSeries
- * @usedby makeFunction (src/natives/control.mjs), collectValues (src/natives/items.mjs),
- *   bindLoop (src/natives/loops.mjs), copyValue (src/natives/objects.mjs), makeObject (src/natives/objects.mjs),
- *   bindBlock (src/natives/objects.mjs), useWords (src/natives/objects.mjs), copyBound
+ * @usedby 9 declarations in call, control, items, loops, objects, store
  */
 export const bindCopy = (store, block, context) => {
   // Copy each item into the store that the items before it made.
@@ -290,9 +288,9 @@ export const bindInPlace = (store, block, context) => {
  * @param {Object<string, Datum>} values - The first values of the words, by key.
  * @returns {{ store: Store, id: number }}
  * @uses writeContext
- * @usedby makeFunction (src/natives/control.mjs), collectValues (src/natives/items.mjs),
- *   bindLoop (src/natives/loops.mjs), makeObject (src/natives/objects.mjs), useWords (src/natives/objects.mjs),
- *   makeRecord
+ * @usedby invokeClosure (src/machine/call.mjs), makeFunction (src/natives/control.mjs),
+ *   collectValues (src/natives/items.mjs), bindLoop (src/natives/loops.mjs), makeObject (src/natives/objects.mjs),
+ *   useBlock (src/natives/objects.mjs), makeRecord
  */
 export const makeContext = (store, values) => ({
   store: { ...writeContext(store, store.next, values), next: store.next + 1 },
