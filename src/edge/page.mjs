@@ -3,7 +3,7 @@ import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { showResult, startSource } from "../session/interpret.mjs";
 import { findError, formatError } from "../natives/report.mjs";
-import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction } from "../view/windows.mjs";
+import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction, runPointerAction } from "../view/windows.mjs";
 import { diff } from "../view/diff.mjs";
 import { applyPatches } from "./dom.mjs";
 import { performRequest } from "./drive.mjs";
@@ -11,6 +11,7 @@ import { paintReveals } from "./reveal.mjs";
 
 const BATCHES = 50;
 const EVENT_TYPES = ["click", "input"];
+const POINTER_TYPES = ["pointerdown", "pointermove", "pointerup"];
 const DEMO = `lay: layout [
     h2 "WebRebol"
     text "Type a name, then push the button."
@@ -85,7 +86,7 @@ const advance = () => {
 };
 
 /**
- * @usedby runTimers, readKey
+ * @usedby runTimers, readKey, readPointer
  */
 const isIdle = (machine) => machine !== undefined && ["wait", "done"].includes(machine.mode);
 
@@ -150,6 +151,20 @@ const readEvent = (event) => {
 };
 
 /**
+ * @uses state, isIdle, runPointerAction (src/view/windows.mjs)
+ * @usedby boot
+ */
+const readPointer = (event) => {
+  // A pointer event gives its position in the face to the block of the face.
+  const machine = state.get("machine");
+  const target = event.target instanceof Element ? event.target.closest(`[data-on${event.type}]`) : null;
+  if (target === null || !isIdle(machine)) return;
+  const box = target.getBoundingClientRect();
+  const block = Number(target.getAttribute(`data-on${event.type}`));
+  state.set("machine", { ...machine, store: runPointerAction(machine.store, block, [event.clientX - box.left, event.clientY - box.top]) });
+};
+
+/**
  * @uses state, findPart, startSource (src/session/interpret.mjs)
  * @usedby boot
  */
@@ -161,7 +176,7 @@ const start = () => {
 };
 
 /**
- * @uses findPart, DEMO, readKey, start, EVENT_TYPES, readEvent, frame
+ * @uses findPart, DEMO, readKey, start, EVENT_TYPES, readEvent, POINTER_TYPES, readPointer, frame
  * @usedby src/edge/page.mjs
  */
 const boot = () => {
@@ -172,6 +187,7 @@ const boot = () => {
   document.addEventListener("keydown", readKey);
   findPart("run").addEventListener("click", start);
   EVENT_TYPES.forEach((type) => findPart("screen").addEventListener(type, readEvent));
+  POINTER_TYPES.forEach((type) => findPart("screen").addEventListener(type, readPointer));
   start();
   requestAnimationFrame(frame);
 };

@@ -76,7 +76,7 @@ export const renderWindows = (store) => {
  * @standard fault - An error in the action adds its message to the printed text.
  * @uses runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs),
  *   HANDLER_BUDGET, formatError (src/natives/report.mjs)
- * @usedby runTimers (src/edge/page.mjs), readEvent (src/edge/page.mjs), runKeyAction
+ * @usedby runTimers (src/edge/page.mjs), readEvent (src/edge/page.mjs), runKeyAction, runPointerAction
  */
 export const runAction = (store, block) => {
   const done = runMachine(makeMachine(store, makeDatum("block", { id: block, index: 0 })), HANDLER_BUDGET);
@@ -126,6 +126,19 @@ export const runKeyAction = (store, block, name) => {
   const made = makeSeries(store, "string", name);
   return runAction(writeWord(made.store, { type: "word", value: "key", bind: GLOBAL }, made.value), block);
 };
+
+/**
+ * Evaluates the pointer block of a face. The global word `pointer` has the position of the pointer in the face, as a pair.
+ * @param {Store} store
+ * @param {number} block - The series number of the pointer block.
+ * @param {number[]} position - The x and y of the pointer, from the top left corner of the face.
+ * @returns {Store}
+ * @standard word - The block reads the position from the word `pointer`.
+ * @uses runAction, writeWord (src/store/store.mjs), GLOBAL (src/store/store.mjs), makeDatum (src/data/datum.mjs)
+ * @usedby readPointer (src/edge/page.mjs)
+ */
+export const runPointerAction = (store, block, position) =>
+  runAction(writeWord(store, { type: "word", value: "pointer", bind: GLOBAL }, makeDatum("pair", position.map(Math.round))), block);
 
 /**
  * Puts the text that a person typed into the face of a field.

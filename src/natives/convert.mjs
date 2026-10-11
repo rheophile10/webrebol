@@ -88,18 +88,26 @@ const readNumber = (store, value) => {
   // Give null if the value does not show a number. A char gives its code. A time gives its seconds.
   if (NUMBERS.includes(value.type) || value.type === "char") return value.value;
   if (value.type === "logic") return value.value ? 1 : 0;
+
   if (value.type === "time") return value.value / NANOSECONDS;
   const text = isText(value) ? readRest(store, value) : "";
   return /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(text) ? Number(text) : null;
 };
 
 /**
- * @uses readNumber, failMachine (src/machine/machine.mjs), giveValue (src/machine/machine.mjs),
+ * @uses readRest (src/store/store.mjs)
+ * @usedby toNumber
+ */
+const readWhole = (store, binary) => readRest(store, binary).slice(-4).reduce((sum, byte) => (sum << 8) | byte, 0);
+
+/**
+ * @uses readWhole, readNumber, failMachine (src/machine/machine.mjs), giveValue (src/machine/machine.mjs),
  *   makeDatum (src/data/datum.mjs)
  * @usedby CONVERT_NATIVES
  */
 const toNumber = (type, change) => (machine, [value]) => {
-  const number = readNumber(machine.store, value);
+  // A binary gives an integer of 32 bits, with the high byte first. It does not give a decimal.
+  const number = value.type === "binary" && type === "integer" ? readWhole(machine.store, value) : readNumber(machine.store, value);
   return number === null ? failMachine(machine, "script invalid-arg", [value]) : giveValue(machine, makeDatum(type, change(number)));
 };
 
@@ -150,7 +158,10 @@ const BUILDERS = {
     const [hours = 0, minutes = 0, seconds = 0] = isList(value) ? readNumbers(store, value) : [NaN];
     return makeDatum("time", Math.round((hours * 3600 + minutes * 60 + seconds) * NANOSECONDS));
   },
-  pair: (store, value) => (isList(value) ? makeDatum("pair", readNumbers(store, value).slice(0, 2)) : null),
+  pair: (store, value) => {
+    if (NUMBERS.includes(value.type)) return makeDatum("pair", [Math.trunc(value.value), Math.trunc(value.value)]);
+    return isList(value) ? makeDatum("pair", readNumbers(store, value).slice(0, 2)) : null;
+  },
   tuple: (store, value) => (isList(value) ? makeDatum("tuple", readNumbers(store, value)) : null),
   money: (store, value) => {
     if (NUMBERS.includes(value.type)) return makeDatum("money", { code: "", amount: value.value });

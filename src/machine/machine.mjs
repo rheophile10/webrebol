@@ -37,7 +37,7 @@ export const isFunction = (value) => FUNCTION_TYPES.includes(value.type);
  * @param {Machine} machine
  * @param {Frame} frame
  * @returns {Machine}
- * @usedby 23 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
+ * @usedby 24 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const pushFrame = (machine, frame) => ({
   ...machine,
@@ -48,7 +48,7 @@ export const pushFrame = (machine, frame) => ({
  * Removes the top frame of the stack.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby 27 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
+ * @usedby 28 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below });
 
@@ -68,7 +68,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { ...machin
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 128 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
+ * @usedby 130 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -90,7 +90,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 42 declarations in call, evaluate, path, run, bitsets, compare, control, convert, digest, edit, encode, files, items, math, numbers, objects, random, series, words
+ * @usedby 43 declarations in call, evaluate, path, run, bitsets, compare, control, convert, digest, edit, encode, files, items, math, numbers, objects, random, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });

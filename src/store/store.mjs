@@ -88,7 +88,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 41 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, layout, windows
+ * @usedby 43 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, elements, layout, windows
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
@@ -137,7 +137,7 @@ export const allocate = (store, datum) => {
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 89 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
+ * @usedby 91 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
  */
 export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
 
@@ -200,7 +200,7 @@ export const readContext = (store, context) => readEntry(store.contexts, context
  * @param {Datum} value
  * @returns {Store}
  * @uses makeKey, GLOBAL, readEntry, hashKey, writeEntry
- * @usedby 13 declarations in evaluate, path, items, loops, objects, parse, words, layout, windows
+ * @usedby 14 declarations in evaluate, path, items, loops, objects, parse, words, layout, windows
  */
 export const writeWord = (store, word, value) => {
   // A global word changes only the small group of words that have the same hash.

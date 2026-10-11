@@ -34,7 +34,7 @@ Three comparisons run the same code in REBOL 2.7.8 and in WebRebol:
 |---|---|---|
 | Recorded cases of this project | `npm test` | All 1851 cases agree. |
 | Load of downloaded REBOL scripts | `node bin/compare.mjs` | 529 of 538 scripts agree (143726 lines of code). |
-| The public REBOL core test suite | `node bin/conform.mjs` | 4061 of 4586 tests give the same outcome (88.6%). |
+| The public REBOL core test suite | `node bin/conform.mjs` | 4191 of 4586 tests give the same outcome (91.4%). |
 
 The downloaded scripts and the reports are in `corpus/`, which is not in git. REBOL View runs in Docker without a network.
 
@@ -67,7 +67,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | `call` | Not available. A browser page cannot start a program. |
 | `library!`, `routine!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
 | `image!`, `event!`, `struct!` | Not available at this time. These types are possible, and they are planned. |
-| View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. `view` shows each face as a DOM element with CSS, and a click runs the action of a button. `draw`, `effect`, timers and keyboard events are not available at this time. The pixels are not equal to REBOL 2, because a browser draws the elements and the fonts. |
+| View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. `view` shows each face as a DOM element with CSS. A face can have an action, a timer, keyboard events and pointer events. `effect [draw [...]]` gives SVG shapes for `line`, `box` and `circle`. The other draw commands and the other effects are not available at this time. The pixels are not equal to REBOL 2, because a browser draws the elements and the fonts. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
 | `parse` with a loop that does not move | REBOL 2 does not end if a `some` or `any` rule matches and does not move the position. WebRebol stops the loop. |
 | `checksum` with MD5 or with a key | REBOL 2.7.8 for 64-bit Linux gives wrong and changing MD5 results for 8 or more bytes. WebRebol gives the standard MD5 (RFC 1321) and the standard HMAC. |

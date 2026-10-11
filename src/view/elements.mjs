@@ -1,5 +1,5 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
-import { isList, isText, makeRecord, readContext, readRest } from "../store/store.mjs";
+import { isList, isText, makeRecord, makeSeries, readContext, readRest } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
 import { giveValue } from "../machine/machine.mjs";
 
@@ -99,11 +99,23 @@ const testElement = (machine, [value]) =>
 
 /**
  * The web words: the natives that make elements as data. These words are not in REBOL 2.
- * @uses makeElement, testElement
+ * @uses readRest (src/store/store.mjs), makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
+ * @usedby WEB_NATIVES
+ */
+const formPoints = (machine, [points]) => {
+  // The points of an SVG shape: "x,y x,y". A native does this, because a drawing can have many points.
+  const text = readRest(machine.store, points).map((point) => point.value.join(",")).join(" ");
+  const made = makeSeries(machine.store, "string", text);
+  return giveValue({ ...machine, store: made.store }, made.value);
+};
+
+/**
+ * @uses makeElement, formPoints, testElement
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WEB_NATIVES = {
   element: makeElement,
+  "form-points": formPoints,
   "element?": testElement,
 };
 
@@ -113,4 +125,5 @@ export const WEB_NATIVES = {
 export const WEB_SPECS = {
   element: ["native", "tag [word! string!] props [block! none!] children [block! none!]"],
   "element?": ["native", "value [any-type!]"],
+  "form-points": ["native", "points [block!]"],
 };

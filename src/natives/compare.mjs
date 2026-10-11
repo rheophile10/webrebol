@@ -39,7 +39,7 @@ const trimTuple = (tuple) => tuple.value.join(".").replace(/(\.0)+$/, "");
 
 /**
  * @uses TOLERANCE
- * @usedby areEqual
+ * @usedby areEqual, areIdentical
  */
 const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(Math.abs(left), Math.abs(right));
 
@@ -75,10 +75,13 @@ export const areEqual = (store, left, right) => {
   if (isText(left)) return readRest(store, left).toLowerCase() === readRest(store, right).toLowerCase();
   if (WORDS.includes(left.type)) return left.value.toLowerCase() === right.value.toLowerCase();
   if (isList(left)) return areSameLists(store, readRest(store, left), readRest(store, right));
+  // A date without a time is equal to the same date with a time.
+  if (left.type === "date" && (left.value.time === null || right.value.time === null)) return left.value.days === right.value.days;
   if (RECORDS.includes(left.type)) return JSON.stringify(left.value) === JSON.stringify(right.value);
   if (left.type === "object") return left.value.context === right.value.context;
   // Two functions are equal only if they are the same function. A tuple ignores the zeros at its end.
   if (FUNCTIONS.includes(left.type)) return left.value === right.value;
+  if (left.type === "binary") return readRest(store, left).join() === readRest(store, right).join();
   if (left.type === "tuple") return trimTuple(left) === trimTuple(right);
   return String(left.value) === String(right.value);
 };
@@ -94,15 +97,14 @@ export const areEqual = (store, left, right) => {
  * @param {Datum} right
  * @returns {boolean}
  * @standard strict - Two texts with different case are not equal.
- * @uses isSeriesValue, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS,
- *   isList (src/store/store.mjs), areEqual
+ * @uses isSeriesValue, isText (src/store/store.mjs), readRest (src/store/store.mjs), isList (src/store/store.mjs),
+ *   areEqual
  * @usedby areIdentical, COMPARE_NATIVES, makeSearch
  */
 export const areSame = (store, left, right) => {
   if (left.type !== right.type) return false;
   if (isSeriesValue(left) && left.value.id === right.value.id) return left.value.index === right.value.index;
   if (isText(left)) return readRest(store, left) === readRest(store, right);
-  if (WORDS.includes(left.type)) return left.value === right.value;
   if (!isList(left)) return areEqual(store, left, right);
   const others = readRest(store, right);
   const items = readRest(store, left);
@@ -126,13 +128,14 @@ const areSameLists = (store, left, right) =>
  * @param {Datum} value
  * @returns {{ group: string, data: number | string } | null}
  * @standard none - A type without an order gives null.
- * @uses NUMBERS, isText (src/store/store.mjs), readRest (src/store/store.mjs), DAY, ORDERED
+ * @uses NUMBERS, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS, DAY, ORDERED
  * @usedby compare, choose, findExtreme, compareItems
  */
 export const readOrder = (store, value) => {
   // Give the data that the order uses, or null for a type without an order.
   if (NUMBERS.includes(value.type)) return { group: "number", data: value.value };
   if (isText(value)) return { group: value.type, data: readRest(store, value).toLowerCase() };
+  if (WORDS.includes(value.type)) return { group: "word", data: value.value.toLowerCase() };
   if (value.type === "money") return { group: `money ${value.value.code}`, data: value.value.amount };
   if (value.type === "binary") return { group: "binary", data: readRest(store, value).map((byte) => String.fromCharCode(byte)).join("") };
   if (value.type === "tuple") return { group: "tuple", data: value.value.map((byte) => String.fromCharCode(byte)).join("") };
@@ -164,10 +167,14 @@ const equate = (test, wanted) => (machine, [left, right]) =>
   giveValue(machine, makeLogic(test(machine.store, left, right) === wanted));
 
 /**
- * @uses isSeriesValue, areSame
+ * @uses WORDS, NUMBERS, isNear, isSeriesValue, areSame
  * @usedby COMPARE_NATIVES
  */
 const areIdentical = (store, left, right) => {
+  // Two words are the same if they have the same spelling and the same context. Two numbers are the same if they are equal.
+  const plainWords = [left, right].every((value) => WORDS.includes(value.type) && value.type !== "refinement");
+  if (plainWords) return left.value === right.value && left.bind === right.bind;
+  if (NUMBERS.includes(left.type) && NUMBERS.includes(right.type)) return isNear(left.value, right.value);
   // Two series are the same if they are one series at one position.
   if (!isSeriesValue(left) || !isSeriesValue(right)) return areSame(store, left, right);
   return left.type === right.type && left.value.id === right.value.id && left.value.index === right.value.index;
@@ -223,12 +230,16 @@ const PREDICATES = Object.fromEntries([
 
 /**
  * The natives that compare values and that examine types. Each entry has the name of REBOL and the function.
- * @uses PREDICATES, equate, areEqual, areSame, areIdentical, choose, compare, giveValue (src/machine/machine.mjs),
- *   makeLogic (src/machine/machine.mjs), isTrue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
+ * @uses PREDICATES, giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs),
+ *   makeDatum (src/data/datum.mjs), equate, areEqual, areSame, areIdentical, choose, compare,
+ *   isTrue (src/machine/machine.mjs)
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const COMPARE_NATIVES = {
   ...PREDICATES,
+  // REBOL gives none, not false, for a value that is not a closure.
+  "closure?": (machine, [value]) =>
+    giveValue(machine, value.type === "function" && value.value.closure === true ? makeLogic(true) : makeDatum("none", null)),
   "equal?": equate(areEqual, true),
   "not-equal?": equate(areEqual, false),
   "strict-equal?": equate(areSame, true),

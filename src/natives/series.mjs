@@ -69,12 +69,28 @@ const DAY = 86400e9;
 const readMoment = (date) => date.value.days * DAY + (date.value.time ?? 0) - date.value.zone;
 
 /**
- * @uses makeDatum (src/data/datum.mjs), readField (src/store/parts.mjs), NONE (src/store/store.mjs), readMoment
+ * @uses makeDatum (src/data/datum.mjs)
+ * @usedby OTHER_TYPES
+ */
+const joinBits = (combine) => ([left, right]) => {
+  // Each byte of the result comes from the two bytes at the same position. A bitset that is shorter has zeros at its end.
+  const size = Math.max(left.value.length, right.value.length);
+  return makeDatum("bitset", Array.from({ length: size }, (unused, place) => combine(left.value[place] ?? 0, right.value[place] ?? 0) & 255));
+};
+
+/**
+ * @uses makeDatum (src/data/datum.mjs), joinBits, NONE (src/store/store.mjs), readField (src/store/parts.mjs),
+ *   readMoment
  * @usedby guardSeries
  */
 const OTHER_TYPES = {
   "length? tuple": ([tuple]) => makeDatum("integer", tuple.value.length),
   "length? bitset": ([bitset]) => makeDatum("integer", bitset.value.length * 8),
+  "union bitset": joinBits((left, right) => left | right),
+  "intersect bitset": joinBits((left, right) => left & right),
+  "difference bitset": joinBits((left, right) => left ^ right),
+  "exclude bitset": joinBits((left, right) => left & ~right),
+  "clear none": () => NONE,
   "pick tuple": ([tuple, index]) => readField(tuple, index) ?? NONE,
   "difference date": ([first, second]) => makeDatum("time", readMoment(first) - readMoment(second)),
 };

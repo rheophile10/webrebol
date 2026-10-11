@@ -118,15 +118,39 @@ const doText = (machine, text) => {
 };
 
 /**
- * @uses startBlock (src/machine/machine.mjs), isFunction (src/machine/machine.mjs), startCall (src/machine/call.mjs),
- *   giveValue (src/machine/machine.mjs), readWord (src/store/store.mjs), evaluatePath (src/machine/path.mjs), doText
+ * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs), popFrame (src/machine/machine.mjs)
+ * @usedby doNext
+ */
+const stepNext = (machine, frame) => {
+  // The result of do/next is a block of the value and of the block at the position after the expression.
+  const rest = { ...frame.block, value: { ...frame.block.value, index: machine.cursor.index } };
+  const made = makeSeries(machine.store, "block", [machine.value, rest]);
+  return giveValue({ ...popFrame(machine), store: made.store, cursor: frame.cursor }, made.value);
+};
+
+/**
+ * @uses pushFrame (src/machine/machine.mjs), stepNext
+ * @usedby doValue
+ */
+const doNext = (machine, block) =>
+  // Evaluate only the first expression of the block.
+  ({ ...pushFrame(machine, { step: stepNext, block, cursor: machine.cursor }), cursor: { ...block.value }, mode: "next" });
+
+/**
+ * @uses doNext, startBlock (src/machine/machine.mjs), isFunction (src/machine/machine.mjs),
+ *   startCall (src/machine/call.mjs), readWord (src/store/store.mjs), giveValue (src/machine/machine.mjs),
+ *   evaluatePath (src/machine/path.mjs), doText
  * @usedby CONTROL_NATIVES
  */
-const doValue = (machine, [value]) => {
+const doValue = (machine, [value], options) => {
+  if (options.$next !== undefined && value.type === "block") return doNext(machine, value);
   if (value.type === "block" || value.type === "paren") return startBlock(machine, value);
   // A function value is called with the arguments that come after it. A word or a path gives its value.
   if (isFunction(value)) return startCall(machine, value, { names: [], label: "do" });
-  if (value.type === "word") return giveValue(machine, readWord(machine.store, value));
+  if (value.type === "word") {
+    const found = readWord(machine.store, value);
+    return isFunction(found) ? startCall(machine, found, { names: [], label: value.value }) : giveValue(machine, found);
+  }
   if (value.type === "path") return evaluatePath(machine, value);
   return value.type === "string" ? doText(machine, value) : giveValue(machine, value);
 };

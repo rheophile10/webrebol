@@ -17,7 +17,7 @@ const SERIES_CONSTRUCTS = ["string", "file", "email", "url", "tag", "issue", "bi
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 101 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
+ * @usedby 104 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
  */
 export const makeDatum = (type, value) => ({ type, value });
 

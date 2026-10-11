@@ -27,7 +27,10 @@ const makeSearch = (store, [series, value], options) => {
   }
   const all = readAll(store, series);
   const wanted = value.type === "block" && options.$only === undefined ? readRest(store, value) : [value];
-  const test = exact ? areSame : areEqual;
+  // With /case, a word must also have the same spelling.
+  const sameCase = (store0, left, right) =>
+    areSame(store0, left, right) && (typeof left.value !== "string" || left.value === right.value);
+  const test = exact ? sameCase : areEqual;
   const matchItem = (place) => (item, offset) => all[place + offset] !== undefined && test(store, all[place + offset], item);
   return { all, wanted, matches: (place) => wanted.every(matchItem(place)) };
 };
@@ -223,8 +226,8 @@ const sortItems = (machine, [series], options) => {
   // The items from the position are sorted. Equal items keep their sequence.
   const values = readValues(machine.store, series);
   const compare = compareLists(machine.store, compareItems(machine.store, options.$case !== undefined));
-  const sorted = [...values].sort(compare);
-  const ordered = options.$reverse === undefined ? sorted : [...sorted].reverse();
+  // With /reverse, the comparison is the opposite. Thus equal items keep their sequence.
+  const ordered = [...values].sort(options.$reverse === undefined ? compare : (left, right) => compare(right, left));
   const content = isList(series) ? ordered : ordered.map((char) => String.fromCharCode(char.value)).join("");
   return giveValue(replaceItems(machine, series, { content, size: values.length }), series);
 };

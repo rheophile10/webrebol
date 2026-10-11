@@ -34,7 +34,9 @@ const selectInList = (items, part) => {
  * @usedby selectPart
  */
 const selectInText = (text, part) => {
-  const character = part.type === "integer" ? text[part.value - 1] : undefined;
+  // A text has parts only by position.
+  if (part.type !== "integer") return null;
+  const character = text[part.value - 1];
   return character === undefined ? NONE : makeDatum("char", character.charCodeAt(0));
 };
 

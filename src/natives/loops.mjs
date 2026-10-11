@@ -124,10 +124,12 @@ const countUp = (size) => Array.from({ length: Math.max(size, 0) });
 const loopCount = (machine, [count, body]) => startList(machine, { words: [], body, values: countUp(count.value) }, UNSET);
 
 /**
- * @uses bindLoop, countUp, makeDatum (src/data/datum.mjs), startList, UNSET (src/store/store.mjs)
+ * @uses forEach, bindLoop, countUp, makeDatum (src/data/datum.mjs), startList, UNSET (src/store/store.mjs)
  * @usedby LOOP_NATIVES
  */
 const repeatCount = (machine, [word, count, body]) => {
+  // With a series, the word gets each item of the series.
+  if (typeof count.value !== "number") return forEach(machine, [word, count, body]);
   const bound = bindLoop(machine, [word], body);
   const values = countUp(count.value).map((item, place) => [makeDatum("integer", place + 1)]);
   return startList(bound.machine, { words: bound.words, body: bound.body, values }, UNSET);
@@ -136,7 +138,7 @@ const repeatCount = (machine, [word, count, body]) => {
 /**
  * @uses readRest (src/store/store.mjs), readValues (src/store/store.mjs), bindLoop, countUp, startList,
  *   NONE (src/store/store.mjs)
- * @usedby LOOP_NATIVES
+ * @usedby repeatCount, LOOP_NATIVES
  */
 const forEach = (machine, [word, series, body]) => {
   // With a block of words, each turn of the loop takes one item for each word.

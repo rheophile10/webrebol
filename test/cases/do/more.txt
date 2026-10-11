@@ -315,3 +315,36 @@ do :abs -1
 a-value: 'b-value b-value: 1 do :a-value
 :abs = :absolute
 #"^!" = #"^(1E)"
+equal? #{00} #{01}
+equal? #{0102} #{0102}
+to integer! #{00000001}
+to integer! #{80000000}
+same? 'a first [:a]
+same? 'a 'A
+same? 0 0.0
+strict-equal? 'a 'A
+lesser? 'a 'b
+shift 8 1
+shift/left 1 3
+shift/logical -1 31
+shift -8 1
+closure? closure [x] [x]
+closure? func [x] [x]
+to pair! 1
+do 'abs -1
+do/next [1 2]
+do/next [1 + 2 3 4]
+error? try [() = ()]
+out: copy [] repeat i [1 2 3] [append out i] out
+modulo 0.1 + 0.1 + 0.1 0.3
+union charset "ab" charset "bc"
+equal? charset "abc" union charset "ab" charset "c"
+equal? 2-Jul-2009 2-Jul-2009/22:20
+parse "abcd" [to 3 "cd"]
+parse "abcd" [thru 4]
+a: "abcd" error? try [a/x]
+clear none
+sort/reverse ["A" "a"]
+round/even/to 0.95 0.1
+round/even/to 1.15 0.1
+round 1.499999999999995

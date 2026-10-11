@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRebol: paint</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
+      #screen { position: relative; height: 520px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #script { width: 100%; height: 220px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
+      #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
+      details { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Paint</h1>
+    <p>Click a color, select a brush size, and draw on the white area with the mouse.</p>
+    <div id="screen"></div>
+    <pre id="output"></pre>
+    <details>
+      <summary>The REBOL script of this page</summary>
+      <textarea id="script" spellcheck="false">color: 0.0.0 size: 4 down?: false
+strokes: copy []
+pick-color: func [new] [color: new swatch/color: new show swatch]
+palette: [0.0.0 255.255.255 220.40.40 240.140.20 250.210.30 60.170.70 40.110.220 150.70.200 120.80.40 130.130.130]
+spec: copy [
+    across
+    h2 &quot;WebRebol paint&quot;
+    return
+]
+foreach shade palette [
+    append spec compose/deep [box 28x28 (shade) [pick-color (shade)]]
+]
+append spec [
+    return
+    text 60x24 &quot;Brush:&quot;
+    button 40 &quot;2&quot; [size: 2]
+    button 40 &quot;4&quot; [size: 4]
+    button 40 &quot;8&quot; [size: 8]
+    button 40 &quot;16&quot; [size: 16]
+    text 50x24 &quot;Color:&quot;
+    swatch: box 28x24 0.0.0
+    button 70 &quot;Clear&quot; [clear strokes show canvas]
+    return
+    canvas: box 520x300 255.255.255 css [cursor &quot;crosshair&quot; touch-action &quot;none&quot;]
+        on-down [down?: true append strokes reduce [&#x27;pen color &#x27;line-width size &#x27;line pointer pointer] show canvas]
+        on-move [if down? [append strokes pointer show canvas]]
+        on-up [down?: false]
+]
+window: layout spec
+canvas/effect: reduce [&#x27;draw strokes]
+view window</textarea>
+      <button id="run">Run again</button>
+    </details>
+    <script type="module" src="../../src/edge/page.mjs"></script>
+  </body>
+</html>

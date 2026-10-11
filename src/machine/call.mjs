@@ -235,11 +235,14 @@ export const callFunction = (machine, callee, call) => {
 };
 
 /**
- * @uses invoke, popFrame
+ * @uses failMachine, popFrame, invoke
  * @usedby stepLook
  */
-const stepInfix = (machine, frame) =>
-  invoke(popFrame(machine), { ...frame, names: [], order: frame.callee.value.params, args: [frame.left, machine.value] }, false);
+const stepInfix = (machine, frame) => {
+  // An operator needs a value at its two sides.
+  if (frame.left.type === "unset" || machine.value.type === "unset") return failMachine(popFrame(machine), "script need-value");
+  return invoke(popFrame(machine), { ...frame, names: [], order: frame.callee.value.params, args: [frame.left, machine.value] }, false);
+};
 
 /**
  * @uses atEnd, UNSET (src/store/store.mjs), readItem, readWord (src/store/store.mjs)

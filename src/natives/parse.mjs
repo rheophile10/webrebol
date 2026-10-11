@@ -17,7 +17,7 @@ const WORDS = ["word", "set-word", "get-word", "lit-word", "refinement"];
 const countUp = (size) => Array.from({ length: Math.max(size, 0) });
 
 /**
- * @usedby 10 declarations in parse
+ * @usedby 11 declarations in parse
  */
 const failState = (state) => ({ ...state, ok: false });
 
@@ -219,7 +219,7 @@ const matchParen = (rules, state, term) => {
 
 /**
  * @uses readInput
- * @usedby matchSkip, matchEnd
+ * @usedby matchSkip, matchEnd, MATCHERS
  */
 const sizeOf = (rules, state) => readInput(rules, state).length;
 
@@ -256,8 +256,8 @@ const matchInner = (rules, state, term) => {
 };
 
 /**
- * @uses matchValue, matchInner, matchSkip, matchEnd, matchRepeat, matchCopy, matchSet, matchScan, matchInto,
- *   matchMark, matchJump, matchParen, throwState
+ * @uses matchValue, matchInner, matchSkip, matchEnd, matchRepeat, matchCopy, matchSet, matchScan, sizeOf, failState,
+ *   matchInto, matchMark, matchJump, matchParen, throwState
  * @usedby matchTerm
  */
 const MATCHERS = {
@@ -270,6 +270,7 @@ const MATCHERS = {
   copy: matchCopy,
   set: matchSet,
   scan: matchScan,
+  place: (rules, state, term) => (term.index >= 0 && term.index <= sizeOf(rules, state) ? { ...state, pos: term.index } : failState(state)),
   into: matchInto,
   mark: matchMark,
   jump: matchJump,
@@ -284,8 +285,18 @@ const MATCHERS = {
 const matchTerm = (rules, state, term) => MATCHERS[term.kind](rules, state, term);
 
 /**
- * @uses takeTerm
+ * @uses takeInner
  * @usedby KEYWORDS
+ */
+const takeScan = (thru) => (store, rest) => {
+  // A number after `to` or `thru` is a position in the input, counted from 1.
+  if (rest[0]?.type === "integer") return { term: { kind: "place", index: rest[0].value - (thru ? 0 : 1) }, rest: rest.slice(1) };
+  return takeInner((inner) => ({ kind: "scan", thru, inner }))(store, rest);
+};
+
+/**
+ * @uses takeTerm
+ * @usedby takeScan, KEYWORDS
  */
 const takeInner = (make) => (store, rest) => {
   // The command uses the next term of the rule block.
@@ -308,7 +319,7 @@ const takeWithWord = (kind) => (store, rest) => {
 const takeSimple = (kind) => (store, rest) => ({ term: { kind }, rest });
 
 /**
- * @uses takeSimple, takeInner, takeWithWord
+ * @uses takeSimple, takeInner, takeScan, takeWithWord
  * @usedby takeWord
  */
 const KEYWORDS = {
@@ -318,8 +329,8 @@ const KEYWORDS = {
   some: takeInner((inner) => ({ kind: "repeat", min: 1, max: Infinity, inner })),
   any: takeInner((inner) => ({ kind: "repeat", min: 0, max: Infinity, inner })),
   opt: takeInner((inner) => ({ kind: "repeat", min: 0, max: 1, inner })),
-  "to": takeInner((inner) => ({ kind: "scan", thru: false, inner })),
-  thru: takeInner((inner) => ({ kind: "scan", thru: true, inner })),
+  "to": (store, rest) => takeScan(false)(store, rest),
+  thru: (store, rest) => takeScan(true)(store, rest),
   into: takeInner((inner) => ({ kind: "into", inner })),
   copy: takeWithWord("copy"),
   set: takeWithWord("set"),

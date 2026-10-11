@@ -88,7 +88,17 @@ const readAmount = (value) => (value.type === "money" ? value.value.amount : val
 const roundAway = (number) => Math.sign(number) * Math.floor(Math.abs(number) + 0.5);
 
 /**
- * @uses NANOSECONDS, readAmount, failMachine (src/machine/machine.mjs), ROUNDERS, roundAway,
+ * @usedby roundNumber
+ */
+const snapHalf = (quotient) => {
+  // A division loses its last bits: 1.15 / 0.1 is 11.499999999999998. A quotient that is almost a half becomes that half.
+  const half = Math.round(quotient * 2) / 2;
+  const step = 2 ** (Math.floor(Math.log2(Math.abs(quotient) + Number.MIN_VALUE)) - 52);
+  return Math.abs(quotient - half) <= 2 * step ? half : quotient;
+};
+
+/**
+ * @uses NANOSECONDS, readAmount, failMachine (src/machine/machine.mjs), ROUNDERS, snapHalf, roundAway,
  *   giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
  * @usedby NUMBER_NATIVES
  */
@@ -98,8 +108,7 @@ const roundNumber = (machine, [number], options) => {
   const scale = options.$to === undefined ? unit : readAmount(options.$to[0]);
   if (scale === 0) return failMachine(machine, "math zero-divide");
   const name = Object.keys(ROUNDERS).find((key) => options[key] !== undefined);
-  // The quotient loses its last bits, thus 1.15 / 0.1 is 11.5 and not 11.499999999999998.
-  const quotient = Number((readAmount(number) / scale).toPrecision(16));
+  const quotient = snapHalf(readAmount(number) / scale);
   const rounded = (name === undefined ? roundAway : ROUNDERS[name])(quotient) * scale;
   if (number.type === "time") return giveValue(machine, makeDatum("time", Math.round(rounded)));
   if (number.type === "money") return giveValue(machine, makeDatum("money", { ...number.value, amount: rounded }));
@@ -159,8 +168,11 @@ const complementValue = (machine, [value]) => {
  * @uses giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
  * @usedby NUMBER_NATIVES
  */
-const shiftBits = (machine, [number, bits], options) =>
-  giveValue(machine, makeDatum("integer", options.$left === undefined ? number.value >> bits.value : number.value << bits.value));
+const shiftBits = (machine, [number, bits], options) => {
+  // REBOL 2 uses only the low 5 bits of the count, as JavaScript does. With /logical, a shift to the right puts zeros at the left.
+  const right = options.$logical === undefined ? number.value >> bits.value : (number.value >>> bits.value) | 0;
+  return giveValue(machine, makeDatum("integer", options.$left === undefined ? right : number.value << bits.value));
+};
 
 /**
  * @uses failMachine (src/machine/machine.mjs), giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
@@ -170,7 +182,10 @@ const takeModulo = (machine, [left, right]) => {
   // The result has the sign of the divisor.
   if (right.value === 0) return failMachine(machine, "math zero-divide");
   const rest = left.value % right.value;
-  const result = rest < 0 ? rest + Math.abs(right.value) : rest;
+  const positive = rest < 0 ? rest + Math.abs(right.value) : rest;
+  // A result that is almost zero, or almost the divisor, is zero.
+  const near = Math.abs(right.value) * 1e-12;
+  const result = positive < near || Math.abs(right.value) - positive < near ? 0 : positive;
   return giveValue(machine, makeDatum(left.type === "integer" && right.type === "integer" ? "integer" : "decimal", result));
 };
 

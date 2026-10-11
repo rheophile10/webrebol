@@ -50,9 +50,59 @@ face-to-element: func [face /local tag props kids type] [
     if block? face/action [append props reduce ['data-onclick face/action]]
     if block? face/on-time [append props reduce ['data-ontime face/on-time 'data-rate any [face/rate 10]]]
     if block? face/on-key [append props reduce ['data-onkey face/on-key]]
+    if block? face/on-down [append props reduce ['data-onpointerdown face/on-down]]
+    if block? face/on-move [append props reduce ['data-onpointermove face/on-move]]
+    if block? face/on-up [append props reduce ['data-onpointerup face/on-up]]
     if block? face/pane [foreach child face/pane [append kids face-to-element child]]
-    if block? face/effect [if find face/effect 'reveal [append kids reveal-element face]]
+    if block? face/effect [
+        if find face/effect 'reveal [append kids reveal-element face]
+        if find face/effect 'draw [append kids draw-element face select face/effect 'draw]
+    ]
     element tag props kids
+]
+
+draw-element: func [face commands /local shapes pen width fill points item] [
+    shapes: copy []
+    pen: 0.0.0
+    width: 1
+    fill: none
+    while [not tail? commands] [
+        item: first commands
+        commands: next commands
+        switch item [
+            pen [pen: first commands commands: next commands]
+            fill-pen [fill: first commands commands: next commands]
+            line-width [width: first commands commands: next commands]
+            line [
+                points: copy []
+                while [all [not tail? commands pair? first commands]] [append points first commands commands: next commands]
+                append shapes element "polyline" reduce [
+                    'points form-points points 'stroke pen 'stroke-width width
+                    'fill "none" 'stroke-linecap "round" 'stroke-linejoin "round"
+                ] copy []
+            ]
+            box [
+                append shapes element "rect" reduce [
+                    'x first first commands 'y second first commands
+                    'width (first second commands) - (first first commands)
+                    'height (second second commands) - (second first commands)
+                    'stroke pen 'stroke-width width 'fill any [fill "none"]
+                ] copy []
+                commands: skip commands 2
+            ]
+            circle [
+                append shapes element "circle" reduce [
+                    'cx first first commands 'cy second first commands 'r second commands
+                    'stroke pen 'stroke-width width 'fill any [fill "none"]
+                ] copy []
+                commands: skip commands 2
+            ]
+        ]
+    ]
+    element "svg" reduce [
+        'width face/size/x 'height face/size/y
+        'style [position "absolute" left 0 top 0 pointer-events "none"]
+    ] shapes
 ]
 
 reveal-element: func [face /local spec] [

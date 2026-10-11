@@ -62,10 +62,12 @@ const divide = (name, operation) => (machine, [left, right]) =>
   isZero(right) ? failMachine(machine, "math zero-divide") : calculate(name, operation)(machine, [left, right]);
 
 /**
- * @uses changeScalar, giveNumber, giveValue (src/machine/machine.mjs)
+ * @uses giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs), changeScalar, giveNumber
  * @usedby MATH_NATIVES
  */
 const change = (operation) => (machine, [number]) => {
+  // The negative of a bitset is the bitset of all the other characters.
+  if (number.type === "bitset") return giveValue(machine, makeDatum("bitset", number.value.map((byte) => ~byte & 255)));
   const changed = changeScalar(number, operation);
   return changed === null ? giveNumber(machine, number.type === "integer", operation(number.value)) : giveValue(machine, changed);
 };

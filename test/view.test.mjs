@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { interpretSource, showResult } from "../src/session/interpret.mjs";
 import { exportElement } from "../src/view/elements.mjs";
 import { diff } from "../src/view/diff.mjs";
-import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction } from "../src/view/windows.mjs";
+import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction, runPointerAction } from "../src/view/windows.mjs";
 import { findThreshold, hashCell, measureCenter, smoothNoise } from "../src/view/grid.mjs";
 import { readContext, readRest, readWord } from "../src/store/store.mjs";
 
@@ -148,4 +148,17 @@ test("runAction fault: an error in the action of a button adds its message to th
   const store = run('lay: layout [button "Bad" [1 / 0]] view/new lay').store;
   const button = renderWindows(store).children[0].children[0];
   assert.match(runAction(store, Number(button.props["data-onclick"])).output, /^\*\* Math Error: .*\(math zero-divide\)\n$/);
+});
+
+const PAINT = "strokes: copy [] lay: layout [canvas: box 100x80 on-down [append strokes reduce ['pen 255.0.0 'line-width 3 'line pointer]] on-move [append strokes pointer]] canvas/effect: reduce ['draw strokes] view/new lay";
+
+test("runPointerAction word: the pointer block reads the position from the word pointer", () => {
+  const store = run(PAINT).store;
+  const canvas = renderWindows(store).children[0].children[0];
+  const down = runPointerAction(store, Number(canvas.props["data-onpointerdown"]), [10.4, 20.6]);
+  const moved = runPointerAction(down, Number(canvas.props["data-onpointermove"]), [30, 40]);
+  const line = renderWindows(moved).children[0].children[0].children[0].children[0];
+  assert.equal(line.tag, "polyline");
+  assert.equal(line.props.points, "10,21 30,40");
+  assert.equal(line.props.stroke, "rgb(255,0,0)");
 });
