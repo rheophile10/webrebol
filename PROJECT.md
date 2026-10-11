@@ -11,6 +11,7 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 - Each function is written in JavaScript. WebRebol does not copy the REBOL source of the mezzanines.
 - View draws with `requestAnimationFrame`. The comparison for View is the face tree and the draw commands, not the pixels.
 - Files and networks come later. The use in Plastron comes later.
+- Possible later option: `library!`, `routine!` and `struct!` use a WebAssembly module (for example, C code that Emscripten compiled).
 - Later, View gets DOM elements (for example canvas) and standard CSS attributes.
 
 ## Decisions

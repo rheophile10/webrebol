@@ -2,6 +2,7 @@
   "name": "webrebol",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "type": "module",
   "description": "An interpreter for REBOL 2 Core and View that runs in JavaScript",
   "steDoc": {

@@ -16,10 +16,11 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | Part of REBOL 2 | State |
 |---|---|
 | Email: `send`, the `smtp`, `pop` and `esmtp` schemes | Not available, and not planned. Email needs an external service with secret keys, and this is a security risk. |
-| `tcp`, `udp`, `dns`, `ftp`, `nntp`, `finger`, `whois`, `daytime` schemes | Not available. A browser page cannot open a socket. |
+| `tcp`, `udp`, `dns`, `ftp`, `nntp`, `finger`, `whois`, `daytime` schemes | Not available, and not planned. A browser page and its workers cannot open a socket. A relay server can, but it is a security risk. |
 | `http` and `https` schemes | Not available at this time. Planned with `fetch`. The CORS rules of the browser will apply. |
 | Files: `read`, `write`, `load`, `save`, the directory functions | Not available at this time. Planned as a disk in memory that IndexedDB keeps. A script cannot read the files of the computer. |
-| `call`, `library!`, `routine!`, `struct!` | Not available. A browser page cannot start a program or load a native library. |
+| `call` | Not available. A browser page cannot start a program. |
+| `library!`, `routine!`, `struct!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
 | View | Not available at this time. The pixels will not be equal to REBOL 2, because the fonts of a browser are different. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
 
@@ -29,6 +30,10 @@ A function that is not available gives a REBOL error. It does not fail silently.
 
 - `reference/functions.r` writes each function with its type and its specification. Keep the output out of the repository.
 - REBOL 2.7.8 is the property of REBOL Technologies. Do not publish the programs in `reference/`.
+
+## Licence
+
+WebRebol has the MIT licence. See `LICENSE`.
 
 ## Route through the code
 
