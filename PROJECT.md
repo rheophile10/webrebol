@@ -21,7 +21,8 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 - The interpreter will pass an immutable store for the series, because STE-JS permits no mutation.
 
 - Files (later): the interpreter keeps a disk as an immutable tree of paths and bytes. An edge module saves the disk: IndexedDB in a browser, a folder in Node.js. OPFS does not work at `file://` (see `~/projects/plastron-vfs` and the blog post "SQLite in the browser that reads pages on demand" on rheophile.ca).
-- Networks (later): `http` and `https` use `fetch` from an edge module, and the machine stops until the answer comes. A browser cannot open a socket, thus `tcp`, `ftp`, `smtp` and `pop` give a REBOL error until Ian makes a decision.
+- Networks (later): `http` and `https` use `fetch` from an edge module, and the machine stops until the answer comes. A browser cannot open a socket, thus `tcp`, `ftp`, `smtp` and `pop` give a REBOL error.
+- Email is not planned. It needs an external service with secret keys, and Ian sees this as a security risk. `README.md` lists the limits.
 - The function lists `reference/functions-*.txt` hold the help texts of REBOL Technologies. They stay out of the public repository.
 
 ## Sessions
