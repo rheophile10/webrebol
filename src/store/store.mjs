@@ -8,12 +8,12 @@ const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
 export const GLOBAL = 0;
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 14 declarations in call, evaluate, machine, control, loops, objects, text, store
+ * @usedby 17 declarations in call, evaluate, machine, control, items, loops, objects, text, store
  */
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 33 declarations in call, path, bitsets, control, faults, flow, globals, interpret, loops, objects, parse, report, search, series
+ * @usedby 44 declarations in call, path, bitsets, control, encode, faults, flow, globals, interpret, items, loops, objects, parse, report, search, series, words
  */
 export const NONE = makeDatum("none", null);
 /**
@@ -26,7 +26,7 @@ export const EMPTY_STORE = { series: {}, contexts: { [GLOBAL]: {} }, next: 1, ou
  * Makes the key of a word in a context. The key ignores the case of the letters.
  * @param {string} name - The spelling of the word.
  * @returns {string}
- * @usedby 16 declarations in path, spec, globals, loops, objects, store
+ * @usedby 19 declarations in path, spec, globals, loops, objects, words, store
  */
 export const makeKey = (name) => `$${name.toLowerCase()}`;
 
@@ -35,7 +35,7 @@ export const makeKey = (name) => `$${name.toLowerCase()}`;
  * @param {Datum} value
  * @returns {boolean}
  * @uses LIST_TYPES
- * @usedby 24 declarations in path, compare, control, convert, edit, objects, search, series, text, mold, store
+ * @usedby 31 declarations in path, compare, control, convert, edit, encode, items, objects, search, series, text, words, mold, store
  */
 export const isList = (value) => LIST_TYPES.includes(value.type);
 
@@ -53,9 +53,9 @@ export const isText = (value) => TEXT_TYPES.includes(value.type);
  * @param {Datum} value
  * @returns {boolean}
  * @uses isList, isText
- * @usedby copyDeep (src/natives/edit.mjs), copyValue (src/natives/objects.mjs), giveSeries (src/natives/objects.mjs),
- *   guardSeries (src/natives/series.mjs), takeItem (src/natives/series.mjs), makeBase (src/natives/text.mjs),
- *   allocate
+ * @usedby copyDeep (src/natives/edit.mjs), stepWord (src/natives/items.mjs), copyValue (src/natives/objects.mjs),
+ *   giveSeries (src/natives/objects.mjs), guardSeries (src/natives/series.mjs), takeItem (src/natives/series.mjs),
+ *   makeBase (src/natives/text.mjs), allocate
  */
 export const isSeries = (value) => isList(value) || isText(value) || value.type === "binary";
 
@@ -66,7 +66,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 21 declarations in call, control, convert, edit, flow, objects, parse, search, series, text, store
+ * @usedby 28 declarations in call, control, convert, edit, encode, flow, items, objects, parse, search, series, text, words, store
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: { ...store.series, [store.next]: content }, next: store.next + 1 },
@@ -90,8 +90,9 @@ const allocateItem = (made, item) => {
  * @returns {{ store: Store, value: Datum }}
  * @uses LIST_TYPES, allocateItem, makeSeries, isSeries, WORD_TYPES, GLOBAL
  * @usedby doText (src/natives/control.mjs), toBlock (src/natives/convert.mjs),
- *   EMPTY_BLOCK (src/natives/interpret.mjs), interpretSource (src/natives/interpret.mjs), allocateItem,
- *   moldSource (test/load.test.mjs), makeReady (test/machine.test.mjs)
+ *   EMPTY_BLOCK (src/natives/interpret.mjs), interpretSource (src/natives/interpret.mjs),
+ *   loadText (src/natives/words.mjs), allocateItem, moldSource (test/load.test.mjs),
+ *   makeReady (test/machine.test.mjs)
  */
 export const allocate = (store, datum) => {
   // A list holds values that also go into the store.
@@ -108,7 +109,7 @@ export const allocate = (store, datum) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @usedby 49 declarations in path, bitsets, compare, control, convert, edit, faults, flow, loops, objects, parse, search, series, strings, text, mold, store
+ * @usedby 71 declarations in path, bitsets, compare, control, convert, edit, encode, faults, flow, items, loops, objects, parse, search, series, strings, text, words, mold, store
  */
 export const readRest = (store, series) => store.series[series.value.id].slice(series.value.index);
 
@@ -117,7 +118,7 @@ export const readRest = (store, series) => store.series[series.value.id].slice(s
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @usedby 24 declarations in path, edit, loops, parse, search, series, strings, text, store
+ * @usedby 30 declarations in path, edit, encode, items, loops, parse, search, series, strings, text, store
  */
 export const readAll = (store, series) => store.series[series.value.id];
 
@@ -128,8 +129,8 @@ export const readAll = (store, series) => store.series[series.value.id];
  * @param {string | number[] | Datum[]} content
  * @returns {Store}
  * @usedby assignInSeries (src/machine/path.mjs), replaceItems (src/natives/edit.mjs),
- *   clearRest (src/natives/edit.mjs), insertContent (src/natives/series.mjs), writeRest (src/natives/strings.mjs),
- *   bindInPlace
+ *   clearRest (src/natives/edit.mjs), changeText (src/natives/encode.mjs), insertContent (src/natives/series.mjs),
+ *   writeRest (src/natives/strings.mjs), bindInPlace
  */
 export const writeAll = (store, series, content) => ({
   ...store,
@@ -143,7 +144,7 @@ export const writeAll = (store, series, content) => ({
  * @returns {Datum}
  * @standard unset - A word without a value gives the unset value.
  * @uses makeKey, UNSET
- * @usedby 11 declarations in call, evaluate, path, loops, objects, parse
+ * @usedby 16 declarations in call, evaluate, path, items, loops, objects, parse, words
  */
 export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(word.value)] ?? UNSET;
 
@@ -154,7 +155,7 @@ export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(wor
  * @param {Datum} value
  * @returns {Store}
  * @uses makeKey
- * @usedby 9 declarations in evaluate, path, loops, objects, parse
+ * @usedby 11 declarations in evaluate, path, items, loops, objects, parse, words
  */
 export const writeWord = (store, word, value) => ({
   ...store,
@@ -201,9 +202,9 @@ const copyBound = (store, item, context) =>
  * @returns {{ store: Store, value: Datum }}
  * @standard original - The first block does not change.
  * @uses copyBound, readRest, makeSeries
- * @usedby makeFunction (src/natives/control.mjs), bindLoop (src/natives/loops.mjs),
- *   copyValue (src/natives/objects.mjs), makeObject (src/natives/objects.mjs), bindBlock (src/natives/objects.mjs),
- *   useWords (src/natives/objects.mjs), copyBound
+ * @usedby makeFunction (src/natives/control.mjs), collectValues (src/natives/items.mjs),
+ *   bindLoop (src/natives/loops.mjs), copyValue (src/natives/objects.mjs), makeObject (src/natives/objects.mjs),
+ *   bindBlock (src/natives/objects.mjs), useWords (src/natives/objects.mjs), copyBound
  */
 export const bindCopy = (store, block, context) => {
   // Copy each item into the store that the items before it made.
@@ -238,8 +239,9 @@ export const bindInPlace = (store, block, context) => {
  * @param {Object<string, Datum>} values - The first values of the words, by key.
  * @returns {{ store: Store, id: number }}
  * @uses writeContext
- * @usedby makeFunction (src/natives/control.mjs), bindLoop (src/natives/loops.mjs),
- *   makeObject (src/natives/objects.mjs), useWords (src/natives/objects.mjs), makeRecord
+ * @usedby makeFunction (src/natives/control.mjs), collectValues (src/natives/items.mjs),
+ *   bindLoop (src/natives/loops.mjs), makeObject (src/natives/objects.mjs), useWords (src/natives/objects.mjs),
+ *   makeRecord
  */
 export const makeContext = (store, values) => ({
   store: { ...writeContext(store, store.next, values), next: store.next + 1 },
@@ -254,7 +256,7 @@ export const makeContext = (store, values) => ({
  * @returns {{ store: Store, value: Datum }}
  * @standard self - The word `self` of the object gives the object.
  * @uses makeDatum (src/data/datum.mjs), makeKey, makeContext
- * @usedby disarmError (src/natives/faults.mjs)
+ * @usedby disarmError (src/natives/faults.mjs), constructObject (src/natives/words.mjs)
  */
 export const makeRecord = (store, words, values) => {
   const object = makeDatum("object", { context: store.next, words });
@@ -268,7 +270,8 @@ export const makeRecord = (store, words, values) => {
  * @param {Datum} series
  * @returns {Datum[]}
  * @uses isList, readRest, makeDatum (src/data/datum.mjs)
- * @usedby forEach (src/natives/loops.mjs), combine (src/natives/search.mjs), sortItems (src/natives/search.mjs)
+ * @usedby findExtreme (src/natives/items.mjs), groupValues (src/natives/loops.mjs), forEach (src/natives/loops.mjs),
+ *   combine (src/natives/search.mjs), sortItems (src/natives/search.mjs)
  */
 export const readValues = (store, series) => {
   if (isList(series)) return readRest(store, series);

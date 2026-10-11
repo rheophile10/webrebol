@@ -106,3 +106,7 @@ test("interpretSource reference: the bitset cases agree with REBOL 2.7.8", () =>
 test("interpretSource reference: the char, time, pair, tuple, money and date cases agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/scalar.txt"), []);
 });
+
+test("interpretSource reference: the cases of the type predicates, the conversions and more functions agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/more.txt"), []);
+});

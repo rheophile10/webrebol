@@ -28,7 +28,7 @@ const makeItem = (series, raw) => {
  * @returns {Datum | null}
  * @standard outside - An offset that is not in the series gives null.
  * @uses readAll (src/store/store.mjs), makeItem
- * @usedby selectValue, takeItem, pickIndex
+ * @usedby takeItems, takeFirst, selectValue, takeItem, pickIndex
  */
 export const pickItem = (store, series, offset) => {
   // Give null if the position is not in the series.
@@ -83,6 +83,25 @@ const OTHER_TYPES = {
  *   giveValue (src/machine/machine.mjs)
  * @usedby takeItem
  */
+/**
+ * Gives a new series as the result of a native.
+ * @param {Machine} machine
+ * @param {string} type - The REBOL type of the series.
+ * @param {string | number[] | Datum[]} content
+ * @returns {Machine}
+ * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
+ * @usedby 12 declarations in encode, items, words
+ */
+export const giveNew = (machine, type, content) => {
+  const made = makeSeries(machine.store, type, content);
+  return giveValue({ ...machine, store: made.store }, made.value);
+};
+
+/**
+ * @uses makeWord (src/machine/machine.mjs), failMachine (src/machine/machine.mjs), makeSeries (src/store/store.mjs),
+ *   giveValue (src/machine/machine.mjs)
+ * @usedby takeItem
+ */
 const takeFromObject = (machine, object, offset) => {
   // The first part of an object is the block of its words. The second part is the block of their values.
   const words = ["self", ...object.value.words];
@@ -127,7 +146,7 @@ const pickIndex = (machine, [series, index]) => {
  * @param {Datum} series
  * @param {number} index - The position, counted from zero.
  * @returns {Datum}
- * @usedby 11 declarations in edit, search, series, text
+ * @usedby 16 declarations in edit, items, search, series, text
  */
 export const moveTo = (series, index) => ({ ...series, value: { ...series.value, index } });
 
@@ -161,7 +180,7 @@ const measure = (find) => (machine, [series]) =>
  * @returns {string | Datum[]}
  * @standard splice - Without only, a block gives its items to a list.
  * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs)
- * @usedby buildContent, replaceInList, alterValue
+ * @usedby buildContent, makeKeep, replaceInList, alterValue
  */
 export const makeContent = (store, [series, value], only) => {
   // A block gives its items to a list, but with /only the block is one item.
@@ -181,7 +200,7 @@ export const makeContent = (store, [series, value], only) => {
  * @param {string | Datum[]} content
  * @returns {Machine}
  * @uses readAll (src/store/store.mjs), writeAll (src/store/store.mjs)
- * @usedby appendValue, insertValue, alterValue, appendAll
+ * @usedby appendValue, insertValue, appendReduced, makeKeep, alterValue, appendAll
  */
 export const insertContent = (machine, series, content) => {
   // Put the content at the position of the series.
@@ -225,6 +244,11 @@ export const SERIES_NATIVES = {
   first: takeItem(0),
   second: takeItem(1),
   third: takeItem(2),
+  sixth: takeItem(5),
+  seventh: takeItem(6),
+  eighth: takeItem(7),
+  ninth: takeItem(8),
+  tenth: takeItem(9),
   fourth: takeItem(3),
   fifth: takeItem(4),
   ...guardSeries({
@@ -238,6 +262,7 @@ export const SERIES_NATIVES = {
     "length?": measure((index, size) => makeDatum("integer", Math.max(size - index, 0))),
     "index?": measure((index) => makeDatum("integer", index + 1)),
     "head?": measure((index) => makeLogic(index === 0)),
+  "last?": measure((index, size) => makeLogic(size - index === 1)),
     "offset?": (machine, [first, second]) => giveValue(machine, makeDatum("integer", second.value.index - first.value.index)),
     last: takeLast,
     "at": jump((offset) => (offset > 0 ? offset - 1 : offset)),

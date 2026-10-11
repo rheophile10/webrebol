@@ -8,13 +8,21 @@ const TEXTS = ["string", "file", "email", "url", "tag", "issue"];
  * @uses LISTS, TEXTS
  * @usedby acceptsType
  */
-const TYPESETS = {
+/**
+ * The types of each REBOL typeset, by the name of the typeset.
+ * @uses LISTS, TEXTS
+ * @usedby acceptsType, testTypeset (src/natives/compare.mjs), PREDICATES (src/natives/compare.mjs)
+ */
+export const TYPESETS = {
   "number!": ["integer", "decimal"],
   "series!": [...LISTS, ...TEXTS, "binary"],
   "any-block!": LISTS,
-  "any-string!": TEXTS,
+  "any-string!": [...TEXTS, "binary"],
   "any-word!": ["word", "set-word", "get-word", "lit-word", "refinement"],
-  "any-function!": ["native", "op", "function"],
+  "any-function!": ["native", "action", "op", "function"],
+  "scalar!": ["integer", "decimal", "char", "time", "pair", "tuple", "money", "date"],
+  "any-path!": ["path", "set-path", "lit-path"],
+  "any-object!": ["object", "error"],
 };
 
 /**
@@ -49,7 +57,8 @@ const groupEntry = (groups, entry) => {
  * @returns {{ params: object[], refinements: object[], keys: string[] }}
  * @standard groups - The parameters after a refinement belong to that refinement.
  * @uses addEntry, groupEntry
- * @usedby makeFunction (src/natives/control.mjs), makeFunction (src/natives/globals.mjs)
+ * @usedby makeFunction (src/natives/control.mjs), makeFunction (src/natives/globals.mjs),
+ *   KEEP_SPEC (src/natives/items.mjs)
  */
 export const parseSpec = (items) => {
   // The first group has no refinement. It holds the usual parameters.

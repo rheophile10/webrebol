@@ -81,7 +81,7 @@ const makeDoes = (machine, [body]) => {
  * @returns {Machine}
  * @standard fields - The texts of the loader are the fields arg1 and arg2 of the error.
  * @uses makeSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs)
- * @usedby doText, toBlock, interpretSource
+ * @usedby doText, toBlock, interpretSource, loadText
  */
 export const failSyntax = (machine, fault) => {
   const addText = (made, text) => {
@@ -140,7 +140,7 @@ const stepReduce = (machine, frame) =>
  * @returns {Machine}
  * @standard sequence - The results are in the sequence of the expressions.
  * @uses stepReduce, continueReduce, pushFrame (src/machine/machine.mjs)
- * @usedby reduceValue, printValue, joinValues, rejoinValues, reformValue, remoldValue
+ * @usedby 9 declarations in control, items, text, words
  */
 export const startReduce = (machine, block, finish) => {
   const frame = { step: stepReduce, values: [], cursor: machine.cursor, finish };
@@ -176,7 +176,7 @@ const chooseBlock = (wanted) => (machine, [condition, block]) =>
  * @uses chooseBlock, startBlock (src/machine/machine.mjs), isTrue (src/machine/machine.mjs),
  *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), makeFunction, makeDoes, makeHas,
  *   makeWithLocals, doValue, reduceValue, tryBlock
- * @usedby NATIVES
+ * @usedby NATIVES, makeFunct, WORD_NATIVES
  */
 export const CONTROL_NATIVES = {
   "if": chooseBlock(true),

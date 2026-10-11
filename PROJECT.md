@@ -33,21 +33,20 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 
 ## Sessions
 
-- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine. Added objects, paths, binding, error fields, series refinements `parse`, own error messages, the scalar types, and 205 Core functions, with 1180 evaluation cases.
+- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine. Added objects, paths, binding, error fields, series refinements `parse`, own error messages, the scalar types, and 307 Core functions, with 1427 evaluation cases.
 
 ## Todos
 
 - Loader: base-64 binary, a path that has a paren, `/a/b` as two refinements. The century of a year of 2 digits.
 - Loader: keep the line ends of a block, because `mold` shows them. Remove the limit of 16 levels for nested braces.
 - Errors: the `near` and `where` fields, and a `** Near:` line in the message.
-- Evaluator: get-arguments (`:x`), `catch/name`, `case/all`, a `for` with a bump of zero.
+- Evaluator: `catch/name`, `case/all`, a `for` with a bump of zero. `mold` of a block from `load` (REBOL puts a line end before the last bracket).
 - Series: `find/any`, `select/skip`, `sort/skip`, `sort/compare`. The sequence of mixed types in `sort`.
 - Parse: `break`, and `to` or `thru` with a block of choices. A paren in a parse rule runs in a machine of its own, thus `wait` and `view` cannot stop the machine there.
 - Parse: REBOL does not end if a `some` or `any` rule matches and does not move the position. WebRebol stops such a loop.
 - Natives: many REBOL functions accept more types than WebRebol does (for example `first` of a pair). Such a call can stop JavaScript with an exception. Each native must give a REBOL error.
 - Types: the fields of a `money!` value (`m/1`), `and` for tuples, a time divided by zero, `now`, `random`. The `to-` functions for the types that remain.
-- Types of functions: REBOL has `native!`, `action!` and `function!`. WebRebol gives `native!` for all its own functions.
 - Store: a faster structure. At this time, each change copies the table of all series or of one context.
 - Symbols: REBOL molds a word with the spelling of its first use. WebRebol keeps the spelling of each use.
-- One group of recorded cases for each function. 205 of 443 Core functions have a first version.
+- Functions: 307 of 443 Core functions have a first version. The 136 that remain are in four groups. (1) Possible now: `to`, `move`, `collect-words`, `resolve`, `new-line`, `unbind`, `alias`, `!`, `??`, `dump-obj`, `to-bitset`, `to-datatype`, `types-of`, `decode-url`, `parse-header`, `build-markup`, `decode-cgi`, `parse-xml`, `utf?`, `to-itime`, `to-idate`. (2) Need an edge module for the clock, the console or a known algorithm: `now`, `wait`, `input`, `ask`, `confirm`, `dt`, `random`, `checksum`, `compress`, `decompress`, `encloak`, `decloak`, `help`, `source`, `what`, `trace`, `protect`. (3) Need the disk: `read`, `write`, `save`, `open`, `close`, `exists?`, `dir?`, `delete`, `rename`, `make-dir`, `clean-path`, and the other file functions. (4) Not possible in a browser, or not planned: the email functions, `call`, `launch`, `browse`, `secure`, the library functions, and the functions of the REBOL company services.
 - View: faces, `draw`, the frame loop, VID, `effect`.

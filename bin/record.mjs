@@ -56,7 +56,9 @@ const runCase = (source) => {
  */
 const recordCase = (source) => {
   // Each evaluation case runs in a new REBOL session. Thus a word of one case cannot change a different case.
-  const [, output, result] = runCase(source).match(RESULT);
+  const match = runCase(source).match(RESULT);
+  if (match === null) throw new Error(`REBOL gave no result for this case: ${source}`);
+  const [, output, result] = match;
   return `${writeHex(source)} ${result} ${writeHex(output)}\n`;
 };
 

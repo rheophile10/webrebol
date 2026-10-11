@@ -4,7 +4,7 @@ import { advance, atEnd, failMachine, giveValue, makeLogic, makeWord, popFrame, 
 import { acceptsType } from "./spec.mjs";
 
 /**
- * @usedby makeOptions, startCall
+ * @usedby makeOptions, startCall, callFunction
  */
 const findParams = (callee, name) => callee.value.refinements.find((refinement) => refinement.key === name)?.params;
 
@@ -90,7 +90,7 @@ const makeOptions = (frame) => {
 const failArgument = (machine, frame, param) => {
   // A function with a body that gets no value for a parameter has a different error.
   const names = [makeWord(frame.label), makeWord(param.name)];
-  const absent = frame.callee.value.native === undefined && frame.args.some((value) => value.type === "unset");
+  const absent = frame.callee.type === "function" && frame.args.some((value) => value.type === "unset");
   if (absent) return failMachine(machine, "script no-arg", names);
   // The third field of the error is the block of the types that the parameter accepts.
   const made = makeSeries(machine.store, "block", (param.types ?? []).map(makeWord));
@@ -102,7 +102,7 @@ const failArgument = (machine, frame, param) => {
 
 /**
  * @uses acceptsType, failArgument, invokeBody, makeOptions
- * @usedby requestArgument, stepInfix
+ * @usedby requestArgument, callFunction, stepInfix
  */
 const invoke = (machine, frame, checked) => {
   // An infix call does not examine the types of its arguments.
@@ -125,10 +125,21 @@ const takeLiteral = (machine) => {
 };
 
 /**
- * @uses takeLiteral
+ * @uses atEnd, UNSET (src/store/store.mjs), readItem, readWord (src/store/store.mjs), giveValue, advance
+ * @usedby REQUESTS
+ */
+const takeFetched = (machine) => {
+  // A word in the position of a get-argument gives its value. The machine does not evaluate the value.
+  const item = atEnd(machine) ? UNSET : readItem(machine);
+  const value = item.type === "word" ? readWord(machine.store, item) : item;
+  return giveValue(atEnd(machine) ? machine : advance(machine), value);
+};
+
+/**
+ * @uses takeLiteral, takeFetched
  * @usedby requestArgument
  */
-const REQUESTS = { normal: (machine) => ({ ...machine, mode: "next" }), lit: takeLiteral, get: takeLiteral };
+const REQUESTS = { normal: (machine) => ({ ...machine, mode: "next" }), lit: takeLiteral, get: takeFetched };
 
 /**
  * @uses invoke, popFrame, REQUESTS
@@ -169,6 +180,25 @@ export const startCall = (machine, callee, call) => {
   }
   const order = [...callee.value.params, ...call.names.flatMap((name) => findParams(callee, name))];
   return requestArgument(pushFrame(machine, { ...call, step: stepArguments, callee, order, args: [] }));
+};
+
+/**
+ * @uses invoke, popFrame
+ * @usedby stepLook
+ */
+/**
+ * Calls a function with arguments that are ready. The machine does not read arguments from a block.
+ * @param {Machine} machine
+ * @param {Datum} callee - The function value.
+ * @param {{ names: string[], args: Datum[], label: string }} call - The keys of the refinements, the arguments, and a name for errors.
+ * @returns {Machine}
+ * @standard checked - The types of the arguments are examined, as for a usual call.
+ * @uses findParams, invoke
+ * @usedby applyFunction (src/natives/words.mjs)
+ */
+export const callFunction = (machine, callee, call) => {
+  const order = [...callee.value.params, ...call.names.flatMap((name) => findParams(callee, name) ?? [])];
+  return invoke(machine, { ...call, callee, order }, true);
 };
 
 /**

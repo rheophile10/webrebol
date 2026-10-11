@@ -14,7 +14,7 @@ const countUp = (size) => Array.from({ length: Math.max(size, 0) });
  * @param {Datum} range - An integer or a position in the same series.
  * @returns {number}
  * @standard position - A position gives the number of items between the two positions.
- * @usedby copySeries, insertValue, changeValue, removeItems, reverseItems, listPlaces, changeCase
+ * @usedby copySeries, insertValue, changeValue, removeItems, reverseItems, takeItems, listPlaces, changeCase
  */
 export const readPart = (series, range) =>
   typeof range.value === "number" ? Math.trunc(range.value) : range.value.index - series.value.index;
@@ -104,7 +104,7 @@ const insertValue = (machine, args, options) => {
  * @param {{ content: string | Datum[], size: number }} change - The new items and the number of old items.
  * @returns {Machine}
  * @uses readAll (src/store/store.mjs), writeAll (src/store/store.mjs)
- * @usedby changeValue, removeItems, pokeItem, reverseItems, replaceValue, alterValue, sortItems
+ * @usedby 10 declarations in edit, items, search
  */
 export const replaceItems = (machine, series, change) => {
   const all = readAll(machine.store, series);

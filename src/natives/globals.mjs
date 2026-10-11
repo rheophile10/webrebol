@@ -21,11 +21,14 @@ import { NUMBER_NATIVES } from "./numbers.mjs";
 import { FAULT_NATIVES } from "./faults.mjs";
 import { BITSET_NATIVES, findInBitset } from "./bitsets.mjs";
 import { PARSE_NATIVES } from "./parse.mjs";
+import { ITEM_NATIVES } from "./items.mjs";
+import { WORD_NATIVES } from "./words.mjs";
+import { ENCODE_NATIVES } from "./encode.mjs";
 
 /**
  * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
  *   TEXT_NATIVES, CONVERT_NATIVES, guardSeries, EDIT_NATIVES, SEARCH_NATIVES, STRING_NATIVES, NUMBER_NATIVES,
- *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES
+ *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES, ITEM_NATIVES, WORD_NATIVES, ENCODE_NATIVES
  * @usedby findAny, makeFunction, GLOBALS
  */
 const NATIVES = {
@@ -43,9 +46,13 @@ const NATIVES = {
   ...FAULT_NATIVES,
   ...BITSET_NATIVES,
   ...PARSE_NATIVES,
+  ...ITEM_NATIVES,
+  ...WORD_NATIVES,
+  ...ENCODE_NATIVES,
+  "q": WORD_NATIVES.quit,
 };
 
-const TYPESETS = ["number", "series", "any-block", "any-string", "any-word", "any-function", "any-type"];
+const TYPESETS = ["number", "series", "any-block", "any-string", "any-word", "any-function", "any-type", "scalar"];
 
 /**
  * @uses findInBitset, NATIVES
@@ -96,7 +103,8 @@ const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.v
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
   const spec = parseSpec(loadSource(SPECS[sign][1]).value.map(readSpecItem));
-  return makeDatum(type, { ...spec, native: name === "find" ? findAny : NATIVES[name] });
+  // REBOL has three types for its own functions. The type comes from REBOL.
+  return makeDatum(type ?? SPECS[sign][0], { ...spec, native: name === "find" ? findAny : NATIVES[name] });
 };
 
 /**
@@ -105,7 +113,7 @@ const makeFunction = (type, name, sign) => {
  * @usedby START_STORE
  */
 const GLOBALS = Object.fromEntries([
-  ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction("native", name, name)]),
+  ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction(null, name, name)]),
   ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name, sign)]),
   ...Object.entries(CONSTANTS).map(([name, value]) => [makeKey(name), value]),
   ...[...TYPES, ...TYPESETS].map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),

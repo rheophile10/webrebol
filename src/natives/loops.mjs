@@ -1,16 +1,17 @@
+/** @import { Datum, Store, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
 import { NONE, UNSET, bindCopy, makeContext, makeKey, readAll, readRest, readValues, readWord, writeWord } from "../store/store.mjs";
 import { giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue } from "../machine/machine.mjs";
 
 /**
  * @uses stopThrown (src/machine/machine.mjs)
- * @usedby startList, loopWhile, loopUntil, loopForever
+ * @usedby startList, startEach, loopWhile, loopUntil, loopForever
  */
 const stopBreak = stopThrown("break");
 
 /**
  * @uses writeWord (src/store/store.mjs), NONE (src/store/store.mjs)
- * @usedby stepList
+ * @usedby stepList, stepEach
  */
 const assignWords = (store, frame) =>
   frame.words.reduce(
@@ -39,7 +40,7 @@ const stepList = (machine, frame) => {
 
 /**
  * @uses stepList, stopBreak, pushFrame (src/machine/machine.mjs)
- * @usedby loopCount, repeatCount, forEach, forRange, forAll
+ * @usedby loopCount, repeatCount, forEach, forRange, forSkip, forAll
  */
 const startList = (machine, loop, first) => {
   // The loop evaluates its body one time for each group of values of the list.
@@ -51,7 +52,17 @@ const startList = (machine, loop, first) => {
  * @uses makeContext (src/store/store.mjs), bindCopy (src/store/store.mjs), makeKey (src/store/store.mjs)
  * @usedby repeatCount, forEach, forRange
  */
-const bindLoop = (machine, words, body) => {
+/**
+ * Makes a context for the words of a loop, and a copy of the body that uses this context.
+ * @param {Machine} machine
+ * @param {Datum[]} words
+ * @param {Datum} body
+ * @returns {{ machine: Machine, words: Datum[], body: Datum }}
+ * @standard local - A word of the loop does not change the word with the same name outside the loop.
+ * @uses makeContext (src/store/store.mjs), bindCopy (src/store/store.mjs), makeKey (src/store/store.mjs)
+ * @usedby removeEach, mapEach, repeatCount, forEach, forRange
+ */
+export const bindLoop = (machine, words, body) => {
   // The words of a loop are in a new context. The body is a copy that uses this context.
   const made = makeContext(machine.store, {});
   const bound = bindCopy(made.store, body, { id: made.id, keys: words.map((word) => makeKey(word.value)) });
@@ -60,7 +71,49 @@ const bindLoop = (machine, words, body) => {
 };
 
 /**
- * @usedby loopCount, repeatCount, forEach, forRange, forAll
+ * @uses popFrame (src/machine/machine.mjs), assignWords, startBlock (src/machine/machine.mjs),
+ *   replaceTop (src/machine/machine.mjs)
+ * @usedby startEach
+ */
+const stepEach = (machine, frame) => {
+  // Keep the result of the body for each group of values. The owner gets the results at the end.
+  const results = frame.position === 0 ? [] : [...frame.results, machine.value];
+  if (frame.position >= frame.values.length) return frame.finish(popFrame(machine), results);
+  const store = assignWords(machine.store, frame);
+  return startBlock({ ...replaceTop(machine, { ...frame, results, position: frame.position + 1 }), store }, frame.body);
+};
+
+/**
+ * Starts a loop that evaluates a body for each group of values and keeps each result.
+ * @param {Machine} machine
+ * @param {{ words: Datum[], body: Datum, values: Datum[][] }} loop
+ * @param {Function} finish - The function that gets the machine and the results, and gives the next machine.
+ * @returns {Machine}
+ * @standard sequence - The results are in the sequence of the groups.
+ * @uses stepEach, stopBreak, pushFrame (src/machine/machine.mjs)
+ * @usedby removeEach, mapEach
+ */
+export const startEach = (machine, loop, finish) => {
+  const frame = { ...loop, step: stepEach, unwind: stopBreak, position: 0, results: [], finish, cursor: machine.cursor };
+  return stepEach(pushFrame(machine, frame), frame);
+};
+
+/**
+ * Divides the items of a series into groups, one item for each word of a loop.
+ * @param {Store} store
+ * @param {Datum} series
+ * @param {number} size - The number of words.
+ * @returns {Datum[][]}
+ * @uses readValues (src/store/store.mjs), countUp
+ * @usedby removeEach, mapEach
+ */
+export const groupValues = (store, series, size) => {
+  const items = readValues(store, series);
+  return countUp(Math.ceil(items.length / size)).map((item, place) => items.slice(place * size, (place + 1) * size));
+};
+
+/**
+ * @usedby groupValues, loopCount, repeatCount, forEach, forRange, forSkip, forAll
  */
 const countUp = (size) => Array.from({ length: Math.max(size, 0) });
 
@@ -105,6 +158,19 @@ const forRange = (machine, [word, start, end, bump, body]) => {
   const bound = bindLoop(machine, [word], body);
   const values = countUp(size).map((item, place) => [makeDatum("integer", start.value + place * bump.value)]);
   return startList(bound.machine, { words: bound.words, body: bound.body, values }, NONE);
+};
+
+/**
+ * @uses readWord (src/store/store.mjs), readAll (src/store/store.mjs), startList, countUp,
+ *   UNSET (src/store/store.mjs)
+ * @usedby LOOP_NATIVES
+ */
+const forSkip = (machine, [word, step, body]) => {
+  // The word gets each position that is a number of items after the position before it.
+  const series = readWord(machine.store, word);
+  const size = Math.ceil((readAll(machine.store, series).length - series.value.index) / step.value);
+  const moveTo = (item, place) => [{ ...series, value: { ...series.value, index: series.value.index + place * step.value } }];
+  return startList(machine, { words: [word], body, values: countUp(size).map(moveTo), reset: series }, UNSET);
 };
 
 /**
@@ -172,7 +238,7 @@ const loopForever = (machine, [body]) =>
 
 /**
  * The natives for loops. Each entry has the name of REBOL and the function.
- * @uses loopCount, repeatCount, forEach, forRange, forAll, loopWhile, loopUntil, loopForever,
+ * @uses loopCount, repeatCount, forEach, forRange, forAll, forSkip, loopWhile, loopUntil, loopForever,
  *   UNSET (src/store/store.mjs), throwValue (src/machine/machine.mjs)
  * @usedby NATIVES
  */
@@ -182,6 +248,7 @@ export const LOOP_NATIVES = {
   foreach: forEach,
   for: forRange,
   forall: forAll,
+  forskip: forSkip,
   while: loopWhile,
   until: loopUntil,
   forever: loopForever,

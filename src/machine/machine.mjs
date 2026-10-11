@@ -3,14 +3,14 @@
 import { makeDatum } from "../data/datum.mjs";
 import { UNSET } from "../store/store.mjs";
 
-const FUNCTION_TYPES = ["native", "op", "function"];
+const FUNCTION_TYPES = ["native", "action", "op", "function"];
 
 /**
  * Makes a logic value.
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 15 declarations in call, bitsets, compare, flow, globals, numbers, objects, parse, search, series
+ * @usedby 20 declarations in call, bitsets, compare, encode, flow, globals, items, numbers, objects, parse, search, series, words
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -18,9 +18,7 @@ export const makeLogic = (truth) => makeDatum("logic", truth);
  * Finds if REBOL uses a value as true. Only none and false are not true.
  * @param {Datum} value
  * @returns {boolean}
- * @usedby COMPARE_NATIVES (src/natives/compare.mjs), chooseBlock (src/natives/control.mjs),
- *   CONTROL_NATIVES (src/natives/control.mjs), stepScan (src/natives/flow.mjs), stepCase (src/natives/flow.mjs),
- *   stepWhile (src/natives/loops.mjs), stepUntil (src/natives/loops.mjs)
+ * @usedby 11 declarations in compare, control, flow, items, loops, words
  */
 export const isTrue = (value) => value.type !== "none" && value.value !== false;
 
@@ -38,7 +36,7 @@ export const isFunction = (value) => FUNCTION_TYPES.includes(value.type);
  * @param {Machine} machine
  * @param {Frame} frame
  * @returns {Machine}
- * @usedby 19 declarations in call, evaluate, machine, path, run, control, faults, flow, loops, objects
+ * @usedby 22 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const pushFrame = (machine, frame) => ({ ...machine, frames: { top: frame, below: machine.frames } });
 
@@ -46,7 +44,7 @@ export const pushFrame = (machine, frame) => ({ ...machine, frames: { top: frame
  * Removes the top frame of the stack.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby 21 declarations in call, evaluate, machine, path, run, control, faults, flow, loops, objects
+ * @usedby 24 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below });
 
@@ -56,7 +54,8 @@ export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below
  * @param {Frame} frame
  * @returns {Machine}
  * @usedby stepArguments, stepReduce (src/natives/control.mjs), stepCase (src/natives/flow.mjs),
- *   stepCompose (src/natives/flow.mjs), stepList (src/natives/loops.mjs), stepWhile (src/natives/loops.mjs)
+ *   stepCompose (src/natives/flow.mjs), stepList (src/natives/loops.mjs), stepEach (src/natives/loops.mjs),
+ *   stepWhile (src/natives/loops.mjs)
  */
 export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: frame, below: machine.frames.below } });
 
@@ -65,7 +64,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 80 declarations in call, evaluate, machine, path, bitsets, compare, control, convert, edit, faults, flow, loops, math, numbers, objects, parse, search, series, strings, text
+ * @usedby 103 declarations in call, evaluate, machine, path, bitsets, compare, control, convert, edit, encode, faults, flow, items, loops, math, numbers, objects, parse, search, series, strings, text, words
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -76,7 +75,7 @@ export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" 
  * @param {Datum} value
  * @returns {Machine}
  * @usedby failMachine, throwUnused, CONTROL_NATIVES (src/natives/control.mjs), FLOW_NATIVES (src/natives/flow.mjs),
- *   LOOP_NATIVES (src/natives/loops.mjs)
+ *   LOOP_NATIVES (src/natives/loops.mjs), stopMachine (src/natives/words.mjs)
  */
 export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw", thrown: { kind, value } });
 
@@ -87,7 +86,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 21 declarations in call, evaluate, path, compare, control, convert, edit, math, numbers, objects, series
+ * @usedby 26 declarations in call, evaluate, path, compare, control, convert, edit, encode, items, math, numbers, objects, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -97,8 +96,7 @@ export const failMachine = (machine, text, args = []) =>
  * @param {string} name
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby failArgument, startCall, disarmError (src/natives/faults.mjs), giveScalar (src/natives/math.mjs),
- *   matchSet (src/natives/parse.mjs), takeFromObject (src/natives/series.mjs)
+ * @usedby 9 declarations in call, faults, items, math, parse, series, words
  */
 export const makeWord = (name) => makeDatum("word", name);
 
@@ -120,7 +118,7 @@ export const stopThrown = (kind) => (machine, frame) => {
  * Finds if the cursor is at the end of its block.
  * @param {Machine} machine
  * @returns {boolean}
- * @usedby 10 declarations in call, evaluate, machine, control, flow
+ * @usedby 11 declarations in call, evaluate, machine, control, flow
  */
 export const atEnd = (machine) => machine.cursor.index >= machine.store.series[machine.cursor.id].length;
 
@@ -128,7 +126,7 @@ export const atEnd = (machine) => machine.cursor.index >= machine.store.series[m
  * Gets the value at the cursor.
  * @param {Machine} machine
  * @returns {Datum}
- * @usedby takeLiteral, readOperator, evaluateOperand, stepCase (src/natives/flow.mjs)
+ * @usedby takeLiteral, takeFetched, readOperator, evaluateOperand, stepCase (src/natives/flow.mjs)
  */
 export const readItem = (machine) => machine.store.series[machine.cursor.id][machine.cursor.index];
 
@@ -136,7 +134,7 @@ export const readItem = (machine) => machine.store.series[machine.cursor.id][mac
  * Moves the cursor to the next value.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby takeLiteral, stepLook, evaluateOperand, stepCase (src/natives/flow.mjs)
+ * @usedby takeLiteral, takeFetched, stepLook, evaluateOperand, stepCase (src/natives/flow.mjs)
  */
 export const advance = (machine) => ({ ...machine, cursor: { ...machine.cursor, index: machine.cursor.index + 1 } });
 
@@ -167,7 +165,7 @@ const stepBlock = (machine, frame) => {
  * @returns {Machine}
  * @standard empty - An empty block gives the unset value.
  * @uses pushFrame, stepBlock, UNSET (src/store/store.mjs)
- * @usedby 21 declarations in evaluate, machine, control, faults, flow, loops, objects
+ * @usedby 24 declarations in evaluate, machine, control, faults, flow, items, loops, objects, words
  */
 export const startBlock = (machine, block) => ({
   ...pushFrame(machine, { step: stepBlock, cursor: machine.cursor }),

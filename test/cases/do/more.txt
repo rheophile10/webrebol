@@ -1,0 +1,247 @@
+number? 1
+number? 1.5
+number? "a"
+series? "a"
+series? [1]
+series? 1
+any-string? "a"
+any-string? %f
+any-string? [1]
+any-block? [1]
+any-block? first [(1)]
+any-block? "a"
+any-word? 'a
+any-word? first [a:]
+any-word? 1
+any-function? :print
+any-function? 1
+any-type? 1
+scalar? 1
+scalar? "a"
+scalar? 1x2
+any-path? first [a/b]
+any-object? make object! []
+action? :first
+action? :print
+native? :print
+native? :first
+function? :join
+function? :print
+op? :+
+port? 1
+image? 1
+hash? [1]
+list? [1]
+sixth [1 2 3 4 5 6 7 8 9 10]
+seventh [1 2 3 4 5 6 7 8 9 10]
+eighth [1 2 3 4 5 6 7 8 9 10]
+ninth [1 2 3 4 5 6 7 8 9 10]
+tenth [1 2 3 4 5 6 7 8 9 10]
+sixth [1 2]
+last? [1]
+last? [1 2]
+last? []
+repend [1] [1 + 1 3]
+repend "a" [1 + 1 "b"]
+a: [1] repend a [2] a
+repend/only [1] [2 3]
+take [1 2 3]
+a: [1 2 3] take a a
+take/last [1 2 3]
+a: [1 2 3] take/last a a
+take/part [1 2 3] 2
+take []
+take "abc"
+a: [1 2 3] swap a next a a
+swap [1 2] [3 4]
+a: [1 2 3] first+ a
+a: [1 2 3] first+ a a
+a: [1 2 3 4] forskip a 2 [prin first a]
+a: [1 2 3 4] forskip a 2 [prin first a] index? a
+remove-each x [1 2 3 4] [even? x]
+a: [1 2 3 4] remove-each x a [even? x] a
+remove-each x "abcb" [x = #"b"]
+remove-each [a b] [1 2 3 4] [a = 1]
+map-each x [1 2 3] [x * 2]
+map-each [a b] [1 2 3 4] [a + b]
+map-each x "ab" [x]
+map-each x [1 2] [if x = 1 [x]]
+collect [keep 1 keep 2]
+collect [foreach x [1 2 3] [if odd? x [keep x]]]
+collect [keep [1 2]]
+collect [keep/only [1 2]]
+collect []
+array 3
+array/initial 2 0
+array [2 2]
+array/initial 2 "a"
+minimum-of [3 1 2]
+maximum-of [3 1 2]
+maximum-of []
+minimum-of "cab"
+ajoin ["a" 1 "b"]
+ajoin [1 2]
+found? none
+found? 1
+found? find [1 2] 2
+sign? 5
+sign? -5
+sign? 0
+sign? -1.5
+true? 1
+true? none
+true? false
+also 1 2
+also 1 print "x"
+quote (1 + 2)
+quote 5
+apply :add [1 2]
+apply :append [[1] 2]
+apply :append [[1] [2] true]
+apply func [x /dbl] [either dbl [x * 2] [x]] [5 true]
+x: none default x 5 x
+x: 1 default x 5 x
+comment "abc"
+comment [1 2]
+1 comment "x" 2
+a: 1 ++ a a
+a: 1 ++ a
+a: 1 -- a a
+a: [1 2 3] ++ a a
+to-lit-word 'a
+to-lit-word "a"
+to-get-word 'a
+to-set-word 'a
+to-set-word "abc"
+to-refinement 'a
+to-path [a b]
+to-path 'a
+to-paren [1 2]
+to-set-path [a b]
+to-lit-path [a b]
+to-none 1
+to-logic 1
+to-logic 0
+to-logic none
+to-logic "a"
+to-issue "abc"
+to-issue 123
+to-email "a@b"
+to-url "http://a"
+to-tag "b"
+to-tag 'b
+to-file "abc"
+to-file [a b]
+to-hex 255
+to-hex 0
+to-hex -1
+to-binary "abc"
+to-binary 1
+to-binary [1 2 3]
+to-string #{414243}
+to-error "abc"
+to-word 'a
+to-string 'a
+to-block 'a
+f: funct [x] [y: x * 2 y] f 3
+y: 1 f: funct [x] [y: x * 2 y] f 3 y
+f: closure [x] [x + 1] f 1
+words-of make object! [a: 1 b: 2]
+values-of make object! [a: 1 b: 2]
+words-of func [a b /c d] []
+spec-of func [a b] [a]
+body-of func [a b] [a + b]
+body-of make object! [a: 1]
+reflect make object! [a: 1] 'words
+cause-error 'math 'zero-divide []
+cause-error 'script 'no-value [abc]
+assert [1 = 1]
+assert [1 = 2]
+detab "a^-b"
+entab "    a"
+detab/size "a^-b" 2
+deline "a^M^/b"
+enline "a^/b"
+ascii? "abc"
+ascii? "ab^(E9)"
+latin1? "abc"
+dehex "a%20b"
+dehex "%41%zz"
+enbase "abc"
+enbase/base "abc" 16
+enbase/base "abc" 2
+enbase/base "abc" 64
+debase "YWJj"
+debase/base "616263" 16
+to-string debase "YWJj"
+enbase #{00FF}
+split-path %/a/b/c.txt
+split-path %c.txt
+split-path %/a/b/
+split-path %/
+dirize %abc
+dirize %abc/
+undirize %abc/
+suffix? %a.txt
+suffix? %a
+suffix? %a.b/c
+suffix? "a.txt"
+build-tag [a href "x"]
+build-tag [img src %pic.png width 10]
+load "1"
+load "[1 2]"
+load "1 ["
+do load "1 + 2"
+unset? print ""
+type? :print
+type? :first
+type? :join
+type? :+
+:print
+recycle
+unset? recycle
+as-string #{414243}
+as-binary "abc"
+to-block "a [b]"
+to-integer "  12 "
+to-integer true
+to-integer false
+to-integer #"a"
+to-decimal "1e2"
+to-string none
+to-string true
+to-string 1.5
+to-string %file
+to-string <tag>
+to-string #issue
+to-string a@b.c
+to-string http://x.y
+to-string 1x2
+to-word "a b"
+to-block none
+either none 1 2
+x: 5 quote x
+f: func [:v] [:v] x: 7 f x
+f: func [:v] [:v] f 12
+type? :print
+type? :first
+type? :join
+type? :+
+:print
+any-string? #{00}
+length? load "1 2"
+first load "a: 1"
+load "[1 [2]]"
+o: construct [a: 1 b: "x"] reduce [o/a o/b]
+o: construct [a: none b: true c: off d: word] reduce [o/a o/b o/c o/d]
+o: make object! [a: 1] p: bind? in o 'a p/a
+join 1
+collect [repeat i 3 [keep i * i]]
+a: [] repend a [1 + 1] repend a ["x"] a
+remove-each x [] [true]
+a: [1 2 3] take/part a 5 a
+take/last []
+array 0
+++ zzz
+apply :subtract [10 3]
+f: funct [x] [t: 0 foreach v x [t: t + v] t] f [1 2 3]

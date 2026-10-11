@@ -11,7 +11,7 @@ const NANOSECONDS = 1e9;
 
 /**
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby toString, toBlock
+ * @usedby toText, toFile, toBinary, toList, toBlock
  */
 const giveSeries = (machine, type, content) => {
   const made = makeSeries(machine.store, type, content);
@@ -19,14 +19,64 @@ const giveSeries = (machine, type, content) => {
 };
 
 /**
- * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), giveSeries, formValue (src/store/mold.mjs)
+ * @uses isText (src/store/store.mjs), readRest (src/store/store.mjs), isList (src/store/store.mjs),
+ *   formValue (src/store/mold.mjs)
+ * @usedby toText, toFile, toBinary, toWordType
+ */
+const readText = (store, value) => {
+  // A text gives its characters. A binary gives a character for each byte. A block gives its formed items, without spaces.
+  if (isText(value)) return readRest(store, value);
+  if (value.type === "binary") return readRest(store, value).map((byte) => String.fromCharCode(byte)).join("");
+  const parts = isList(value) ? readRest(store, value) : [value];
+  return parts.map((part) => formValue(store, part)).join("");
+};
+
+/**
+ * @uses giveSeries, readText
  * @usedby CONVERT_NATIVES
  */
-const toString = (machine, [value]) => {
-  // The items of a block are formed and joined, without spaces.
+const toText = (type) => (machine, [value]) => giveSeries(machine, type, readText(machine.store, value));
+
+/**
+ * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), giveSeries, readText
+ * @usedby CONVERT_NATIVES
+ */
+const toFile = (machine, [value]) => {
+  // The items of a block are the parts of a path.
   const parts = isList(value) ? readRest(machine.store, value) : [value];
-  return giveSeries(machine, "string", parts.map((part) => formValue(machine.store, part)).join(""));
+  return giveSeries(machine, "file", parts.map((part) => readText(machine.store, part)).join("/"));
 };
+
+/**
+ * @uses giveSeries, readRest (src/store/store.mjs), readText
+ * @usedby CONVERT_NATIVES
+ */
+const toBinary = (machine, [value]) => {
+  // A block gives a byte for each integer. Other values give the bytes of their text.
+  if (value.type === "block") return giveSeries(machine, "binary", readRest(machine.store, value).map((item) => item.value & 255));
+  return giveSeries(machine, "binary", [...readText(machine.store, value)].map((char) => char.charCodeAt(0) & 255));
+};
+
+/**
+ * @uses giveSeries, isList (src/store/store.mjs), readRest (src/store/store.mjs)
+ * @usedby CONVERT_NATIVES
+ */
+const toList = (type) => (machine, [value]) =>
+  giveSeries(machine, type, isList(value) ? readRest(machine.store, value) : [value]);
+
+/**
+ * @uses giveValue (src/machine/machine.mjs), readText, GLOBAL (src/store/store.mjs)
+ * @usedby CONVERT_NATIVES
+ */
+const toWordType = (type) => (machine, [value]) =>
+  giveValue(machine, { type, value: readText(machine.store, value), bind: value.bind ?? GLOBAL });
+
+/**
+ * @uses giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
+ * @usedby CONVERT_NATIVES
+ */
+const toLogic = (machine, [value]) =>
+  giveValue(machine, makeDatum("logic", value.type !== "none" && value.value !== false && value.value !== 0));
 
 /**
  * @uses NUMBERS, NANOSECONDS, isText (src/store/store.mjs), readRest (src/store/store.mjs)
@@ -35,8 +85,9 @@ const toString = (machine, [value]) => {
 const readNumber = (store, value) => {
   // Give null if the value does not show a number. A char gives its code. A time gives its seconds.
   if (NUMBERS.includes(value.type) || value.type === "char") return value.value;
+  if (value.type === "logic") return value.value ? 1 : 0;
   if (value.type === "time") return value.value / NANOSECONDS;
-  const text = isText(value) ? readRest(store, value).trim() : "";
+  const text = isText(value) ? readRest(store, value) : "";
   return /^[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?$/.test(text) ? Number(text) : null;
 };
 
@@ -70,11 +121,6 @@ const toBlock = (machine, [value]) => {
  *   GLOBAL (src/store/store.mjs)
  * @usedby CONVERT_NATIVES
  */
-const toWord = (machine, [value]) => {
-  const name = isText(value) ? readRest(machine.store, value) : String(value.value);
-  return giveValue(machine, { type: "word", value: name, bind: value.bind ?? GLOBAL });
-};
-
 /**
  * @uses readRest (src/store/store.mjs)
  * @usedby BUILDERS
@@ -144,16 +190,35 @@ const readFirst = (value) => (typeof value.value === "number" ? value.value : 0)
 
 /**
  * The natives that make a value of a different type. Each entry has the name of REBOL and the function.
- * @uses toString, toNumber, toBlock, toWord, toScalar, giveValue (src/machine/machine.mjs),
- *   makeDatum (src/data/datum.mjs)
+ * @uses toText, toFile, toBinary, toList, toWordType, giveValue (src/machine/machine.mjs),
+ *   makeDatum (src/data/datum.mjs), toLogic, toNumber, toBlock, toScalar
  * @usedby NATIVES, MAKERS, makeValue
  */
 export const CONVERT_NATIVES = {
-  "to-string": toString,
+  "to-string": toText("string"),
+  "as-string": toText("string"),
+  "to-issue": toText("issue"),
+  "to-email": toText("email"),
+  "to-url": toText("url"),
+  "to-tag": toText("tag"),
+  "to-file": toFile,
+  "to-binary": toBinary,
+  "as-binary": toBinary,
+  "to-paren": toList("paren"),
+  "to-path": toList("path"),
+  "to-set-path": toList("set-path"),
+  "to-lit-path": toList("lit-path"),
+  "to-lit-word": toWordType("lit-word"),
+  "to-get-word": toWordType("get-word"),
+  "to-set-word": toWordType("set-word"),
+  "to-refinement": toWordType("refinement"),
+  "to-none": (machine) => giveValue(machine, makeDatum("none", null)),
+  "to-logic": toLogic,
+  "to-error": (machine, [value]) => giveValue(machine, { ...makeDatum("error", "user message"), args: [value] }),
   "to-integer": toNumber("integer", Math.trunc),
   "to-decimal": toNumber("decimal", (number) => number),
   "to-block": toBlock,
-  "to-word": toWord,
+  "to-word": toWordType("word"),
   "to-char": toScalar("char"),
   "to-time": toScalar("time"),
   "to-pair": toScalar("pair"),

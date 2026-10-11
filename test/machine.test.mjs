@@ -11,7 +11,8 @@ import { readPart } from "../src/natives/edit.mjs";
 import { hasBit } from "../src/natives/bitsets.mjs";
 import { failSyntax } from "../src/natives/control.mjs";
 import { acceptsType, parseSpec } from "../src/machine/spec.mjs";
-import { startCall, stepLook } from "../src/machine/call.mjs";
+import { callFunction, startCall, stepLook } from "../src/machine/call.mjs";
+import { bindLoop, startEach } from "../src/natives/loops.mjs";
 import { evaluateOperand } from "../src/machine/evaluate.mjs";
 import { runMachine, stepMachine } from "../src/machine/run.mjs";
 import { startReduce } from "../src/natives/control.mjs";
@@ -215,4 +216,27 @@ test("hasBit limit: a code above 255 is not in a bitset", () => {
   const full = { type: "bitset", value: Array.from({ length: 32 }).map(() => 255) };
   assert.equal(hasBit(full, 97), true);
   assert.equal(hasBit(full, 300), false);
+});
+
+test("callFunction checked: an argument of a wrong type gives the error of a usual call", () => {
+  const call = { names: [], args: [{ type: "none", value: null }, UNSET], label: "add" };
+  assert.equal(callFunction(makeReady("1"), readGlobal("add"), call).thrown.value.value, "script expect-arg");
+});
+
+test("bindLoop local: the word of the loop gets a context that is not the global context", () => {
+  const made = allocate(START_STORE, loadSource("item [item]"));
+  const [word, body] = readRest(made.store, made.value);
+  const bound = bindLoop(makeMachine(made.store, made.value), [word], body);
+  assert.notEqual(bound.words[0].bind, 0);
+  assert.equal(readRest(bound.machine.store, bound.body)[0].bind, bound.words[0].bind);
+});
+
+test("startEach sequence: the results are in the sequence of the groups", () => {
+  const made = allocate(START_STORE, loadSource("item [item]"));
+  const [word, body] = readRest(made.store, made.value);
+  const bound = bindLoop(makeMachine(made.store, made.value), [word], body);
+  const values = [[{ type: "integer", value: 7 }], [{ type: "integer", value: 8 }]];
+  const keep = (machine, results) => ({ ...machine, kept: results.map((result) => result.value) });
+  const machine = startEach(bound.machine, { words: bound.words, body: bound.body, values }, keep);
+  assert.deepEqual(runMachine(machine, BATCHES).kept, [7, 8]);
 });

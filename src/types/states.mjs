@@ -9,8 +9,8 @@
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
  * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError
- * @changedby 17 declarations in datum, bitsets, scalars, series, parts, store
- * @readby 35 declarations in call, machine, path, spec, bitsets, compare, control, edit, faults, report, scalars, series, mold, store
+ * @changedby 19 declarations in datum, bitsets, loops, scalars, series, parts, store
+ * @readby 38 declarations in call, machine, path, spec, bitsets, compare, control, edit, faults, loops, report, scalars, series, mold, store
  */
 
 /**
@@ -22,7 +22,7 @@
  * @property {string} output - The text that the session printed.
  * @madeby START_STORE
  * @changedby 9 declarations in store
- * @readby 14 declarations in machine, compare, report, series, mold, store
+ * @readby 15 declarations in machine, compare, loops, report, series, mold, store
  */
 
 /**
@@ -35,7 +35,7 @@
  * @property {"next" | "operand" | "give" | "throw" | "done"} mode - The work of the next step.
  * @property {{ kind: string, value: Datum } | null} thrown - The error, the return or the break that moves up the stack.
  * @madeby makeMachine, interpretSource
- * @changedby 22 declarations in call, evaluate, machine, path, run, bitsets, control, edit, faults, series
+ * @changedby 26 declarations in call, evaluate, machine, path, run, bitsets, control, edit, faults, loops, series
  * @readby atEnd, readItem, showResult, findError
  */
 

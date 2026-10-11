@@ -2,6 +2,7 @@
 import { makeDatum } from "../data/datum.mjs";
 import { isList, isText, readRest } from "../store/store.mjs";
 import { failMachine, giveValue, isTrue, makeLogic } from "../machine/machine.mjs";
+import { TYPESETS } from "../machine/spec.mjs";
 
 const TOLERANCE = 2.3e-15;
 const NUMBERS = ["integer", "decimal"];
@@ -15,7 +16,7 @@ const DAY = 86400e9;
 export const TYPES = [
   ...["integer", "decimal", "string", "char", "word", "set-word", "get-word", "lit-word", "refinement", "block"],
   ...["paren", "path", "set-path", "lit-path", "issue", "file", "email", "url", "tag", "tuple", "pair", "time"],
-  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date"],
+  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date", "action"],
 ];
 
 /**
@@ -96,7 +97,7 @@ const areSameLists = (store, left, right) =>
  * @returns {{ group: string, data: number | string } | null}
  * @standard none - A type without an order gives null.
  * @uses NUMBERS, isText (src/store/store.mjs), readRest (src/store/store.mjs), DAY, ORDERED
- * @usedby compare, choose, compareItems
+ * @usedby compare, choose, findExtreme, compareItems
  */
 export const readOrder = (store, value) => {
   // Give the data that the order uses, or null for a type without an order.
@@ -175,11 +176,24 @@ const choose = (wanted) => (machine, [left, right]) => {
  */
 const testType = (type) => (machine, [value]) => giveValue(machine, makeLogic(value.type === type));
 
+const ABSENT_TYPES = ["routine", "struct", "library", "port", "event", "image", "hash", "list", "map", "typeset", "closure", "get-path"];
+
 /**
- * @uses TYPES, testType
+ * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs), TYPESETS (src/machine/spec.mjs)
+ * @usedby PREDICATES
+ */
+const testTypeset = (name) => (machine, [value]) =>
+  giveValue(machine, makeLogic(name === "any-type!" || TYPESETS[name].includes(value.type)));
+
+/**
+ * @uses TYPES, testType, ABSENT_TYPES, TYPESETS (src/machine/spec.mjs), testTypeset
  * @usedby COMPARE_NATIVES
  */
-const PREDICATES = Object.fromEntries(TYPES.map((type) => [`${type}?`, testType(type)]));
+const PREDICATES = Object.fromEntries([
+  ...TYPES.map((type) => [`${type}?`, testType(type)]),
+  ...ABSENT_TYPES.map((type) => [`${type}?`, testType(type)]),
+  ...[...Object.keys(TYPESETS), "any-type!"].map((name) => [`${name.slice(0, -1)}?`, testTypeset(name)]),
+]);
 
 /**
  * The natives that compare values and that examine types. Each entry has the name of REBOL and the function.
