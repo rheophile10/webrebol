@@ -6,8 +6,12 @@
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/bin/webrebol.mjs",
-      "args": ["print [\"The result is\" 6 * 7] 1 + 2"],
-      "env": { "WEBREBOL_DISK": "${workspaceFolder}/disk" },
+      "args": [
+        "print [\"The result is\" 6 * 7] 1 + 2"
+      ],
+      "env": {
+        "WEBREBOL_DISK": "${workspaceFolder}/disk"
+      },
       "console": "integratedTerminal"
     },
     {
@@ -16,6 +20,22 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/record.mjs",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "serve: the WebRebol page in Chrome",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/serve.mjs",
+      "env": {
+        "PORT": "8017"
+      },
+      "console": "integratedTerminal",
+      "serverReadyAction": {
+        "action": "debugWithChrome",
+        "pattern": "WebRebol page: (http://localhost:[0-9]+/browser/index.html)",
+        "uriFormat": "%s",
+        "webRoot": "${workspaceFolder}"
+      }
     }
   ]
 }

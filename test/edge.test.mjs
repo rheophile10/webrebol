@@ -4,7 +4,7 @@ import { askEdge, answerRequest } from "../src/machine/machine.mjs";
 import { runMachine } from "../src/machine/run.mjs";
 import { showResult, startSource } from "../src/session/interpret.mjs";
 import { countCrc, hashMd5 } from "../src/natives/digest.mjs";
-import { driveMachine, interpretWithEdge } from "../src/edge/drive.mjs";
+import { driveMachine, interpretWithEdge, performRequest } from "../src/edge/drive.mjs";
 import { readGolden } from "./golden.edge.mjs";
 
 const BATCHES = 100;
@@ -63,4 +63,10 @@ test("countCrc reference: the bytes of abc give 1664899", () => {
 test("hashMd5 reference: the bytes of abc give the standard digest", () => {
   const hex = hashMd5([97, 98, 99]).map((byte) => byte.toString(16).padStart(2, "0")).join("");
   assert.equal(hex, "900150983cd24fb0d6963f7d28e17f72");
+});
+
+test("performRequest kinds: the clock request gives the time and the offset of the zone", async () => {
+  const answer = await performRequest({ kind: "clock" });
+  assert.equal(typeof answer.milliseconds, "number");
+  assert.equal(typeof answer.offset, "number");
 });

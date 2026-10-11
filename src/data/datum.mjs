@@ -15,7 +15,7 @@ const CONSTRUCTS = { "#[true]": ["logic", true], "#[false]": ["logic", false], "
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 91 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, layout
+ * @usedby 93 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
  */
 export const makeDatum = (type, value) => ({ type, value });
 

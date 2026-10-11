@@ -10,7 +10,7 @@
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
  * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError, readContext
  * @changedby 19 declarations in datum, bitsets, loops, scalars, series, parts, store
- * @readby 41 declarations in call, machine, path, spec, bitsets, compare, control, digest, edit, faults, files, loops, report, scalars, series, mold, store
+ * @readby 42 declarations in call, machine, path, spec, bitsets, compare, control, digest, edit, faults, files, loops, report, scalars, series, mold, store, elements
  */
 
 /**
@@ -26,9 +26,11 @@
  * @property {string} directory - The current folder. It ends with "/".
  * @property {number} started - The time at the start of the session, in milliseconds. A file that the session writes gets this time.
  * @property {number} seed - The state of the generator of random numbers.
- * @madeby START_STORE
- * @changedby 9 declarations in store
- * @readby 17 declarations in machine, compare, digest, loops, report, series, mold, store
+ * @property {Datum[]} windows - The faces that are windows of the session.
+ * @property {boolean} dirty - A face changed, and the page did not draw it yet.
+ * @madeby BOOT_BUDGET
+ * @changedby 11 declarations in store, windows
+ * @readby 19 declarations in machine, compare, digest, loops, report, series, mold, store, elements, windows
  */
 
 /**

@@ -40,9 +40,19 @@ const readClock = async () => {
 
 /**
  * @uses digestBytes, readClock
- * @usedby driveMachine
+ * @usedby performRequest, driveMachine
  */
 const HANDLERS = { digest: digestBytes, clock: readClock };
+
+/**
+ * Does the work of one request of a machine that waits.
+ * @param {{ kind: string }} request
+ * @returns {Promise<*>}
+ * @standard kinds - The kinds are "digest" and "clock".
+ * @uses HANDLERS
+ * @usedby driveMachine, serveRequest
+ */
+export const performRequest = (request) => HANDLERS[request.kind](request);
 
 /**
  * Runs a machine to its end. When the machine waits, the edge does the work and the machine continues.
@@ -50,13 +60,14 @@ const HANDLERS = { digest: digestBytes, clock: readClock };
  * @param {number} batches - The budget between two requests, in groups of 1000 steps.
  * @returns {Promise<Machine>}
  * @standard answer - A machine that waits for a digest continues with the bytes of the digest.
- * @uses runMachine (src/machine/run.mjs), HANDLERS, answerRequest (src/machine/machine.mjs)
+ * @uses runMachine (src/machine/run.mjs), HANDLERS, performRequest, answerRequest (src/machine/machine.mjs)
  * @usedby interpretWithEdge
  */
 export const driveMachine = async (machine, batches) => {
   const stopped = runMachine(machine, batches);
   if (stopped.mode !== "wait") return stopped;
-  const answer = await HANDLERS[stopped.request.kind](stopped.request);
+  if (HANDLERS[stopped.request.kind] === undefined) return stopped;
+  const answer = await performRequest(stopped.request);
   return driveMachine(answerRequest(stopped, answer), batches);
 };
 

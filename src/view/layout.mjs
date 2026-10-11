@@ -1,12 +1,12 @@
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, makeRecord, makeSeries, readContext, readRest } from "../store/store.mjs";
+import { NONE, allocate, makeRecord, makeSeries, readContext, readRest, writeWord } from "../store/store.mjs";
 import { giveValue, makeLogic, makeWord } from "../machine/machine.mjs";
 import { COLORS, STYLES, measureText } from "./data.mjs";
 
 const FACE_WORDS = [
   ...["type", "offset", "size", "span", "pane", "text", "color", "image", "effect", "data", "edge", "font", "para"],
   ...["feel", "saved-area", "rate", "show?", "options", "parent-face", "old-offset", "old-size", "line-list"],
-  ...["changes", "face-flags", "action", "style"],
+  ...["changes", "face-flags", "action", "style", "css"],
 ];
 const KEYWORDS = ["across", "below", "return", "at", "pad", "space", "origin"];
 const WITH_VALUE = ["at", "pad", "space", "origin"];
@@ -35,12 +35,19 @@ const makeObject = (state, words, values) => {
 };
 
 /**
- * @uses NONE (src/store/store.mjs), makeObject
+ * @uses NONE (src/store/store.mjs), allocate (src/store/store.mjs), makeObject
  * @usedby makeFace
  */
-const makePart = (state, items, words) =>
-  // A style without this part gives none.
-  items === null ? { ...state, made: NONE } : makeObject(state, words, words.map((word, place) => items[place] ?? NONE));
+const makePart = (state, items, words) => {
+  // A style without this part gives none. The facts of a style are loader values, thus a block in them goes into the store.
+  if (items === null) return { ...state, made: NONE };
+  const addValue = (made, word, place) => {
+    const next = items[place] === undefined ? { store: made.store, value: NONE } : allocate(made.store, items[place]);
+    return { store: next.store, values: [...made.values, next.value] };
+  };
+  const made = words.reduce(addValue, { store: state.store, values: [] });
+  return makeObject({ ...state, store: made.store }, words, made.values);
+};
 
 /**
  * @uses STYLES, measureText, TEXT_PADDING
@@ -74,8 +81,8 @@ const makeFace = (state, facets) => {
 
 /**
  * @uses findSize, STYLES, makeWord (src/machine/machine.mjs), makePair, makeTuple, NONE (src/store/store.mjs),
- *   makeFace
- * @usedby readWordItem, makeLayout
+ *   makeFace, writeWord (src/store/store.mjs)
+ * @usedby readWordItem, nameFace, makeLayout
  */
 const placeFace = (state) => {
   // Put the face that waits at the position. Then move the position in the direction of the layout.
@@ -83,11 +90,13 @@ const placeFace = (state) => {
   if (pending === null) return state;
   const size = findSize(pending);
   const color = pending.color ?? STYLES[pending.style].color;
-  const fields = { type: makeWord("face"), offset: makePair(state.place), size: makePair(size), color: makeTuple(color), style: makeWord(pending.style), action: pending.action ?? NONE };
+  const fields = { type: makeWord("face"), offset: makePair(state.place), size: makePair(size), color: makeTuple(color), style: makeWord(pending.style), action: pending.action ?? NONE, css: pending.css ?? NONE };
   const made = makeFace(state, { style: pending.style, text: pending.text ?? STYLES[pending.style].text, fields });
   const extent = state.extent.map((part, axis) => Math.max(part, state.place[axis] + size[axis]));
   const place = state.across ? [state.place[0] + size[0] + state.space[0], state.place[1]] : [state.place[0], state.place[1] + size[1] + state.space[1]];
-  return { ...made, faces: [...state.faces, made.made], extent, place, line: state.across ? Math.max(state.line, size[1]) : 0, pending: null };
+  // A set-word before the style gives the face to that word.
+  const store = pending.name === undefined ? made.store : writeWord(made.store, pending.name, made.made);
+  return { ...made, store, faces: [...state.faces, made.made], extent, place, line: state.across ? Math.max(state.line, size[1]) : 0, pending: null };
 };
 
 /**
@@ -137,9 +146,14 @@ const SETTERS = {
 const readWordItem = (state, item) => {
   // A word is a command, a style, or a color.
   const name = item.value.toLowerCase();
+  // The word css is a WebRebol facet. The block after it has CSS names and values for this one face.
+  if (name === "css") return { ...state, expect: "css" };
   if (WITH_VALUE.includes(name)) return { ...placeFace(state), expect: name };
   if (KEYWORDS.includes(name)) return COMMANDS[name](placeFace(state));
-  if (STYLES[name] !== undefined) return { ...placeFace(state), pending: { style: name, text: null, size: null, width: null, color: null } };
+  if (STYLES[name] !== undefined) {
+    const placed = placeFace(state);
+    return { ...placed, name: undefined, pending: { style: name, text: null, size: null, width: null, color: null, name: placed.name } };
+  }
   return COLORS[name] === undefined || state.pending === null ? state : { ...state, pending: { ...state.pending, color: COLORS[name] } };
 };
 
@@ -156,11 +170,19 @@ const FACETS = {
 };
 
 /**
- * @uses SETTERS, readWordItem, FACETS
+ * @uses placeFace
+ * @usedby readItem
+ */
+const nameFace = (state, word) => ({ ...placeFace(state), name: word });
+
+/**
+ * @uses nameFace, SETTERS, readWordItem, FACETS
  * @usedby makeLayout
  */
 const readItem = (state, item) => {
+  if (item.type === "set-word") return nameFace(state, item);
   // A value after a command is the argument of the command. Other values are facets of the face that waits.
+  if (state.expect === "css") return { ...state, expect: null, pending: state.pending === null ? null : { ...state.pending, css: item } };
   if (state.expect !== null) return { ...SETTERS[state.expect](state, item), expect: null };
   if (item.type === "word") return readWordItem(state, item);
   const facet = FACETS[item.type];

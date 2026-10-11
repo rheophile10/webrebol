@@ -7,6 +7,7 @@ At this time, it evaluates REBOL source text with 327 of the 443 Core functions:
 
 - `node bin/webrebol.mjs 'print "hello" 1 + 2'` evaluates the source text. It shows the printed text and the molded result.
 - `WEBREBOL_DISK=./disk node bin/webrebol.mjs 'write %a.txt "hello"'` keeps the files of the session in the folder `./disk`.
+- `node bin/serve.mjs` serves the test page. Open `http://localhost:8017/browser/index.html`, write a script with `layout` and `view`, and push Run.
 - `npm test` compares WebRebol with the recorded results of REBOL 2.7.8.
 - `npm run record` runs the cases of `test/cases/` in REBOL 2.7.8 and writes `test/golden/`.
 
@@ -25,6 +26,21 @@ const printed = machine.store.output;
 const nextDisk = machine.store.disk; // The page saves this, for example with its own encrypted file system.
 ```
 
+## The look of View
+
+The View functions are REBOL code on the web word `element`. A script changes the look with the object `theme`:
+
+```
+theme/font-family: "Georgia"
+append theme/css [button [border-radius 6 background-color 20.120.60]]
+view layout [button "OK" button "Special" css [background-color 150.40.40]]
+```
+
+- `theme/tags` gives the HTML tag of each style, and `theme/colors` gives its default color.
+- `theme/css` gives CSS names and values for each style. A later entry wins.
+- The facet `css [...]` gives CSS for one face.
+- A script can replace the function `face-to-element` to make different elements.
+
 ## Limits
 
 WebRebol runs in a browser page. A browser page cannot open a socket. Thus some parts of REBOL 2 are not available.
@@ -38,7 +54,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | `random` | The numbers are random, but the same seed does not give the same numbers as REBOL 2. REBOL does not publish its algorithm. |
 | `call` | Not available. A browser page cannot start a program. |
 | `library!`, `routine!`, `struct!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
-| View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. Drawing, `view`, and events are not available at this time. The pixels will not be equal to REBOL 2, because the fonts of a browser are different. |
+| View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. `view` shows each face as a DOM element with CSS, and a click runs the action of a button. `draw`, `effect`, timers and keyboard events are not available at this time. The pixels are not equal to REBOL 2, because a browser draws the elements and the fonts. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
 | `parse` with a loop that does not move | REBOL 2 does not end if a `some` or `any` rule matches and does not move the position. WebRebol stops the loop. |
 | `checksum` with MD5 or with a key | REBOL 2.7.8 for 64-bit Linux gives wrong and changing MD5 results for 8 or more bytes. WebRebol gives the standard MD5 (RFC 1321) and the standard HMAC. |
@@ -61,13 +77,13 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`scanTokens`](src/data/tokens.mjs#L63) — Divides a source text into its lexical parts, without the spaces and the comments.
 - [`readToken`](src/data/datum.mjs#L279) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L85) — Makes the block of REBOL values that a source text shows.
-- [`allocate`](src/store/store.mjs#L115) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L209) — Makes a machine that is ready to evaluate a block.
-- [`runMachine`](src/machine/run.mjs#L59) — Does steps until the evaluation is done or the budget is used.
+- [`allocate`](src/store/store.mjs#L117) — Moves a loaded value into a store.
+- [`makeMachine`](src/machine/machine.mjs#L210) — Makes a machine that is ready to evaluate a block.
+- [`runMachine`](src/machine/run.mjs#L60) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.
 - [`startCall`](src/machine/call.mjs#L175) — Starts the call of a function.
-- [`interpretSource`](src/session/interpret.mjs#L44) — Evaluates a REBOL source text in a new session, without an edge.
-- [`showResult`](src/session/interpret.mjs#L54) — Makes the text that shows the end of an evaluation: the molded result, or the error.
+- [`interpretSource`](src/session/interpret.mjs#L45) — Evaluates a REBOL source text in a new session, without an edge.
+- [`showResult`](src/session/interpret.mjs#L56) — Makes the text that shows the end of an evaluation: the molded result, or the error.
 - [`moldValue`](src/store/mold.mjs#L223) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

@@ -22,7 +22,8 @@ const EMPTY_BLOCK = allocate(START_STORE, { type: "block", value: [] });
  * @standard syntax - A source text that is not valid REBOL gives a machine that throws the error of the loader.
  * @uses loadSource (src/data/load.mjs), failSyntax (src/natives/control.mjs), makeMachine (src/machine/machine.mjs),
  *   EMPTY_BLOCK, allocate (src/store/store.mjs), START_STORE
- * @usedby interpretWithEdge (src/edge/drive.mjs), interpretSource, makeScript (test/disk.test.mjs)
+ * @usedby interpretWithEdge (src/edge/drive.mjs), start (src/edge/page.mjs), interpretSource,
+ *   makeScript (test/disk.test.mjs)
  */
 export const startSource = (source, session = {}) => {
   const loaded = loadSource(source);
@@ -39,7 +40,7 @@ export const startSource = (source, session = {}) => {
  * @standard reference - The result is the result that `do` of REBOL 2.7.8 gives.
  * @standard syntax - A source text that is not valid REBOL gives a machine with the error of the loader.
  * @uses runMachine (src/machine/run.mjs), startSource
- * @usedby showRun (test/do.test.mjs)
+ * @usedby showRun (test/do.test.mjs), run (test/view.test.mjs)
  */
 export const interpretSource = (source, batches) => runMachine(startSource(source), batches);
 
@@ -49,7 +50,8 @@ export const interpretSource = (source, batches) => runMachine(startSource(sourc
  * @returns {string}
  * @standard error - An error shows as "!", its type, its id, and its three molded fields.
  * @uses findError (src/natives/report.mjs), moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
- * @usedby showEnd (bin/webrebol.mjs), showRun (test/do.test.mjs), showRun (test/edge.test.mjs)
+ * @usedby showEnd (bin/webrebol.mjs), showEnd (src/edge/page.mjs), showRun (test/do.test.mjs),
+ *   showRun (test/edge.test.mjs)
  */
 export const showResult = (machine) => {
   if (machine.mode !== "done") return machine.mode === "wait" ? "! wait" : "! budget";

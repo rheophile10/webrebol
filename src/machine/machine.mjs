@@ -65,7 +65,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 117 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, layout
+ * @usedby 123 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -121,7 +121,7 @@ export const stopThrown = (kind) => (machine, frame) => {
  * @param {{ kind: string, resume: Function }} request - The work for the edge, and the function that continues with the answer.
  * @returns {Machine}
  * @standard wait - The mode of the machine is "wait".
- * @usedby readClock (src/natives/clock.mjs), askDigest (src/natives/digest.mjs)
+ * @usedby readClock (src/natives/clock.mjs), askDigest (src/natives/digest.mjs), openWindow (src/view/windows.mjs)
  */
 export const askEdge = (machine, request) => ({ ...machine, mode: "wait", request });
 
@@ -131,7 +131,7 @@ export const askEdge = (machine, request) => ({ ...machine, mode: "wait", reques
  * @param {*} answer
  * @returns {Machine}
  * @standard resume - The function of the request gets the machine and the answer.
- * @usedby driveMachine (src/edge/drive.mjs)
+ * @usedby driveMachine (src/edge/drive.mjs), serveRequest (src/edge/page.mjs)
  */
 export const answerRequest = (machine, answer) => machine.request.resume({ ...machine, mode: "give", request: null }, answer);
 
@@ -203,7 +203,8 @@ export const startBlock = (machine, block) => ({
  * @param {Datum} block
  * @returns {Machine}
  * @uses startBlock, UNSET (src/store/store.mjs)
- * @usedby matchParen (src/natives/parse.mjs), startSource (src/session/interpret.mjs),
+ * @usedby matchParen (src/natives/parse.mjs), bootStore (src/session/globals.mjs),
+ *   startSource (src/session/interpret.mjs), renderWindows (src/view/windows.mjs), runAction (src/view/windows.mjs),
  *   makeReady (test/machine.test.mjs)
  */
 export const makeMachine = (store, block) =>

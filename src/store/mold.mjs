@@ -254,7 +254,7 @@ const FORMERS = {
  * @returns {string}
  * @standard reference - The text is the text that `form` of REBOL 2.7.8 gives.
  * @uses isList, readRest, FORMERS, moldValue
- * @usedby 16 declarations in convert, encode, files, items, parse, random, report, search, series, text
+ * @usedby 19 declarations in convert, encode, files, items, parse, random, report, search, series, text, elements
  */
 export const formValue = (store, value) => {
   // The items of a block are formed and joined, without brackets.

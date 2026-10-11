@@ -30,6 +30,13 @@ import { FILE_NATIVES, doFile, loadFile } from "../natives/files.mjs";
 import { RANDOM_NATIVES } from "../natives/random.mjs";
 import { COLORS, VIEW_SPECS } from "../view/data.mjs";
 import { VIEW_NATIVES } from "../view/layout.mjs";
+import { WEB_NATIVES, WEB_SPECS } from "../view/elements.mjs";
+import { WINDOW_NATIVES } from "../view/windows.mjs";
+import { GRID_NATIVES, GRID_SPECS } from "../view/grid.mjs";
+import { VIEW_BOOT } from "../view/boot.mjs";
+import { allocate } from "../store/store.mjs";
+import { makeMachine } from "../machine/machine.mjs";
+import { runMachine } from "../machine/run.mjs";
 
 /**
  * @uses MATH_NATIVES (src/natives/math.mjs), COMPARE_NATIVES (src/natives/compare.mjs),
@@ -43,7 +50,9 @@ import { VIEW_NATIVES } from "../view/layout.mjs";
  *   PARSE_NATIVES (src/natives/parse.mjs), ITEM_NATIVES (src/natives/items.mjs),
  *   WORD_NATIVES (src/natives/words.mjs), ENCODE_NATIVES (src/natives/encode.mjs),
  *   DIGEST_NATIVES (src/natives/digest.mjs), CLOCK_NATIVES (src/natives/clock.mjs),
- *   FILE_NATIVES (src/natives/files.mjs), RANDOM_NATIVES (src/natives/random.mjs), VIEW_NATIVES (src/view/layout.mjs)
+ *   FILE_NATIVES (src/natives/files.mjs), RANDOM_NATIVES (src/natives/random.mjs),
+ *   VIEW_NATIVES (src/view/layout.mjs), WEB_NATIVES (src/view/elements.mjs), WINDOW_NATIVES (src/view/windows.mjs),
+ *   GRID_NATIVES (src/view/grid.mjs)
  * @usedby OVERRIDES, findAny, makeFunction, GLOBALS
  */
 const NATIVES = {
@@ -69,6 +78,9 @@ const NATIVES = {
   ...FILE_NATIVES,
   ...RANDOM_NATIVES,
   ...VIEW_NATIVES,
+  ...WEB_NATIVES,
+  ...WINDOW_NATIVES,
+  ...GRID_NATIVES,
   "q": WORD_NATIVES.quit,
 };
 
@@ -127,13 +139,14 @@ const CONSTANTS = { true: makeLogic(true), false: makeLogic(false), none: NONE }
 const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.value.map((name) => name.value) } : item);
 
 /**
- * @uses SPECS (src/natives/specs.mjs), VIEW_SPECS (src/view/data.mjs), parseSpec (src/machine/spec.mjs),
- *   loadSource (src/data/load.mjs), readSpecItem, makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
+ * @uses SPECS (src/natives/specs.mjs), VIEW_SPECS (src/view/data.mjs), WEB_SPECS (src/view/elements.mjs),
+ *   GRID_SPECS (src/view/grid.mjs), parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), readSpecItem,
+ *   makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
  * @usedby GLOBALS
  */
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
-  const facts = SPECS[sign] ?? VIEW_SPECS[sign];
+  const facts = SPECS[sign] ?? VIEW_SPECS[sign] ?? WEB_SPECS[sign] ?? GRID_SPECS[sign];
   const spec = parseSpec(loadSource(facts[1]).value.map(readSpecItem));
   // REBOL has three types for its own functions. The type comes from REBOL.
   return makeDatum(type ?? facts[0], { ...spec, native: OVERRIDES[name] ?? NATIVES[name] });
@@ -155,7 +168,22 @@ const GLOBALS = Object.fromEntries([
 /**
  * The store at the start of a session. Its base has the natives, the operators, the constants and the datatypes.
  * @type {Store}
- * @uses EMPTY_STORE (src/store/store.mjs), GLOBALS
+ */
+const BOOT_BUDGET = 1000;
+
+/**
+ * @uses allocate (src/store/store.mjs), loadSource (src/data/load.mjs), VIEW_BOOT (src/view/boot.mjs),
+ *   runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), BOOT_BUDGET
+ * @usedby START_STORE
+ */
+const bootStore = (store) => {
+  // Evaluate the View mezzanines one time. All sessions share the store that this gives.
+  const made = allocate(store, loadSource(VIEW_BOOT));
+  return runMachine(makeMachine(made.store, made.value), BOOT_BUDGET).store;
+};
+
+/**
+ * @uses bootStore, EMPTY_STORE (src/store/store.mjs), GLOBALS
  * @usedby EMPTY_BLOCK, startSource, makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
  */
-export const START_STORE = { ...EMPTY_STORE, base: GLOBALS };
+export const START_STORE = bootStore({ ...EMPTY_STORE, base: GLOBALS });
