@@ -1,5 +1,5 @@
 import { makeDatum } from "../data/datum.mjs";
-import { GLOBAL, NONE, UNSET, bindCopy, bindInPlace, isList, isSeries, makeContext, makeKey, makeSeries, readRest, readWord, writeContext, writeWord } from "../store/store.mjs";
+import { bindCopy, bindInPlace, GLOBAL, isList, isSeries, makeContext, makeKey, makeSeries, NONE, readContext, readRest, readWord, UNSET, writeContext, writeWord } from "../store/store.mjs";
 import { CONVERT_NATIVES } from "./convert.mjs";
 import { makeError } from "./faults.mjs";
 import { failMachine, giveValue, makeLogic, popFrame, pushFrame, startBlock } from "../machine/machine.mjs";
@@ -31,7 +31,7 @@ const copyValue = (store, value, context) => {
 };
 
 /**
- * @uses copyValue
+ * @uses copyValue, readContext (src/store/store.mjs)
  * @usedby makeObject
  */
 const copyParent = (store, parent, context) => {
@@ -40,7 +40,7 @@ const copyParent = (store, parent, context) => {
     const copied = copyValue(made.store, value, context);
     return { store: copied.store, values: { ...made.values, [key]: copied.value } };
   };
-  const entries = parent === null ? [] : Object.entries(store.contexts[parent.value.context]);
+  const entries = parent === null ? [] : Object.entries(readContext(store, parent.value.context));
   return entries.reduce(copyEntry, { store, values: {} });
 };
 
@@ -104,11 +104,12 @@ const makeValue = (machine, [type, spec]) => {
 };
 
 /**
- * @uses makeKey (src/store/store.mjs), giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs)
+ * @uses readContext (src/store/store.mjs), makeKey (src/store/store.mjs), giveValue (src/machine/machine.mjs),
+ *   NONE (src/store/store.mjs)
  * @usedby OBJECT_NATIVES
  */
 const findInObject = (machine, [object, word]) => {
-  const found = machine.store.contexts[object.value.context][makeKey(word.value)] !== undefined;
+  const found = readContext(machine.store, object.value.context)[makeKey(word.value)] !== undefined;
   return giveValue(machine, found ? { ...word, type: "word", bind: object.value.context } : NONE);
 };
 
@@ -126,13 +127,13 @@ const setWords = (machine, [target, value]) => {
 };
 
 /**
- * @uses GLOBAL (src/store/store.mjs)
+ * @uses GLOBAL (src/store/store.mjs), readContext (src/store/store.mjs)
  * @usedby bindBlock
  */
 const findContext = (store, target) => {
   // All words can go to the global context. A different context accepts only its words.
   const id = target.type === "object" ? target.value.context : target.bind;
-  return { id, keys: id === GLOBAL ? null : Object.keys(store.contexts[id]).filter((key) => key.startsWith("$")) };
+  return { id, keys: id === GLOBAL ? null : Object.keys(readContext(store, id)).filter((key) => key.startsWith("$")) };
 };
 
 /**

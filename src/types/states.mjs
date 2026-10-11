@@ -8,7 +8,7 @@
  * @property {number | string | boolean | null | number[] | Datum[] | object} value - The data of the value. A time is in nanoseconds. A series in a store has its number and its index.
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
- * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError
+ * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError, readContext
  * @changedby 19 declarations in datum, bitsets, loops, scalars, series, parts, store
  * @readby 41 declarations in call, machine, path, spec, bitsets, compare, control, digest, edit, faults, files, loops, report, scalars, series, mold, store
  */
@@ -16,8 +16,9 @@
 /**
  * A Store is a state that holds the series, the contexts and the output of one REBOL session.
  * @typedef {object} Store
- * @property {Object<number, string | number[] | Datum[]>} series - The content of each series, by its number.
- * @property {Object<number, Object<string, Datum>>} contexts - The values of the words of each context, by its number.
+ * @property {object} series - The table of the content of each series, by its number.
+ * @property {object} contexts - The table of the values of the words of each context, by its number.
+ * @property {Object<string, Datum>} base - The words of REBOL: the functions, the constants and the datatypes. A session does not change this table.
  * @property {number} next - The number that the next series or context gets.
  * @property {string} output - The text that the session printed.
  * @property {Object<string, object>} disk - The files and the folders of the session, by their full path.
@@ -26,7 +27,7 @@
  * @property {number} seed - The state of the generator of random numbers.
  * @madeby START_STORE
  * @changedby 9 declarations in store
- * @readby 16 declarations in machine, compare, digest, loops, report, series, mold, store
+ * @readby 17 declarations in machine, compare, digest, loops, report, series, mold, store
  */
 
 /**

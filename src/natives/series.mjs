@@ -1,6 +1,6 @@
 /** @import { Datum, Store, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, isList, isSeries, isText, makeSeries, readAll, readRest, writeAll } from "../store/store.mjs";
+import { isList, isSeries, isText, makeSeries, NONE, readAll, readContext, readRest, writeAll } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
 import { readField } from "../store/parts.mjs";
 import { failMachine, giveValue, makeLogic, makeWord } from "../machine/machine.mjs";
@@ -98,14 +98,14 @@ export const giveNew = (machine, type, content) => {
 };
 
 /**
- * @uses makeWord (src/machine/machine.mjs), failMachine (src/machine/machine.mjs), makeSeries (src/store/store.mjs),
- *   giveValue (src/machine/machine.mjs)
+ * @uses readContext (src/store/store.mjs), makeWord (src/machine/machine.mjs), failMachine (src/machine/machine.mjs),
+ *   makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
  * @usedby takeItem
  */
 const takeFromObject = (machine, object, offset) => {
   // The first part of an object is the block of its words. The second part is the block of their values.
   const words = ["self", ...object.value.words];
-  const values = machine.store.contexts[object.value.context];
+  const values = readContext(machine.store, object.value.context);
   const parts = [words.map(makeWord), words.map((word) => values[`$${word.toLowerCase()}`])];
   if (parts[offset] === undefined) return failMachine(machine, "script expect-arg");
   const made = makeSeries(machine.store, "block", parts[offset]);

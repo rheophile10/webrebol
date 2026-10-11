@@ -2,6 +2,7 @@
 /** @import { Frame } from "../types/processes.mjs" */
 import { makeDatum } from "../data/datum.mjs";
 import { UNSET } from "../store/store.mjs";
+import { readEntry } from "../store/table.mjs";
 
 const FUNCTION_TYPES = ["native", "action", "op", "function"];
 
@@ -138,17 +139,19 @@ export const answerRequest = (machine, answer) => machine.request.resume({ ...ma
  * Finds if the cursor is at the end of its block.
  * @param {Machine} machine
  * @returns {boolean}
+ * @uses readEntry (src/store/table.mjs)
  * @usedby 11 declarations in call, evaluate, machine, control, flow
  */
-export const atEnd = (machine) => machine.cursor.index >= machine.store.series[machine.cursor.id].length;
+export const atEnd = (machine) => machine.cursor.index >= readEntry(machine.store.series, machine.cursor.id).length;
 
 /**
  * Gets the value at the cursor.
  * @param {Machine} machine
  * @returns {Datum}
+ * @uses readEntry (src/store/table.mjs)
  * @usedby takeLiteral, takeFetched, readOperator, evaluateOperand, stepCase (src/natives/flow.mjs)
  */
-export const readItem = (machine) => machine.store.series[machine.cursor.id][machine.cursor.index];
+export const readItem = (machine) => readEntry(machine.store.series, machine.cursor.id)[machine.cursor.index];
 
 /**
  * Moves the cursor to the next value.

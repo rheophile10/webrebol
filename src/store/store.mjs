@@ -1,6 +1,7 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
 import { EMPTY_DISK } from "./disk.mjs";
+import { EMPTY_TABLE, readEntry, writeEntry } from "./table.mjs";
 
 const LIST_TYPES = ["block", "paren", "path", "set-path", "lit-path"];
 const TEXT_TYPES = ["string", "file", "email", "url", "tag", "issue"];
@@ -18,12 +19,13 @@ export const UNSET = makeDatum("unset", null);
  */
 export const NONE = makeDatum("none", null);
 /**
- * @uses GLOBAL, EMPTY_DISK
+ * @uses EMPTY_TABLE, writeEntry, GLOBAL, EMPTY_DISK
  * @usedby START_STORE (src/natives/globals.mjs), moldSource (test/load.test.mjs)
  */
 export const EMPTY_STORE = {
-  series: {},
-  contexts: { [GLOBAL]: {} },
+  series: EMPTY_TABLE,
+  contexts: writeEntry(EMPTY_TABLE, GLOBAL, {}),
+  base: {},
   next: 1,
   output: "",
   disk: EMPTY_DISK,
@@ -73,11 +75,11 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string} type - The REBOL type of the series.
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
- * @uses makeDatum (src/data/datum.mjs)
+ * @uses writeEntry, makeDatum (src/data/datum.mjs)
  * @usedby 33 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store
  */
 export const makeSeries = (store, type, content) => ({
-  store: { ...store, series: { ...store.series, [store.next]: content }, next: store.next + 1 },
+  store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
   value: makeDatum(type, { id: store.next, index: 0 }),
 });
 
@@ -114,18 +116,20 @@ export const allocate = (store, datum) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
+ * @uses readEntry
  * @usedby 79 declarations in path, bitsets, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store
  */
-export const readRest = (store, series) => store.series[series.value.id].slice(series.value.index);
+export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
 
 /**
  * Gets all the items of a series, also the items before its position.
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
+ * @uses readEntry
  * @usedby 30 declarations in path, edit, encode, items, loops, parse, search, series, strings, text, store
  */
-export const readAll = (store, series) => store.series[series.value.id];
+export const readAll = (store, series) => readEntry(store.series, series.value.id);
 
 /**
  * Makes a store in which a series has new content.
@@ -133,13 +137,14 @@ export const readAll = (store, series) => store.series[series.value.id];
  * @param {Datum} series
  * @param {string | number[] | Datum[]} content
  * @returns {Store}
+ * @uses writeEntry
  * @usedby assignInSeries (src/machine/path.mjs), replaceItems (src/natives/edit.mjs),
  *   clearRest (src/natives/edit.mjs), changeText (src/natives/encode.mjs), insertContent (src/natives/series.mjs),
  *   writeRest (src/natives/strings.mjs), bindInPlace
  */
 export const writeAll = (store, series, content) => ({
   ...store,
-  series: { ...store.series, [series.value.id]: content },
+  series: writeEntry(store.series, series.value.id, content),
 });
 
 /**
@@ -148,10 +153,25 @@ export const writeAll = (store, series, content) => ({
  * @param {Datum} word
  * @returns {Datum}
  * @standard unset - A word without a value gives the unset value.
- * @uses makeKey, UNSET
+ * @uses makeKey, readEntry, GLOBAL, UNSET
  * @usedby 16 declarations in call, evaluate, path, items, loops, objects, parse, words
  */
-export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(word.value)] ?? UNSET;
+export const readWord = (store, word) => {
+  // The global context has the words that the session set. The base has the words of REBOL.
+  const key = makeKey(word.value);
+  const value = word.bind === undefined ? undefined : readEntry(store.contexts, word.bind)?.[key];
+  return value ?? (word.bind === GLOBAL ? store.base[key] : undefined) ?? UNSET;
+};
+
+/**
+ * Gets the values of the words of a context, by key. For the global context, it gives only the words that the session set.
+ * @param {Store} store
+ * @param {number} context - The number of the context.
+ * @returns {Object<string, Datum> | undefined}
+ * @uses readEntry
+ * @usedby 12 declarations in call, path, objects, series, words, mold
+ */
+export const readContext = (store, context) => readEntry(store.contexts, context);
 
 /**
  * Makes a store in which a word has a new value.
@@ -159,12 +179,12 @@ export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(wor
  * @param {Datum} word
  * @param {Datum} value
  * @returns {Store}
- * @uses makeKey
+ * @uses writeEntry, readEntry, makeKey
  * @usedby 11 declarations in evaluate, path, items, loops, objects, parse, words
  */
 export const writeWord = (store, word, value) => ({
   ...store,
-  contexts: { ...store.contexts, [word.bind]: { ...store.contexts[word.bind], [makeKey(word.value)]: value } },
+  contexts: writeEntry(store.contexts, word.bind, { ...readEntry(store.contexts, word.bind), [makeKey(word.value)]: value }),
 });
 
 /**
@@ -173,13 +193,13 @@ export const writeWord = (store, word, value) => ({
  * @param {number} context - The number of the context.
  * @param {Object<string, Datum>} values
  * @returns {Store}
+ * @uses writeEntry
  * @usedby restoreBody (src/machine/call.mjs), invokeBody (src/machine/call.mjs),
- *   assignInObject (src/machine/path.mjs), START_STORE (src/natives/globals.mjs),
- *   makeObject (src/natives/objects.mjs), makeContext
+ *   assignInObject (src/machine/path.mjs), makeObject (src/natives/objects.mjs), makeContext
  */
 export const writeContext = (store, context, values) => ({
   ...store,
-  contexts: { ...store.contexts, [context]: values },
+  contexts: writeEntry(store.contexts, context, values),
 });
 
 /**

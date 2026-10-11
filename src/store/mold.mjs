@@ -1,6 +1,6 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { escapeBraces, escapeControls, escapeInLines } from "../data/escape.mjs";
-import { isList, readRest } from "./store.mjs";
+import { isList, readContext, readRest } from "./store.mjs";
 import { MONTHS, readDays } from "../data/dates.mjs";
 
 const DIGITS = 15;
@@ -155,12 +155,12 @@ const moldName = (store, word) => word.value;
 const moldRaw = (store, text) => readRest(store, text);
 
 /**
- * @uses INDENT, moldValue
+ * @uses readContext, INDENT, moldValue
  * @usedby MOLDERS
  */
 const moldObject = (store, object, depth) => {
   // Each word is on its own line. An inner object has a larger indent.
-  const values = store.contexts[object.value.context];
+  const values = readContext(store, object.value.context);
   const moldField = (name) =>
     `${INDENT.repeat(depth + 1)}${name}: ${moldValue(store, values[`$${name.toLowerCase()}`], depth + 1)}`;
   return ["make object! [", ...object.value.words.map(moldField), `${INDENT.repeat(depth)}]`].join("\n");

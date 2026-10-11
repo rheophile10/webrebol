@@ -1,7 +1,7 @@
 /** @import { Store } from "../types/states.mjs" */
 import { loadSource } from "../data/load.mjs";
 import { makeDatum } from "../data/datum.mjs";
-import { EMPTY_STORE, GLOBAL, NONE, makeKey, writeContext } from "../store/store.mjs";
+import { EMPTY_STORE, NONE, makeKey } from "../store/store.mjs";
 import { makeLogic } from "../machine/machine.mjs";
 import { parseSpec } from "../machine/spec.mjs";
 import { MATH_NATIVES } from "./math.mjs";
@@ -140,9 +140,9 @@ const GLOBALS = Object.fromEntries([
 ]);
 
 /**
- * The store at the start of a session. Its global context has the natives, the operators and the constants.
+ * The store at the start of a session. Its base has the natives, the operators, the constants and the datatypes.
  * @type {Store}
- * @uses writeContext (src/store/store.mjs), EMPTY_STORE (src/store/store.mjs), GLOBAL (src/store/store.mjs), GLOBALS
+ * @uses EMPTY_STORE (src/store/store.mjs), GLOBALS
  * @usedby EMPTY_BLOCK, startSource, makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
  */
-export const START_STORE = writeContext(EMPTY_STORE, GLOBAL, GLOBALS);
+export const START_STORE = { ...EMPTY_STORE, base: GLOBALS };

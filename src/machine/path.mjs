@@ -1,6 +1,6 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, isList, isText, makeKey, readAll, readRest, readWord, writeAll, writeContext, writeWord } from "../store/store.mjs";
+import { isList, isText, makeKey, NONE, readAll, readContext, readRest, readWord, writeAll, writeContext, writeWord } from "../store/store.mjs";
 import { readField, writeField } from "../store/parts.mjs";
 import { failMachine, giveValue, isFunction, popFrame, pushFrame } from "./machine.mjs";
 import { startCall } from "./call.mjs";
@@ -39,13 +39,14 @@ const selectInText = (text, part) => {
 };
 
 /**
- * @uses makeKey (src/store/store.mjs), isList (src/store/store.mjs), selectInList, readRest (src/store/store.mjs),
- *   isText (src/store/store.mjs), selectInText, readField (src/store/parts.mjs), NONE (src/store/store.mjs)
+ * @uses readContext (src/store/store.mjs), makeKey (src/store/store.mjs), isList (src/store/store.mjs), selectInList,
+ *   readRest (src/store/store.mjs), isText (src/store/store.mjs), selectInText, readField (src/store/parts.mjs),
+ *   NONE (src/store/store.mjs)
  * @usedby walkPart, stepSetPath
  */
 const selectPart = (store, value, part) => {
   // Give null if the value has no part with this name.
-  if (value.type === "object") return store.contexts[value.value.context][makeKey(String(part.value))] ?? null;
+  if (value.type === "object") return readContext(store, value.value.context)[makeKey(String(part.value))] ?? null;
   if (isList(value)) return selectInList(readRest(store, value), part);
   if (isText(value)) return selectInText(readRest(store, value), part);
   // A value that is not a series can have fields. A position without a field gives none.
@@ -91,11 +92,11 @@ export const evaluatePath = (machine, path) => {
 const replaceAt = (all, place, item) => all.slice(0, place).concat(item, all.slice(place + 1));
 
 /**
- * @uses makeKey (src/store/store.mjs), writeContext (src/store/store.mjs)
+ * @uses readContext (src/store/store.mjs), makeKey (src/store/store.mjs), writeContext (src/store/store.mjs)
  * @usedby assignPart
  */
 const assignInObject = (store, object, change) => {
-  const values = store.contexts[object.value.context];
+  const values = readContext(store, object.value.context);
   const key = makeKey(String(change.part.value));
   if (values[key] === undefined) return { error: "script invalid-path", args: [change.part] };
   return { store: writeContext(store, object.value.context, { ...values, [key]: change.value }) };

@@ -1,5 +1,5 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
-import { NONE, UNSET, makeSeries, readWord, writeContext } from "../store/store.mjs";
+import { makeSeries, NONE, readContext, readWord, UNSET, writeContext } from "../store/store.mjs";
 import { advance, atEnd, failMachine, giveValue, makeLogic, makeWord, popFrame, pushFrame, readItem, replaceTop, throwUnused } from "./machine.mjs";
 import { acceptsType } from "./spec.mjs";
 
@@ -9,12 +9,12 @@ import { acceptsType } from "./spec.mjs";
 const findParams = (callee, name) => callee.value.refinements.find((refinement) => refinement.key === name)?.params;
 
 /**
- * @uses writeContext (src/store/store.mjs)
+ * @uses readContext (src/store/store.mjs), writeContext (src/store/store.mjs)
  * @usedby stepBody, unwindBody
  */
 const restoreBody = (machine, frame) => {
   // An inner call gives the old values back to the outer call. After the outer call, the words keep their values.
-  const values = frame.saved.depth > 0 ? frame.saved : { ...machine.store.contexts[frame.context], depth: 0 };
+  const values = frame.saved.depth > 0 ? frame.saved : { ...readContext(machine.store, frame.context), depth: 0 };
   return { ...machine, cursor: frame.cursor, store: writeContext(machine.store, frame.context, values) };
 };
 
@@ -55,15 +55,15 @@ const makeArguments = (frame) => {
 const countDepth = (saved) => (saved.depth ?? 0) + 1;
 
 /**
- * @uses stepBody, unwindBody, makeArguments, countDepth, writeContext (src/store/store.mjs), pushFrame,
- *   UNSET (src/store/store.mjs)
+ * @uses stepBody, unwindBody, readContext (src/store/store.mjs), makeArguments, countDepth,
+ *   writeContext (src/store/store.mjs), pushFrame, UNSET (src/store/store.mjs)
  * @usedby invoke
  */
 const invokeBody = (machine, frame) => {
   // Keep the old values of the words, because a function can call itself.
   const callee = frame.callee.value;
   const body = { step: stepBody, unwind: unwindBody, context: callee.context, cursor: machine.cursor };
-  const saved = { depth: 0, ...machine.store.contexts[callee.context] };
+  const saved = { depth: 0, ...readContext(machine.store, callee.context) };
   const values = { ...makeArguments(frame), depth: countDepth(saved) };
   const store = writeContext(machine.store, callee.context, values);
   return { ...pushFrame(machine, { ...body, saved }), store, cursor: { ...callee.body.value }, value: UNSET, mode: "give" };

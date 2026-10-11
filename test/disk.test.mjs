@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { makeTestFolder, readTestFile, removeTestFolder } from "./folder.edge.mjs";
 import { EMPTY_DISK, listFolder, makeFolder, removeEntry, renameEntry, resolvePath, writeFile } from "../src/store/disk.mjs";
+import { EMPTY_TABLE, readEntry, writeEntry } from "../src/store/table.mjs";
 import { readFolder, writeFolder } from "../src/edge/folder.mjs";
 import { doFile, loadFile } from "../src/natives/files.mjs";
 import { nextRandom } from "../src/natives/random.mjs";
@@ -88,4 +89,18 @@ test("nextRandom range: the value is in the range from 0 to 1, and the same seed
   assert.ok(first.value >= 0 && first.value < 1);
   assert.deepEqual(nextRandom(12345), first);
   assert.notEqual(nextRandom(first.seed).value, first.value);
+});
+
+test("readEntry absent: a key without a value gives undefined", () => {
+  assert.equal(readEntry(EMPTY_TABLE, 5), undefined);
+  assert.equal(readEntry(EMPTY_TABLE, 100000), undefined);
+});
+
+test("writeEntry shared: the old table does not change, and a large key adds levels", () => {
+  const small = writeEntry(EMPTY_TABLE, 5, "five");
+  const large = writeEntry(small, 100000, "large");
+  assert.equal(readEntry(small, 5), "five");
+  assert.equal(readEntry(small, 100000), undefined);
+  assert.equal(readEntry(large, 5), "five");
+  assert.equal(readEntry(large, 100000), "large");
 });

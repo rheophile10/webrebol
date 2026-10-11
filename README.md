@@ -10,6 +10,21 @@ At this time, it evaluates REBOL source text with 327 of the 443 Core functions:
 - `npm test` compares WebRebol with the recorded results of REBOL 2.7.8.
 - `npm run record` runs the cases of `test/cases/` in REBOL 2.7.8 and writes `test/golden/`.
 
+## Use in a page
+
+WebRebol has no code for IndexedDB. The host page gives the disk to a session and gets it back at the end.
+
+```js
+import { interpretWithEdge } from "./src/edge/drive.mjs";
+import { showResult } from "./src/natives/interpret.mjs";
+
+// `disk` is a table of full paths. An entry is { kind: "folder" } or { kind: "file", bytes, modified }.
+const machine = await interpretWithEdge('write %note.txt "hello"', 5000, disk);
+const result = showResult(machine);
+const printed = machine.store.output;
+const nextDisk = machine.store.disk; // The page saves this, for example with its own encrypted file system.
+```
+
 ## Limits
 
 WebRebol runs in a browser page. A browser page cannot open a socket. Thus some parts of REBOL 2 are not available.
@@ -19,7 +34,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | Email: `send`, the `smtp`, `pop` and `esmtp` schemes | Not available, and not planned. Email needs an external service with secret keys, and this is a security risk. |
 | `tcp`, `udp`, `dns`, `ftp`, `nntp`, `finger`, `whois`, `daytime` schemes | Not available, and not planned. A browser page and its workers cannot open a socket. A relay server can, but it is a security risk. |
 | `http` and `https` schemes | Not available at this time. Planned with `fetch`. The CORS rules of the browser will apply. |
-| Files: `read`, `write`, `load`, `save`, `do`, the directory functions | Available. The files are on a disk in memory. In Node.js, the environment variable `WEBREBOL_DISK` names a folder that keeps the disk. In a browser, IndexedDB will keep the disk (not done). A script cannot read other files of the computer. |
+| Files: `read`, `write`, `load`, `save`, `do`, the directory functions | Available. The files are on a disk in memory. In Node.js, the environment variable `WEBREBOL_DISK` names a folder that keeps the disk. In a browser, the host page keeps the disk: see "Use in a page". A script cannot read other files of the computer. |
 | `random` | The numbers are random, but the same seed does not give the same numbers as REBOL 2. REBOL does not publish its algorithm. |
 | `call` | Not available. A browser page cannot start a program. |
 | `library!`, `routine!`, `struct!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
@@ -46,8 +61,8 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`scanTokens`](src/data/tokens.mjs#L56) — Divides a source text into its lexical parts, without the spaces and the comments.
 - [`readToken`](src/data/datum.mjs#L279) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L83) — Makes the block of REBOL values that a source text shows.
-- [`allocate`](src/store/store.mjs#L102) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L206) — Makes a machine that is ready to evaluate a block.
+- [`allocate`](src/store/store.mjs#L104) — Moves a loaded value into a store.
+- [`makeMachine`](src/machine/machine.mjs#L209) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L59) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.

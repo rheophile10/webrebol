@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadSource } from "../src/data/load.mjs";
-import { EMPTY_STORE, UNSET, allocate, bindCopy, bindInPlace, makeRecord, readRest, readWord } from "../src/store/store.mjs";
+import { EMPTY_STORE, UNSET, allocate, bindCopy, bindInPlace, makeRecord, readContext, readRest, readWord, writeWord } from "../src/store/store.mjs";
 import { formValue } from "../src/store/mold.mjs";
 import { makeMachine, startBlock, stopThrown, throwUnused, throwValue } from "../src/machine/machine.mjs";
 import { evaluatePath, startSetPath } from "../src/machine/path.mjs";
@@ -35,7 +35,7 @@ const makeReady = (source) => {
 /**
  * @uses START_STORE (src/natives/globals.mjs)
  */
-const readGlobal = (name) => START_STORE.contexts[0][`$${name}`];
+const readGlobal = (name) => START_STORE.base[`$${name}`];
 
 test("readWord unset: a word that no code set gives the unset value", () => {
   assert.deepEqual(readWord(EMPTY_STORE, { type: "word", value: "abc", bind: 0 }), UNSET);
@@ -134,7 +134,7 @@ test("stopThrown other: a frame that stops a break lets an error continue", () =
 test("evaluatePath invalid: a word that the block does not have gives the error", () => {
   const made = allocate(START_STORE, loadSource("[abc 1] items/zzz"));
   const [block, path] = readRest(made.store, made.value);
-  const store = { ...made.store, contexts: { ...made.store.contexts, 0: { ...made.store.contexts[0], $items: block } } };
+  const store = writeWord(made.store, { type: "word", value: "items", bind: 0 }, block);
   assert.equal(evaluatePath(makeMachine(store, made.value), path).thrown.value.value, "script invalid-path");
 });
 
@@ -157,7 +157,7 @@ test("makeContent splice: a block gives its items, and with only it is one item"
 
 test("makeRecord self: the word self of the object gives the object", () => {
   const made = makeRecord(EMPTY_STORE, ["abc"], [UNSET]);
-  assert.deepEqual(made.store.contexts[made.value.value.context].$self, made.value);
+  assert.deepEqual(readContext(made.store, made.value.value.context).$self, made.value);
 });
 
 test("areSame strict: two texts with different case are not the same", () => {

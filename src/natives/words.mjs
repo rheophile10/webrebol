@@ -1,6 +1,6 @@
 import { makeDatum } from "../data/datum.mjs";
 import { loadSource } from "../data/load.mjs";
-import { GLOBAL, NONE, allocate, isList, makeKey, makeRecord, makeSeries, readRest, readWord, writeWord } from "../store/store.mjs";
+import { allocate, GLOBAL, isList, makeKey, makeRecord, makeSeries, NONE, readContext, readRest, readWord, writeWord } from "../store/store.mjs";
 import { moldValue } from "../store/mold.mjs";
 import { failMachine, giveValue, isTrue, makeLogic, makeWord, popFrame, pushFrame, startBlock, throwValue } from "../machine/machine.mjs";
 import { callFunction } from "../machine/call.mjs";
@@ -73,23 +73,23 @@ const setDefault = (machine, [word, value]) => {
 const readSpecWords = (store, callee) => readRest(store, callee.value.spec).filter((item) => WORDS.includes(item.type));
 
 /**
- * @uses makeDatum (src/data/datum.mjs), makeKey (src/store/store.mjs)
+ * @uses readContext (src/store/store.mjs), makeDatum (src/data/datum.mjs), makeKey (src/store/store.mjs)
  * @usedby REFLECTORS
  */
 const makeBody = (store, object) => {
   // The body of an object is a block of set-words and values.
-  const values = store.contexts[object.value.context];
+  const values = readContext(store, object.value.context);
   return object.value.words.flatMap((word) => [makeDatum("set-word", word), values[makeKey(word)]]);
 };
 
 /**
- * @uses makeWord (src/machine/machine.mjs), readSpecWords, makeKey (src/store/store.mjs),
- *   readRest (src/store/store.mjs), makeBody
+ * @uses makeWord (src/machine/machine.mjs), readSpecWords, readContext (src/store/store.mjs),
+ *   makeKey (src/store/store.mjs), readRest (src/store/store.mjs), makeBody
  * @usedby reflectOn, reflectValue
  */
 const REFLECTORS = {
   words: (store, value) => (value.type === "object" ? value.value.words.map(makeWord) : readSpecWords(store, value)),
-  values: (store, value) => value.value.words.map((word) => store.contexts[value.value.context][makeKey(word)]),
+  values: (store, value) => value.value.words.map((word) => readContext(store, value.value.context)[makeKey(word)]),
   spec: (store, value) => readRest(store, value.value.spec),
   body: (store, value) => (value.type === "object" ? makeBody(store, value) : readRest(store, value.value.body)),
 };
@@ -110,12 +110,13 @@ const reflectValue = (machine, [value, field]) => {
 };
 
 /**
- * @uses GLOBAL (src/store/store.mjs), giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs)
+ * @uses GLOBAL (src/store/store.mjs), readContext (src/store/store.mjs), giveValue (src/machine/machine.mjs),
+ *   NONE (src/store/store.mjs)
  * @usedby WORD_NATIVES
  */
 const findOwner = (machine, [word]) => {
   // The owner of a word is the object of its context. The global context has no object in WebRebol.
-  const owner = word.bind === GLOBAL ? undefined : machine.store.contexts[word.bind]?.$self;
+  const owner = word.bind === GLOBAL ? undefined : readContext(machine.store, word.bind)?.$self;
   return giveValue(machine, owner ?? NONE);
 };
 
