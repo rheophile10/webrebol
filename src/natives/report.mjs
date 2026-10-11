@@ -78,7 +78,7 @@ export const formatError = (store, fault) => {
  * @param {Machine} machine
  * @returns {Datum | null}
  * @standard result - An error value that is the result of the source text is also the error.
- * @usedby showEnd (bin/webrebol.mjs), showResult
+ * @usedby showEnd (bin/webrebol.mjs), showResult (src/session/interpret.mjs)
  */
 export const findError = (machine) => {
   const fault = machine.thrown?.value ?? machine.value;

@@ -15,3 +15,5 @@ The reference programs are not agent tools. They are in `reference/`:
 | REBOL View 2.7.8.4.3 (Docker image `webrebol-rebview`) | `reference/rebol-view.sh -qs <script in reference/>` |
 
 To make the Docker image again: `docker build -t webrebol-rebview reference/`.
+
+`node bin/record.mjs` needs Docker and this image, because it runs the View cases in REBOL View.

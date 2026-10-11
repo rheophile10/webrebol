@@ -6,7 +6,7 @@ import { EMPTY_TABLE, readEntry, writeEntry } from "../src/store/table.mjs";
 import { readFolder, writeFolder } from "../src/edge/folder.mjs";
 import { doFile, loadFile } from "../src/natives/files.mjs";
 import { nextRandom } from "../src/natives/random.mjs";
-import { showResult, startSource } from "../src/natives/interpret.mjs";
+import { showResult, startSource } from "../src/session/interpret.mjs";
 import { runMachine } from "../src/machine/run.mjs";
 
 const FILE = { bytes: [104, 105], modified: 0 };
@@ -14,7 +14,7 @@ const BATCHES = 100;
 
 /**
  * @uses writeFile (src/store/disk.mjs), EMPTY_DISK (src/store/disk.mjs), runMachine (src/machine/run.mjs),
- *   startSource (src/natives/interpret.mjs), BATCHES
+ *   startSource (src/session/interpret.mjs), BATCHES
  */
 const makeScript = (text) => {
   // Make a machine that has one script file on its disk, and the file value for it.

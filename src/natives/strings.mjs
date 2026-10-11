@@ -44,7 +44,7 @@ const changeCase = (change) => (machine, [series], options) => {
 /**
  * The natives that change the characters of a text. Each entry has the name of REBOL and the function.
  * @uses trimText, changeCase
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const STRING_NATIVES = {
   trim: trimText,

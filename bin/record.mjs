@@ -15,25 +15,25 @@ const LIMITS = { encoding: "latin1", timeout: 20000, maxBuffer: 16 * 1024 * 1024
 const RESULT = /^([\s\S]*)\n@@RESULT ([0-9A-F]*)\n$/;
 
 /**
- * @usedby recordCase
+ * @usedby recordCase, recordView
  */
 const readHex = (hex) => Buffer.from(hex, "hex").toString("latin1");
 
 /**
- * @usedby runCase, recordCase
+ * @usedby runCase, recordCase, recordView
  */
 const writeHex = (text) => Buffer.from(text, "latin1").toString("hex").toUpperCase();
 
 /**
  * @uses REBOL, ROOT, LIMITS
- * @usedby recordLoad, recordSpecs, recordErrors
+ * @usedby recordLoad, recordSpecs, recordErrors, recordViewSpecs
  */
 const runRebol = (script, argument) => execFileSync(REBOL, ["-qs", `${ROOT}reference/${script}`, argument], LIMITS);
 
 // The loader cases run in one session, because a load does not change the session.
 /**
  * @uses runRebol
- * @usedby RECORDERS
+ * @usedby pickRecorder
  */
 const recordLoad = (path) => runRebol("load.r", path);
 
@@ -73,7 +73,7 @@ const recordCase = (source) => {
 
 /**
  * @uses recordCase
- * @usedby RECORDERS
+ * @usedby pickRecorder
  */
 const recordDo = (path) =>
   readFileSync(path, "latin1")
@@ -82,18 +82,20 @@ const recordDo = (path) =>
     .map(recordCase)
     .join("");
 
-/**
- * @uses recordLoad, recordDo
- * @usedby recordFile, bin/record.mjs
- */
-const RECORDERS = { load: recordLoad, "do": recordDo };
+const GROUPS = ["load", "do", "view"];
 
 /**
- * @uses RECORDERS, ROOT
+ * @uses recordLoad, recordDo, recordView
+ * @usedby recordFile
+ */
+const pickRecorder = (group) => ({ load: recordLoad, "do": recordDo, view: recordView })[group];
+
+/**
+ * @uses pickRecorder, ROOT
  * @usedby recordGroup
  */
 const recordFile = (group, name) => {
-  const lines = RECORDERS[group](`${ROOT}test/cases/${group}/${name}`);
+  const lines = pickRecorder(group)(`${ROOT}test/cases/${group}/${name}`);
   writeFileSync(`${ROOT}test/golden/${group}/${name}`, lines, "latin1");
   return `${group}/${name}: ${lines.trim().split("\n").length} cases`;
 };
@@ -117,7 +119,7 @@ export const SPECS = {
 
 /**
  * @uses runRebol, ROOT, SPECS_HEAD, writeSpec
- * @usedby bin/record.mjs
+ * @usedby EXTRAS
  */
 const recordSpecs = () => {
   // REBOL writes a line end before the last bracket of one long list of types. Join such a line to its start.
@@ -145,7 +147,7 @@ export const ERROR_IDS = {
 
 /**
  * @uses runRebol, ROOT, ERRORS_HEAD, writeCategory
- * @usedby bin/record.mjs
+ * @usedby EXTRAS
  */
 const recordErrors = () => {
   const lines = runRebol("errors.r", "").trim().split("\n");
@@ -154,9 +156,75 @@ const recordErrors = () => {
 };
 
 /**
+ * @uses ROOT
+ * @usedby recordViewData, recordViewSpecs
+ */
+const VIEW = `${ROOT}reference/rebol-view.sh`;
+const VIEW_LIMITS = { encoding: "latin1", timeout: 300000, maxBuffer: 64 * 1024 * 1024 };
+const VIEW_CASE = /@@BEGIN ([0-9A-F]*)\n([\s\S]*?)@@END/g;
+
+/**
+ * @usedby recordViewData, recordViewSpecs
+ */
+const writeLines = (name, lines) =>
+  `// bin/record.mjs makes this file from REBOL View 2.7.8. Do not change it.\n\n/**\n * ${name}\n */\nexport const LINES = [\n${lines.map((line) => `  ${JSON.stringify(line)},\n`).join("")}];\n`;
+
+/**
+ * @uses VIEW, VIEW_LIMITS, ROOT, writeLines
+ * @usedby EXTRAS
+ */
+const recordViewData = () => {
+  // REBOL View runs in Docker. It writes the color words, the widths of the characters, and the facets of the styles.
+  const lines = execFileSync(VIEW, ["-qs", "viewdata.r"], VIEW_LIMITS).trim().split("\n");
+  writeFileSync(`${ROOT}src/view/viewdata.mjs`, writeLines("The colors, the font sizes and the VID styles of REBOL View 2.7.8, one fact on each line.", lines));
+  return `view data: ${lines.length} lines`;
+};
+
+/**
+ * @uses runRebol, VIEW, VIEW_LIMITS, ROOT, writeLines
+ * @usedby EXTRAS
+ */
+const recordViewSpecs = () => {
+  // Keep the functions that View has and Core does not have.
+  const core = runRebol("specs.r", "").replace(/\n\]/g, "]").trim().split("\n").map((line) => line.split(" ")[0]);
+  const all = execFileSync(VIEW, ["-qs", "specs.r"], VIEW_LIMITS).replace(/\n\]/g, "]").trim().split("\n");
+  const added = all.filter((line) => !core.includes(line.split(" ")[0]));
+  writeFileSync(`${ROOT}src/view/viewspecs.mjs`, writeLines("The name, the type and the parameters of each function that REBOL View 2.7.8 adds to Core.", added));
+  return `view specs: ${added.length} functions`;
+};
+
+const DOCKER = ["run", "--rm", "--init", "--entrypoint", "/work/view-cases.sh"];
+
+/**
+ * @uses writeHex, ROOT, DOCKER, VIEW_LIMITS, readHex, VIEW_CASE
+ * @usedby pickRecorder
+ */
+const recordView = (path) => {
+  // All the cases of a file run in one container. Each case has a new REBOL View session.
+  const sources = readFileSync(path, "latin1").split("\n").filter((line) => line !== "");
+  const folder = mkdtempSync(`${tmpdir()}/webrebol-view-`);
+  writeFileSync(`${folder}/cases.hex`, `${sources.map(writeHex).join("\n")}\n`);
+  const mounts = ["-v", `${ROOT}reference/rebol-view-278-4-3/releases/rebol-view:/rebol:ro`, "-v", `${ROOT}reference:/work:ro`, "-v", `${folder}:/cases:ro`];
+  const output = execFileSync("docker", [...DOCKER, ...mounts, "webrebol-rebview"], VIEW_LIMITS);
+  rmSync(folder, { recursive: true });
+  const readCase = (match) => {
+    const result = match[2].match(/^([\s\S]*)\n@@RESULT ([0-9A-F]*)\n$/);
+    if (result === null) throw new Error(`REBOL View gave no result for this case: ${readHex(match[1])}`);
+    return `${match[1]} ${result[2]} ${writeHex(result[1])}\n`;
+  };
+  return [...output.matchAll(VIEW_CASE)].map(readCase).join("");
+};
+
+/**
  * @uses ROOT, recordFile
  * @usedby bin/record.mjs
  */
 const recordGroup = (group) => readdirSync(`${ROOT}test/cases/${group}`).map((name) => recordFile(group, name));
 
-console.log([...Object.keys(RECORDERS).flatMap(recordGroup), recordSpecs(), recordErrors()].join("\n"));
+/**
+ * @uses recordSpecs, recordErrors, recordViewData, recordViewSpecs
+ * @usedby bin/record.mjs
+ */
+const EXTRAS = [recordSpecs, recordErrors, recordViewData, recordViewSpecs];
+
+console.log([...GROUPS.flatMap(recordGroup), ...EXTRAS.map((record) => record())].join("\n"));

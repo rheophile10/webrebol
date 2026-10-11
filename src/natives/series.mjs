@@ -48,7 +48,7 @@ export const pickItem = (store, series, offset) => {
  * @standard guard - A first argument that is not a series gives the error "script expect-arg".
  * @uses isSeries (src/store/store.mjs), OTHER_TYPES, failMachine (src/machine/machine.mjs),
  *   giveValue (src/machine/machine.mjs)
- * @usedby NATIVES, SERIES_NATIVES
+ * @usedby SERIES_NATIVES, NATIVES (src/session/globals.mjs)
  */
 export const guardSeries = (natives) => {
   // TODO: REBOL accepts more types for some of these functions (pair!, time!).
@@ -238,7 +238,7 @@ const jump = (find) => (machine, [series, offset]) => {
  * The natives for series. Each entry has the name of REBOL and the function.
  * @uses takeItem, guardSeries, pickIndex, move, measure, makeLogic (src/machine/machine.mjs),
  *   makeDatum (src/data/datum.mjs), giveValue (src/machine/machine.mjs), takeLast, jump
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const SERIES_NATIVES = {
   first: takeItem(0),

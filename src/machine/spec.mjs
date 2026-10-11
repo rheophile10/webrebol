@@ -57,8 +57,8 @@ const groupEntry = (groups, entry) => {
  * @returns {{ params: object[], refinements: object[], keys: string[] }}
  * @standard groups - The parameters after a refinement belong to that refinement.
  * @uses addEntry, groupEntry
- * @usedby makeFunction (src/natives/control.mjs), makeFunction (src/natives/globals.mjs),
- *   KEEP_SPEC (src/natives/items.mjs)
+ * @usedby makeFunction (src/natives/control.mjs), KEEP_SPEC (src/natives/items.mjs),
+ *   makeFunction (src/session/globals.mjs)
  */
 export const parseSpec = (items) => {
   // The first group has no refinement. It holds the usual parameters.

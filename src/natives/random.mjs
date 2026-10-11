@@ -113,7 +113,7 @@ const pickRandom = (machine, [value], options) => {
 /**
  * The random native. The entry has the name of REBOL and the function.
  * @uses pickRandom
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const RANDOM_NATIVES = {
   random: pickRandom,

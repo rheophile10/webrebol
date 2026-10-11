@@ -42,7 +42,7 @@
  * @property {{ kind: string, value: Datum } | null} thrown - The error, the return or the break that moves up the stack.
  * @madeby interpretWithEdge, makeMachine, startSource, interpretSource
  * @changedby 31 declarations in drive, call, evaluate, machine, path, run, bitsets, control, edit, faults, files, loops, series
- * @readby atEnd, readItem, showResult, findError
+ * @readby atEnd, readItem, findError, showResult
  */
 
 export {};

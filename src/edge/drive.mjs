@@ -1,7 +1,7 @@
 /** @import { Machine } from "../types/states.mjs" */
 import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
-import { startSource } from "../natives/interpret.mjs";
+import { startSource } from "../session/interpret.mjs";
 import { EMPTY_DISK } from "../store/disk.mjs";
 
 const SHA_1 = "SHA-1";
@@ -67,7 +67,7 @@ export const driveMachine = async (machine, batches) => {
  * @param {Object<string, object>} [disk] - The disk at the start of the session. Without it, the disk is empty.
  * @returns {Promise<Machine>}
  * @standard reference - The result is the result that `do` of REBOL 2.7.8 gives.
- * @uses EMPTY_DISK (src/store/disk.mjs), driveMachine, startSource (src/natives/interpret.mjs)
+ * @uses EMPTY_DISK (src/store/disk.mjs), driveMachine, startSource (src/session/interpret.mjs)
  * @usedby bin/webrebol.mjs, showRun (test/edge.test.mjs)
  */
 export const interpretWithEdge = (source, batches, disk = EMPTY_DISK) => {

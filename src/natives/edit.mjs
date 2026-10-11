@@ -172,7 +172,7 @@ const reverseItems = (machine, [series], options) => {
 /**
  * The natives that change or copy a series. Each entry has the name of REBOL and the function.
  * @uses copySeries, appendValue, insertValue, changeValue, removeItems, clearRest, pokeItem, reverseItems
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const EDIT_NATIVES = {
   copy: copySeries,

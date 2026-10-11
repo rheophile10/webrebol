@@ -78,7 +78,7 @@ const attemptBlock = (machine, [block]) =>
 /**
  * The natives for error values. Each entry has the name of REBOL and the function.
  * @uses disarmError, attemptBlock
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const FAULT_NATIVES = {
   disarm: disarmError,

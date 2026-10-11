@@ -227,7 +227,7 @@ const readScript = (machine, target) => {
  * @standard header - A file without a header gives the error "syntax header".
  * @uses readScript, failAccess, readPath, failSyntax, HEADER, failMachine (src/machine/machine.mjs),
  *   allocate (src/store/store.mjs), startBlock (src/machine/machine.mjs)
- * @usedby OVERRIDES
+ * @usedby OVERRIDES (src/session/globals.mjs)
  */
 export const doFile = (machine, target) => {
   const file = readScript(machine, target);
@@ -246,7 +246,7 @@ export const doFile = (machine, target) => {
  * @standard single - A file with one value gives that value, not a block.
  * @uses readScript, failAccess, readPath, failSyntax, allocate (src/store/store.mjs), readRest (src/store/store.mjs),
  *   giveValue (src/machine/machine.mjs)
- * @usedby OVERRIDES
+ * @usedby OVERRIDES (src/session/globals.mjs)
  */
 export const loadFile = (machine, target) => {
   const file = readScript(machine, target);
@@ -274,7 +274,7 @@ const saveValue = (machine, [target, value], options) => {
  *   readInfo, deleteEntry, changeDisk, removeEntry (src/store/disk.mjs), readPath, renameEntry (src/store/disk.mjs),
  *   resolvePath (src/store/disk.mjs), readRest (src/store/store.mjs), makeDirectory, changeDirectory, giveNew,
  *   cleanPath
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const FILE_NATIVES = {
   read: readSource,

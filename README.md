@@ -16,7 +16,7 @@ WebRebol has no code for IndexedDB. The host page gives the disk to a session an
 
 ```js
 import { interpretWithEdge } from "./src/edge/drive.mjs";
-import { showResult } from "./src/natives/interpret.mjs";
+import { showResult } from "./src/session/interpret.mjs";
 
 // `disk` is a table of full paths. An entry is { kind: "folder" } or { kind: "file", bytes, modified }.
 const machine = await interpretWithEdge('write %note.txt "hello"', 5000, disk);
@@ -38,7 +38,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | `random` | The numbers are random, but the same seed does not give the same numbers as REBOL 2. REBOL does not publish its algorithm. |
 | `call` | Not available. A browser page cannot start a program. |
 | `library!`, `routine!`, `struct!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
-| View | Not available at this time. The pixels will not be equal to REBOL 2, because the fonts of a browser are different. |
+| View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. Drawing, `view`, and events are not available at this time. The pixels will not be equal to REBOL 2, because the fonts of a browser are different. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
 | `parse` with a loop that does not move | REBOL 2 does not end if a `some` or `any` rule matches and does not move the position. WebRebol stops the loop. |
 | `checksum` with MD5 or with a key | REBOL 2.7.8 for 64-bit Linux gives wrong and changing MD5 results for 8 or more bytes. WebRebol gives the standard MD5 (RFC 1321) and the standard HMAC. |
@@ -67,7 +67,7 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.
 - [`startCall`](src/machine/call.mjs#L175) — Starts the call of a function.
-- [`interpretSource`](src/natives/interpret.mjs#L44) — Evaluates a REBOL source text in a new session, without an edge.
-- [`showResult`](src/natives/interpret.mjs#L54) — Makes the text that shows the end of an evaluation: the molded result, or the error.
+- [`interpretSource`](src/session/interpret.mjs#L44) — Evaluates a REBOL source text in a new session, without an edge.
+- [`showResult`](src/session/interpret.mjs#L54) — Makes the text that shows the end of an evaluation: the molded result, or the error.
 - [`moldValue`](src/store/mold.mjs#L223) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

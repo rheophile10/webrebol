@@ -155,7 +155,7 @@ const checkBytes = (machine, [value], options) => {
 /**
  * The checksum native. The entry has the name of REBOL and the function.
  * @uses checkBytes
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const DIGEST_NATIVES = {
   checksum: checkBytes,

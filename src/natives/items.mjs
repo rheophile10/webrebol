@@ -214,7 +214,7 @@ const joinAll = (machine, [block]) =>
  * @uses appendReduced, takeItems, swapItems, takeFirst, stepWord, removeEach, mapEach, collectValues, giveArray,
  *   findExtreme, joinAll, giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs),
  *   isTrue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs), UNSET (src/store/store.mjs)
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const ITEM_NATIVES = {
   repend: appendReduced,

@@ -11,7 +11,7 @@ const FUNCTION_TYPES = ["native", "action", "op", "function"];
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 22 declarations in call, bitsets, compare, encode, files, flow, globals, items, numbers, objects, parse, random, search, series, words
+ * @usedby 23 declarations in call, bitsets, compare, encode, files, flow, items, numbers, objects, parse, random, search, series, words, globals, layout
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -65,7 +65,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 115 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words
+ * @usedby 117 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, layout
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -97,7 +97,7 @@ export const failMachine = (machine, text, args = []) =>
  * @param {string} name
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 11 declarations in call, clock, faults, files, items, math, parse, series, words
+ * @usedby 13 declarations in call, clock, faults, files, items, math, parse, series, words, layout
  */
 export const makeWord = (name) => makeDatum("word", name);
 
@@ -203,7 +203,7 @@ export const startBlock = (machine, block) => ({
  * @param {Datum} block
  * @returns {Machine}
  * @uses startBlock, UNSET (src/store/store.mjs)
- * @usedby startSource (src/natives/interpret.mjs), matchParen (src/natives/parse.mjs),
+ * @usedby matchParen (src/natives/parse.mjs), startSource (src/session/interpret.mjs),
  *   makeReady (test/machine.test.mjs)
  */
 export const makeMachine = (store, block) =>

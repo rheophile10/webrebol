@@ -73,7 +73,7 @@ const change = (operation) => (machine, [number]) => {
 /**
  * The natives for arithmetic. Each entry has the name of REBOL and the function.
  * @uses calculate, divide, change
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const MATH_NATIVES = {
   add: calculate("add", (left, right) => left + right),

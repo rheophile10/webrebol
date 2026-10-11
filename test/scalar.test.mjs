@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { countDays, makeDate, readDays } from "../src/data/dates.mjs";
 import { readField, writeField } from "../src/store/parts.mjs";
 import { changeScalar, combineScalars } from "../src/natives/scalars.mjs";
+import { measureText } from "../src/view/data.mjs";
 
 const HOUR = 3600e9;
 const ADD = { name: "add", operation: (left, right) => left + right };
@@ -43,4 +44,10 @@ test("combineScalars none: a time and a pair do not go together", () => {
 test("changeScalar none: an integer has no such operation", () => {
   assert.equal(changeScalar({ type: "integer", value: 1 }, Math.abs), null);
   assert.deepEqual(changeScalar({ type: "pair", value: [-1, 2] }, Math.abs).value, [1, 2]);
+});
+
+test("measureText overlap: a text of the usual font is narrower than the sum of its characters", () => {
+  assert.deepEqual(measureText("a", null), [8, 14]);
+  assert.deepEqual(measureText("ab", null), [15, 14]);
+  assert.deepEqual(measureText("", null), [0, 14]);
 });

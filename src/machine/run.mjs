@@ -53,8 +53,8 @@ const stepBatch = (machine) => BATCH.reduce(stepMachine, machine);
  * @standard budget - An evaluation that does not end stops when the budget is used, and its mode is not "done".
  * @standard wait - A machine that waits for the edge stops, and its mode is "wait".
  * @uses stepBatch
- * @usedby driveMachine (src/edge/drive.mjs), interpretSource (src/natives/interpret.mjs),
- *   matchParen (src/natives/parse.mjs), makeScript (test/disk.test.mjs)
+ * @usedby driveMachine (src/edge/drive.mjs), matchParen (src/natives/parse.mjs),
+ *   interpretSource (src/session/interpret.mjs), makeScript (test/disk.test.mjs)
  */
 export const runMachine = (machine, batches) =>
   ["done", "wait"].includes(machine.mode) || batches <= 0 ? machine : runMachine(stepBatch(machine), batches - 1);

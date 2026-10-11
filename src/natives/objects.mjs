@@ -166,7 +166,7 @@ const useWords = (machine, [words, body]) => {
  * @uses makeValue, makeObject, findInObject, giveValue (src/machine/machine.mjs), readWord (src/store/store.mjs),
  *   setWords, makeLogic (src/machine/machine.mjs), writeWord (src/store/store.mjs), UNSET (src/store/store.mjs),
  *   bindBlock, useWords
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const OBJECT_NATIVES = {
   make: makeValue,

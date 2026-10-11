@@ -232,7 +232,7 @@ const sortItems = (machine, [series], options) => {
 /**
  * The natives that search, compare and sort the items of a series. Each entry has the name of REBOL and the function.
  * @uses findValue, selectValue, replaceValue, alterValue, extractItems, combine, sortItems
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const SEARCH_NATIVES = {
   find: findValue,

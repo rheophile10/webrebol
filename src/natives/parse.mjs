@@ -455,7 +455,7 @@ const parseSeries = (machine, [input, rule], options) => {
 /**
  * The parse native. The entry has the name of REBOL and the function.
  * @uses parseSeries
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const PARSE_NATIVES = {
   parse: parseSeries,

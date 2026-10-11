@@ -70,7 +70,7 @@ export const complementBitset = (bitset) => makeDatum("bitset", bitset.value.map
  * @param {Datum[]} pair - The bitset and the char.
  * @returns {Machine}
  * @uses giveValue (src/machine/machine.mjs), hasBit, makeLogic (src/machine/machine.mjs), NONE (src/store/store.mjs)
- * @usedby findAny
+ * @usedby findAny (src/session/globals.mjs)
  */
 export const findInBitset = (machine, [bitset, char]) =>
   giveValue(machine, hasBit(bitset, char.value) ? makeLogic(true) : NONE);
@@ -78,7 +78,7 @@ export const findInBitset = (machine, [bitset, char]) =>
 /**
  * The natives for bitsets. Each entry has the name of REBOL and the function.
  * @uses makeCharset
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const BITSET_NATIVES = {
   charset: makeCharset,

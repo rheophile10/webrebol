@@ -199,7 +199,7 @@ const PREDICATES = Object.fromEntries([
  * The natives that compare values and that examine types. Each entry has the name of REBOL and the function.
  * @uses PREDICATES, equate, areEqual, areSame, areIdentical, choose, compare, giveValue (src/machine/machine.mjs),
  *   makeLogic (src/machine/machine.mjs), isTrue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const COMPARE_NATIVES = {
   ...PREDICATES,

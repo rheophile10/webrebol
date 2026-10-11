@@ -1,0 +1,54 @@
+lay: layout [button "OK"] lay/size
+lay: layout [button "OK" field "abc" area box 50x50 red] collect [foreach f lay/pane [keep f/offset keep f/size]]
+lay: layout [button "OK" field "abc" area box 50x50 red] lay/size
+lay: layout [across button "A" button "B" return button "C" below button "D" text "x" pad 10 button "E" at 200x200 button "F" origin 5x5 space 2x2 button "G" button "H"] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [across button "A" button "B" return button "C" below button "D" text "x" pad 10 button "E" at 200x200 button "F" origin 5x5 space 2x2 button "G" button "H"] lay/size
+lay: layout [text "Hello world"] lay/pane/1/size
+lay: layout [text "a"] lay/pane/1/size
+lay: layout [text "abc def"] lay/pane/1/size
+lay: layout [text ""] lay/pane/1/size
+lay: layout [text "WWW"] lay/pane/1/size
+lay: layout [text 200 "a"] lay/pane/1/size
+lay: layout [h1 "Title"] lay/pane/1/size
+lay: layout [h2 "Title"] lay/pane/1/size
+lay: layout [label "Name"] lay/pane/1/size
+lay: layout [check radio led slider progress] collect [foreach f lay/pane [keep f/offset keep f/size]]
+lay: layout [button "OK"] f: lay/pane/1 reduce [f/text f/style f/offset f/size]
+lay: layout [button 200x50 "Big"] lay/pane/1/size
+lay: layout [button 150 "Wide"] lay/pane/1/size
+lay: layout [box 10x10 red] lay/pane/1/color
+lay: layout [box 10x10 0.0.255] lay/pane/1/color
+lay: layout [across button button button] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [space 0x0 button button] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [origin 0x0 button] reduce [lay/pane/1/offset lay/size]
+lay: layout [across space 4 button button] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [pad 20 button] lay/pane/1/offset
+lay: layout [across pad 20 button] lay/pane/1/offset
+lay: layout [pad 5x7 button] lay/pane/1/offset
+lay: layout [] lay/size
+lay: layout [button] length? lay/pane
+lay: layout [text "a" text "b"] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [across text "a" button "b" return text "c"] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [field] lay/pane/1/size
+lay: layout [field 50] lay/pane/1/size
+lay: layout [area 100x40] lay/pane/1/size
+type? layout [button]
+lay: layout [button "x"] type? lay/pane/1
+red
+reduce [green blue white black gray yellow]
+lay: layout [text "Hello"] size-text lay/pane/1
+lay: layout [button "Hi"] lay/pane/1/font/size
+lay: layout [button "Hi"] lay/pane/1/edge/size
+lay: layout [toggle "T" rotary "R" choice "C"] collect [foreach f lay/pane [keep f/size]]
+lay: layout [below button across button button] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [across button below button button] collect [foreach f lay/pane [keep f/offset]]
+lay: layout [button "OK"] lay/offset
+lay: layout [button "OK"] lay/color
+lay: layout [h4 "ab"] lay/pane/1/size
+lay: layout [title "Big"] lay/pane/1/size
+lay: layout [banner "Hello"] lay/pane/1/size
+lay: layout [lbl "Label text"] lay/pane/1/size
+lay: layout [vtext "The quick brown fox"] lay/pane/1/size
+lay: layout [text "ABCDEFGHIJKLMNOPQRSTUVWXYZ"] lay/pane/1/size
+lay: layout [text "0123456789 .,;:!?"] lay/pane/1/size
+lay: layout [lab "x"] lay/pane/1/size

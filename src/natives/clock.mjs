@@ -47,7 +47,7 @@ const readClock = (machine, args, options) =>
 /**
  * The natives that use the clock of the edge. Each entry has the name of REBOL and the function.
  * @uses readClock
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const CLOCK_NATIVES = {
   now: readClock,

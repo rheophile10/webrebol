@@ -122,7 +122,7 @@ const remoldValue = (machine, [value]) => {
  * The natives that make text. Each entry has the name of REBOL and the function.
  * @uses printValue, probeValue, giveText, moldValue (src/store/mold.mjs), formValue (src/store/mold.mjs), joinValues,
  *   rejoinValues, reformValue, remoldValue
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const TEXT_NATIVES = {
   print: printValue("\n"),

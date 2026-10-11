@@ -81,7 +81,7 @@ const makeDoes = (machine, [body]) => {
  * @returns {Machine}
  * @standard fields - The texts of the loader are the fields arg1 and arg2 of the error.
  * @uses makeSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs)
- * @usedby doText, toBlock, doFile, loadFile, startSource, loadText
+ * @usedby doText, toBlock, doFile, loadFile, loadText, startSource (src/session/interpret.mjs)
  */
 export const failSyntax = (machine, fault) => {
   const addText = (made, text) => {
@@ -176,7 +176,7 @@ const chooseBlock = (wanted) => (machine, [condition, block]) =>
  * @uses chooseBlock, startBlock (src/machine/machine.mjs), isTrue (src/machine/machine.mjs),
  *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), makeFunction, makeDoes, makeHas,
  *   makeWithLocals, doValue, reduceValue, tryBlock
- * @usedby NATIVES, makeFunct, WORD_NATIVES
+ * @usedby makeFunct, WORD_NATIVES, NATIVES (src/session/globals.mjs)
  */
 export const CONTROL_NATIVES = {
   "if": chooseBlock(true),

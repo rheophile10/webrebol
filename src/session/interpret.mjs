@@ -3,10 +3,10 @@ import { loadSource } from "../data/load.mjs";
 import { NONE, allocate } from "../store/store.mjs";
 import { moldValue } from "../store/mold.mjs";
 import { makeMachine } from "../machine/machine.mjs";
-import { failSyntax } from "./control.mjs";
+import { failSyntax } from "../natives/control.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { START_STORE } from "./globals.mjs";
-import { findError } from "./report.mjs";
+import { findError } from "../natives/report.mjs";
 
 /**
  * @uses allocate (src/store/store.mjs), START_STORE
@@ -20,8 +20,8 @@ const EMPTY_BLOCK = allocate(START_STORE, { type: "block", value: [] });
  * @param {{ disk?: object, started?: number, seed?: number }} [session] - The disk, the start time and the random seed of the session.
  * @returns {Machine}
  * @standard syntax - A source text that is not valid REBOL gives a machine that throws the error of the loader.
- * @uses loadSource (src/data/load.mjs), failSyntax, makeMachine (src/machine/machine.mjs), EMPTY_BLOCK,
- *   allocate (src/store/store.mjs), START_STORE
+ * @uses loadSource (src/data/load.mjs), failSyntax (src/natives/control.mjs), makeMachine (src/machine/machine.mjs),
+ *   EMPTY_BLOCK, allocate (src/store/store.mjs), START_STORE
  * @usedby interpretWithEdge (src/edge/drive.mjs), interpretSource, makeScript (test/disk.test.mjs)
  */
 export const startSource = (source, session = {}) => {
@@ -48,7 +48,7 @@ export const interpretSource = (source, batches) => runMachine(startSource(sourc
  * @param {Machine} machine
  * @returns {string}
  * @standard error - An error shows as "!", its type, its id, and its three molded fields.
- * @uses findError, moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
+ * @uses findError (src/natives/report.mjs), moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
  * @usedby showEnd (bin/webrebol.mjs), showRun (test/do.test.mjs), showRun (test/edge.test.mjs)
  */
 export const showResult = (machine) => {

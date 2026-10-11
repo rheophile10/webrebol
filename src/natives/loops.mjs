@@ -240,7 +240,7 @@ const loopForever = (machine, [body]) =>
  * The natives for loops. Each entry has the name of REBOL and the function.
  * @uses loopCount, repeatCount, forEach, forRange, forAll, forSkip, loopWhile, loopUntil, loopForever,
  *   UNSET (src/store/store.mjs), throwValue (src/machine/machine.mjs)
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const LOOP_NATIVES = {
   loop: loopCount,

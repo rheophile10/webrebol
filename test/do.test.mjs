@@ -1,12 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { interpretSource, showResult } from "../src/natives/interpret.mjs";
+import { interpretSource, showResult } from "../src/session/interpret.mjs";
 import { readGolden } from "./golden.edge.mjs";
 
 const BATCHES = 2000;
 
 /**
- * @uses interpretSource (src/natives/interpret.mjs), BATCHES, showResult (src/natives/interpret.mjs)
+ * @uses interpretSource (src/session/interpret.mjs), BATCHES, showResult (src/session/interpret.mjs)
  * @usedby findProblems
  */
 const showRun = (source) => {
@@ -117,4 +117,8 @@ test("interpretSource reference: the file and folder cases agree with REBOL 2.7.
 
 test("interpretSource reference: the cases of the properties of random agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/random.txt"), []);
+});
+
+test("interpretSource reference: the layout cases agree with REBOL View 2.7.8", () => {
+  assert.deepEqual(findProblems("view/layout.txt"), []);
 });

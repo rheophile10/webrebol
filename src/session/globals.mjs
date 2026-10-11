@@ -4,36 +4,46 @@ import { makeDatum } from "../data/datum.mjs";
 import { EMPTY_STORE, NONE, makeKey } from "../store/store.mjs";
 import { makeLogic } from "../machine/machine.mjs";
 import { parseSpec } from "../machine/spec.mjs";
-import { MATH_NATIVES } from "./math.mjs";
-import { COMPARE_NATIVES, TYPES } from "./compare.mjs";
-import { CONTROL_NATIVES } from "./control.mjs";
-import { SERIES_NATIVES, guardSeries } from "./series.mjs";
-import { TEXT_NATIVES } from "./text.mjs";
-import { LOOP_NATIVES } from "./loops.mjs";
-import { FLOW_NATIVES } from "./flow.mjs";
-import { OBJECT_NATIVES } from "./objects.mjs";
-import { CONVERT_NATIVES } from "./convert.mjs";
-import { SPECS } from "./specs.mjs";
-import { EDIT_NATIVES } from "./edit.mjs";
-import { SEARCH_NATIVES } from "./search.mjs";
-import { STRING_NATIVES } from "./strings.mjs";
-import { NUMBER_NATIVES } from "./numbers.mjs";
-import { FAULT_NATIVES } from "./faults.mjs";
-import { BITSET_NATIVES, findInBitset } from "./bitsets.mjs";
-import { PARSE_NATIVES } from "./parse.mjs";
-import { ITEM_NATIVES } from "./items.mjs";
-import { WORD_NATIVES } from "./words.mjs";
-import { ENCODE_NATIVES } from "./encode.mjs";
-import { DIGEST_NATIVES } from "./digest.mjs";
-import { CLOCK_NATIVES } from "./clock.mjs";
-import { FILE_NATIVES, doFile, loadFile } from "./files.mjs";
-import { RANDOM_NATIVES } from "./random.mjs";
+import { MATH_NATIVES } from "../natives/math.mjs";
+import { COMPARE_NATIVES, TYPES } from "../natives/compare.mjs";
+import { CONTROL_NATIVES } from "../natives/control.mjs";
+import { SERIES_NATIVES, guardSeries } from "../natives/series.mjs";
+import { TEXT_NATIVES } from "../natives/text.mjs";
+import { LOOP_NATIVES } from "../natives/loops.mjs";
+import { FLOW_NATIVES } from "../natives/flow.mjs";
+import { OBJECT_NATIVES } from "../natives/objects.mjs";
+import { CONVERT_NATIVES } from "../natives/convert.mjs";
+import { SPECS } from "../natives/specs.mjs";
+import { EDIT_NATIVES } from "../natives/edit.mjs";
+import { SEARCH_NATIVES } from "../natives/search.mjs";
+import { STRING_NATIVES } from "../natives/strings.mjs";
+import { NUMBER_NATIVES } from "../natives/numbers.mjs";
+import { FAULT_NATIVES } from "../natives/faults.mjs";
+import { BITSET_NATIVES, findInBitset } from "../natives/bitsets.mjs";
+import { PARSE_NATIVES } from "../natives/parse.mjs";
+import { ITEM_NATIVES } from "../natives/items.mjs";
+import { WORD_NATIVES } from "../natives/words.mjs";
+import { ENCODE_NATIVES } from "../natives/encode.mjs";
+import { DIGEST_NATIVES } from "../natives/digest.mjs";
+import { CLOCK_NATIVES } from "../natives/clock.mjs";
+import { FILE_NATIVES, doFile, loadFile } from "../natives/files.mjs";
+import { RANDOM_NATIVES } from "../natives/random.mjs";
+import { COLORS, VIEW_SPECS } from "../view/data.mjs";
+import { VIEW_NATIVES } from "../view/layout.mjs";
 
 /**
- * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
- *   TEXT_NATIVES, CONVERT_NATIVES, guardSeries, EDIT_NATIVES, SEARCH_NATIVES, STRING_NATIVES, NUMBER_NATIVES,
- *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES, ITEM_NATIVES, WORD_NATIVES, ENCODE_NATIVES, DIGEST_NATIVES,
- *   CLOCK_NATIVES, FILE_NATIVES, RANDOM_NATIVES
+ * @uses MATH_NATIVES (src/natives/math.mjs), COMPARE_NATIVES (src/natives/compare.mjs),
+ *   CONTROL_NATIVES (src/natives/control.mjs), LOOP_NATIVES (src/natives/loops.mjs),
+ *   FLOW_NATIVES (src/natives/flow.mjs), OBJECT_NATIVES (src/natives/objects.mjs),
+ *   SERIES_NATIVES (src/natives/series.mjs), TEXT_NATIVES (src/natives/text.mjs),
+ *   CONVERT_NATIVES (src/natives/convert.mjs), guardSeries (src/natives/series.mjs),
+ *   EDIT_NATIVES (src/natives/edit.mjs), SEARCH_NATIVES (src/natives/search.mjs),
+ *   STRING_NATIVES (src/natives/strings.mjs), NUMBER_NATIVES (src/natives/numbers.mjs),
+ *   FAULT_NATIVES (src/natives/faults.mjs), BITSET_NATIVES (src/natives/bitsets.mjs),
+ *   PARSE_NATIVES (src/natives/parse.mjs), ITEM_NATIVES (src/natives/items.mjs),
+ *   WORD_NATIVES (src/natives/words.mjs), ENCODE_NATIVES (src/natives/encode.mjs),
+ *   DIGEST_NATIVES (src/natives/digest.mjs), CLOCK_NATIVES (src/natives/clock.mjs),
+ *   FILE_NATIVES (src/natives/files.mjs), RANDOM_NATIVES (src/natives/random.mjs), VIEW_NATIVES (src/view/layout.mjs)
  * @usedby OVERRIDES, findAny, makeFunction, GLOBALS
  */
 const NATIVES = {
@@ -58,13 +68,14 @@ const NATIVES = {
   ...CLOCK_NATIVES,
   ...FILE_NATIVES,
   ...RANDOM_NATIVES,
+  ...VIEW_NATIVES,
   "q": WORD_NATIVES.quit,
 };
 
 const TYPESETS = ["number", "series", "any-block", "any-string", "any-word", "any-function", "any-type", "scalar"];
 
 /**
- * @uses doFile, NATIVES, loadFile, findAny
+ * @uses doFile (src/natives/files.mjs), NATIVES, loadFile (src/natives/files.mjs), findAny
  * @usedby makeFunction
  */
 const OVERRIDES = {
@@ -75,7 +86,7 @@ const OVERRIDES = {
 };
 
 /**
- * @uses findInBitset, NATIVES
+ * @uses findInBitset (src/natives/bitsets.mjs), NATIVES
  * @usedby OVERRIDES
  */
 const findAny = (machine, args, options) =>
@@ -116,26 +127,28 @@ const CONSTANTS = { true: makeLogic(true), false: makeLogic(false), none: NONE }
 const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.value.map((name) => name.value) } : item);
 
 /**
- * @uses parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), SPECS, readSpecItem,
- *   makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
+ * @uses SPECS (src/natives/specs.mjs), VIEW_SPECS (src/view/data.mjs), parseSpec (src/machine/spec.mjs),
+ *   loadSource (src/data/load.mjs), readSpecItem, makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
  * @usedby GLOBALS
  */
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
-  const spec = parseSpec(loadSource(SPECS[sign][1]).value.map(readSpecItem));
+  const facts = SPECS[sign] ?? VIEW_SPECS[sign];
+  const spec = parseSpec(loadSource(facts[1]).value.map(readSpecItem));
   // REBOL has three types for its own functions. The type comes from REBOL.
-  return makeDatum(type ?? SPECS[sign][0], { ...spec, native: OVERRIDES[name] ?? NATIVES[name] });
+  return makeDatum(type ?? facts[0], { ...spec, native: OVERRIDES[name] ?? NATIVES[name] });
 };
 
 /**
- * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS, TYPES, TYPESETS,
- *   makeDatum (src/data/datum.mjs)
+ * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS, COLORS (src/view/data.mjs),
+ *   makeDatum (src/data/datum.mjs), TYPES (src/natives/compare.mjs), TYPESETS
  * @usedby START_STORE
  */
 const GLOBALS = Object.fromEntries([
   ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction(null, name, name)]),
   ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name, sign)]),
   ...Object.entries(CONSTANTS).map(([name, value]) => [makeKey(name), value]),
+  ...Object.entries(COLORS).map(([name, parts]) => [makeKey(name), makeDatum("tuple", parts)]),
   ...[...TYPES, ...TYPESETS].map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
 ]);
 

@@ -193,7 +193,7 @@ const toHex = (machine, [number]) => {
  * The natives that change the form of a text or of bytes. Each entry has the name of REBOL and the function.
  * @uses encodeBase, decodeBase, changeText, removeTabs, addTabs, decodeHex, testCodes, splitPath, findSuffix,
  *   giveFile, readRest (src/store/store.mjs), buildTag, toHex
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const ENCODE_NATIVES = {
   enbase: encodeBase,

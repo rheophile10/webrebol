@@ -3,7 +3,7 @@
 // If the environment variable WEBREBOL_DISK names a folder, the folder is the disk of the session.
 import { interpretWithEdge } from "../src/edge/drive.mjs";
 import { readFolder, writeFolder } from "../src/edge/folder.mjs";
-import { showResult } from "../src/natives/interpret.mjs";
+import { showResult } from "../src/session/interpret.mjs";
 import { findError, formatError } from "../src/natives/report.mjs";
 import { EMPTY_DISK } from "../src/store/disk.mjs";
 
@@ -17,7 +17,7 @@ const DISK = ROOT === null ? EMPTY_DISK : readFolder(ROOT);
 
 /**
  * @uses findError (src/natives/report.mjs), ROOT, writeFolder (src/edge/folder.mjs), DISK,
- *   showResult (src/natives/interpret.mjs), formatError (src/natives/report.mjs)
+ *   showResult (src/session/interpret.mjs), formatError (src/natives/report.mjs)
  * @usedby bin/webrebol.mjs
  */
 const showEnd = (machine) => {

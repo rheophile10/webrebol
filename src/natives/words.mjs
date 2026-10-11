@@ -195,7 +195,7 @@ const stopMachine = (machine) => throwValue(machine, "quit", makeDatum("unset", 
  * The natives for functions, words and objects that are not basic. Each entry has the name of REBOL and the function.
  * @uses makeFunct, CONTROL_NATIVES, applyFunction, setDefault, reflectOn, reflectValue, findOwner, constructObject,
  *   causeError, assertBlock, loadText, stopMachine
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WORD_NATIVES = {
   funct: makeFunct,

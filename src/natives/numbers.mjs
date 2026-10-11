@@ -133,7 +133,7 @@ const takeModulo = (machine, [left, right]) => {
  * The natives for the other functions of numbers. Each entry has the name of REBOL and the function.
  * @uses testNumber, raise, calculate, turn, turnBack, roundNumber, combineBits, complementValue, shiftBits,
  *   takeModulo
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const NUMBER_NATIVES = {
   "zero?": testNumber((number) => number === 0),

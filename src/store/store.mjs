@@ -15,12 +15,12 @@ export const GLOBAL = 0;
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 47 declarations in call, path, bitsets, control, encode, faults, files, flow, globals, interpret, items, loops, objects, parse, random, report, search, series, words
+ * @usedby 52 declarations in call, path, bitsets, control, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
  */
 export const NONE = makeDatum("none", null);
 /**
  * @uses EMPTY_TABLE, writeEntry, GLOBAL, EMPTY_DISK
- * @usedby START_STORE (src/natives/globals.mjs), moldSource (test/load.test.mjs)
+ * @usedby START_STORE (src/session/globals.mjs), moldSource (test/load.test.mjs)
  */
 export const EMPTY_STORE = {
   series: EMPTY_TABLE,
@@ -38,7 +38,7 @@ export const EMPTY_STORE = {
  * Makes the key of a word in a context. The key ignores the case of the letters.
  * @param {string} name - The spelling of the word.
  * @returns {string}
- * @usedby 19 declarations in path, spec, globals, loops, objects, words, store
+ * @usedby 19 declarations in path, spec, loops, objects, words, globals, store
  */
 export const makeKey = (name) => `$${name.toLowerCase()}`;
 
@@ -76,7 +76,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 33 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store
+ * @usedby 35 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, layout
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
@@ -99,7 +99,7 @@ const allocateItem = (made, item) => {
  * @param {Datum} datum - A value from the loader.
  * @returns {{ store: Store, value: Datum }}
  * @uses LIST_TYPES, allocateItem, makeSeries, isSeries, WORD_TYPES, GLOBAL
- * @usedby 10 declarations in control, convert, files, interpret, words, store, load, machine
+ * @usedby 10 declarations in control, convert, files, words, interpret, store, load, machine
  */
 export const allocate = (store, datum) => {
   // A list holds values that also go into the store.
@@ -117,7 +117,7 @@ export const allocate = (store, datum) => {
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 79 declarations in path, bitsets, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store
+ * @usedby 83 declarations in path, bitsets, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, layout
  */
 export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
 
@@ -169,7 +169,7 @@ export const readWord = (store, word) => {
  * @param {number} context - The number of the context.
  * @returns {Object<string, Datum> | undefined}
  * @uses readEntry
- * @usedby 12 declarations in call, path, objects, series, words, mold
+ * @usedby 13 declarations in call, path, objects, series, words, mold, layout
  */
 export const readContext = (store, context) => readEntry(store.contexts, context);
 
@@ -282,7 +282,7 @@ export const makeContext = (store, values) => ({
  * @standard self - The word `self` of the object gives the object.
  * @uses makeDatum (src/data/datum.mjs), makeKey, makeContext
  * @usedby disarmError (src/natives/faults.mjs), readInfo (src/natives/files.mjs),
- *   constructObject (src/natives/words.mjs)
+ *   constructObject (src/natives/words.mjs), makeObject (src/view/layout.mjs)
  */
 export const makeRecord = (store, words, values) => {
   const object = makeDatum("object", { context: store.next, words });

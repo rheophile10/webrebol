@@ -141,7 +141,7 @@ const composeValue = (machine, [value], options) => {
 /**
  * The natives that select what the machine evaluates. Each entry has the name of REBOL and the function.
  * @uses scan, switchValue, chooseCase, catchThrow, throwValue (src/machine/machine.mjs), composeValue
- * @usedby NATIVES
+ * @usedby NATIVES (src/session/globals.mjs)
  */
 export const FLOW_NATIVES = {
   any: scan(true),

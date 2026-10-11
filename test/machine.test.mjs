@@ -16,14 +16,14 @@ import { bindLoop, startEach } from "../src/natives/loops.mjs";
 import { evaluateOperand } from "../src/machine/evaluate.mjs";
 import { runMachine, stepMachine } from "../src/machine/run.mjs";
 import { startReduce } from "../src/natives/control.mjs";
-import { START_STORE } from "../src/natives/globals.mjs";
-import { interpretSource, showResult } from "../src/natives/interpret.mjs";
+import { START_STORE } from "../src/session/globals.mjs";
+import { interpretSource, showResult } from "../src/session/interpret.mjs";
 import { findError, formatError } from "../src/natives/report.mjs";
 
 const BATCHES = 100;
 
 /**
- * @uses allocate (src/store/store.mjs), START_STORE (src/natives/globals.mjs), loadSource (src/data/load.mjs),
+ * @uses allocate (src/store/store.mjs), START_STORE (src/session/globals.mjs), loadSource (src/data/load.mjs),
  *   makeMachine (src/machine/machine.mjs)
  */
 const makeReady = (source) => {
@@ -33,7 +33,7 @@ const makeReady = (source) => {
 };
 
 /**
- * @uses START_STORE (src/natives/globals.mjs)
+ * @uses START_STORE (src/session/globals.mjs)
  */
 const readGlobal = (name) => START_STORE.base[`$${name}`];
 

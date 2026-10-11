@@ -192,7 +192,7 @@ const readFirst = (value) => (typeof value.value === "number" ? value.value : 0)
  * The natives that make a value of a different type. Each entry has the name of REBOL and the function.
  * @uses toText, toFile, toBinary, toList, toWordType, giveValue (src/machine/machine.mjs),
  *   makeDatum (src/data/datum.mjs), toLogic, toNumber, toBlock, toScalar
- * @usedby NATIVES, MAKERS, makeValue
+ * @usedby MAKERS, makeValue, NATIVES (src/session/globals.mjs)
  */
 export const CONVERT_NATIVES = {
   "to-string": toText("string"),

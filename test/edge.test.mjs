@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { askEdge, answerRequest } from "../src/machine/machine.mjs";
 import { runMachine } from "../src/machine/run.mjs";
-import { showResult, startSource } from "../src/natives/interpret.mjs";
+import { showResult, startSource } from "../src/session/interpret.mjs";
 import { countCrc, hashMd5 } from "../src/natives/digest.mjs";
 import { driveMachine, interpretWithEdge } from "../src/edge/drive.mjs";
 import { readGolden } from "./golden.edge.mjs";
@@ -10,7 +10,7 @@ import { readGolden } from "./golden.edge.mjs";
 const BATCHES = 100;
 
 /**
- * @uses interpretWithEdge (src/edge/drive.mjs), BATCHES, showResult (src/natives/interpret.mjs)
+ * @uses interpretWithEdge (src/edge/drive.mjs), BATCHES, showResult (src/session/interpret.mjs)
  * @usedby findProblems
  */
 const showRun = async (source) => {
