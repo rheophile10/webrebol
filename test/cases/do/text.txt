@@ -1,0 +1,35 @@
+form [1 "a" b [c 2]]
+form 1.5
+form "a"
+form #"a"
+form 'word
+form none
+form true
+form 1:30
+form []
+mold "a"
+mold [1 "a"]
+mold 1.5
+mold 'word
+mold [a: 'b :c /d]
+mold none
+mold #"a"
+mold [[1] (2)]
+print "hello"
+print 1
+print [1 2 3]
+print ["a" "b"]
+print [1 + 2 "is" 3]
+print []
+print "a" print "b"
+prin "a" prin "b"
+prin [1 2] print ""
+print 'word
+print 1.5
+print [none true]
+print ["x" [1 2] 'y]
+print mold "a"
+loop 2 [print "x"]
+foreach x [1 2 3] [prin x]
+f: func [x] [print x x] f 5
+print #"a"

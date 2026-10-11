@@ -17,9 +17,11 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 ## Decisions
 
 - The reference is REBOL 2.7.8. `reference/rebol-core.sh` and `reference/rebol-view.sh` start it.
-- A test compares the molded result of WebRebol with a result that REBOL recorded in `test/golden/`.
-- The interpreter will be a machine with an explicit stack, because a browser cannot block for `view` and `wait`.
-- The interpreter will pass an immutable store for the series, because STE-JS permits no mutation.
+- A test compares the molded result and the printed text of WebRebol with the results that REBOL recorded in `test/golden/`.
+- The code has four stages: `src/data/` (loader), `src/store/` (series, contexts, `mold`), `src/machine/` (evaluation), `src/natives/` (the functions of REBOL).
+- A frame of the machine and a native value hold a JavaScript function. Thus the machine folder does not import the natives.
+- The interpreter is a machine with an explicit stack, because a browser cannot block for `view` and `wait`.
+- The interpreter passes an immutable store for the series, because STE-JS permits no mutation.
 
 - Files (later): the interpreter keeps a disk as an immutable tree of paths and bytes. An edge module saves the disk: IndexedDB in a browser, a folder in Node.js. OPFS does not work at `file://` (see `~/projects/plastron-vfs` and the blog post "SQLite in the browser that reads pages on demand" on rheophile.ca).
 - Networks (later): `http` and `https` use `fetch` from an edge module, and the machine stops until the answer comes. A browser cannot open a socket, thus `tcp`, `ftp`, `smtp` and `pop` give a REBOL error.
@@ -28,15 +30,17 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 
 ## Sessions
 
-- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository.
+- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine and the first 91 functions, with 288 evaluation cases.
 
 ## Todos
 
-- Load and mold `date!` and `money!`.
-- Load base-64 binary, a path that has a paren, and two refinements without a space (`/a/b`).
-- Keep the line ends of a block, because `mold` shows them.
-- Remove the limit of 16 levels for nested braces in a string.
-- Make the store for series, then the evaluator machine, the contexts, and the natives.
-- Make a recorder for evaluation cases (one group for each function of `reference/functions-core.txt`).
-- `parse`, then the 181 Core mezzanines in JavaScript.
+- Loader: `date!`, `money!`, base-64 binary, a path that has a paren, `/a/b` as two refinements.
+- Loader: keep the line ends of a block, because `mold` shows them. Remove the limit of 16 levels for nested braces.
+- Evaluator: set-path, get-arguments (`:x`), `foreach` with a block of words and with a text, `any`, `all`, `case`, `switch`, `catch`, `throw`.
+- Evaluator: real error objects (`disarm`, the `arg1` field), and the `near` and `where` fields.
+- Evaluator: `object!` and `make`, `bind`, `use`, `set`, `get`, `in`.
+- Store: a faster structure. At this time, each change copies the table of all series or of one context.
+- Symbols: REBOL molds a word with the spelling of its first use. WebRebol keeps the spelling of each use.
+- One group of recorded cases for each function of `reference/functions-core.txt`. 91 of 444 Core functions have a first version.
+- `parse`, then the other Core functions in JavaScript.
 - View: faces, `draw`, the frame loop, VID, `effect`.

@@ -61,7 +61,7 @@ export const unescapeText = (text) => text.replace(/\^\(([0-9A-Za-z]+)\)|\^([\s\
  * @param {string} text
  * @returns {string}
  * @uses escapeCharacter
- * @usedby moldString, moldChar
+ * @usedby moldString (src/store/mold.mjs), moldChar (src/store/mold.mjs)
  */
 export const escapeControls = (text) => text.replace(/[\x00-\x1F\x7F^]/g, escapeCharacter);
 
@@ -70,7 +70,7 @@ export const escapeControls = (text) => text.replace(/[\x00-\x1F\x7F^]/g, escape
  * @param {string} text
  * @returns {string}
  * @uses escapeCharacter
- * @usedby moldString
+ * @usedby moldString (src/store/mold.mjs)
  */
 export const escapeInLines = (text) => text.replace(/[\x00-\x09\x0B-\x1F\x7F^]/g, escapeCharacter);
 
@@ -79,6 +79,6 @@ export const escapeInLines = (text) => text.replace(/[\x00-\x09\x0B-\x1F\x7F^]/g
  * @param {string} text
  * @returns {string}
  * @uses hasBalance
- * @usedby moldString
+ * @usedby moldString (src/store/mold.mjs)
  */
 export const escapeBraces = (text) => (hasBalance(text) ? text : text.replace(/[{}]/g, "^$&"));

@@ -1,0 +1,60 @@
+if true [1]
+if false [1]
+if none [1]
+if 0 [1]
+if 1 < 2 ["yes"]
+unless false [1]
+unless true [1]
+either 1 [2] [3]
+either none [2] [3]
+either 1 > 2 ["a"] ["b"]
+loop 0 [1]
+loop 2 [5]
+loop -1 [5]
+n: 0 loop 5 [n: n + 1] n
+repeat i 0 [1]
+repeat i 3 [i]
+i: 9 repeat i 3 [i] i
+n: 0 repeat i 4 [n: n + i] n
+while [false] [1]
+n: 0 while [n < 3] [n: n + 1]
+n: 0 while [n < 3] [n: n + 1] n
+n: 0 until [n: n + 1 n > 2]
+n: 0 until [n: n + 1 n > 2] n
+foreach x [] [1]
+foreach x [1 2] [x * 2]
+n: 0 foreach x [1 2 3] [n: n + x] n
+x: 7 foreach x [1 2] [x] x
+loop 3 [break]
+loop 3 [break/return 5]
+n: 0 loop 5 [n: n + 1 if n = 2 [break]] n
+n: 0 while [true] [n: n + 1 if n = 4 [break]] n
+n: 0 foreach x [1 2 3] [if x = 2 [break] n: x] n
+repeat i 3 [if i = 2 [break/return "two"]]
+do "1 + 2"
+do [1 2]
+do 5
+do [1 + 1]
+do "[1 2"
+do ""
+do []
+reduce [1 + 2 "a" 'b]
+reduce []
+reduce [1 2 + 3 [4]]
+reduce 5
+try [1 / 0]
+try [5]
+error? try [x-not-set]
+n: 0 try [n: 1 1 / 0 n: 2] n
+x-not-set
+1 2 3
+(1 2 3)
+()
+x: 5 :x
+'abc
+x: y: 3 x + y
+try [1 / 0] 5
+x: try [1 / 0] 5
+loop 2 [try [1 / 0]]
+if true [try [1 / 0] 2]
+f: func [] [try [1 / 0] 3] f

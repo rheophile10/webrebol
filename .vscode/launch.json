@@ -2,11 +2,11 @@
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "webrebol: load and mold a source text",
+      "name": "webrebol: evaluate a source text",
       "type": "node",
       "request": "launch",
       "program": "${workspaceFolder}/bin/webrebol.mjs",
-      "args": ["[a 1.5 \"text\" 1:20]"],
+      "args": ["print [\"The result is\" 6 * 7] 1 + 2"],
       "console": "integratedTerminal"
     },
     {

@@ -1,0 +1,27 @@
+f: func [x] [x + 1] f 2
+f: func [x y] [x * y] f 3 4
+f: func [n] [either n = 0 [1] [n * f n - 1]] f 5
+f: func [n] [either n < 2 [n] [(f n - 1) + (f n - 2)]] f 10
+f: func [x /dbl] [either dbl [x * 2] [x]] reduce [f 1 f/dbl 1]
+f: func [x /add-to y] [either add-to [x + y] [x]] reduce [f 1 f/add-to 1 2]
+f: func [x /one a /two b] [reduce [x a b]] f/two/one 1 2 3
+f: func [x /local y] [y] f 1
+f: func [x /local y] [y: x * 2 y] f 4
+f: func ['x] [x] f abc
+f: does [return 5 6] f
+f: does [5] f
+f: func [] [] f
+f: func [x] [if x [return "yes"] "no"] reduce [f true f false]
+f: func [x] [loop 3 [return x] 0] f 9
+b: [1] f: func [] b append b 2 f
+x: 1 f: func [x] [x: x + 1 x] reduce [f 5 x]
+x: 1 f: func [] [x: 2] f x
+f: func [x] [x] f
+f: func [x [integer!]] [x] f "a"
+f: func [x [integer!]] [x] f 1
+f: func [x [number!]] [x] f 1.5
+f: func [x] [x] f/bad 1
+g: func [x] [x * 2] f: func [x] [g x + 1] f 3
+f: func [x] [x] f f f 2
+f: func [n] [if n > 0 [f n - 1]] f 500
+f: func [a] [g: func [b] [a + b] g 10] f 1

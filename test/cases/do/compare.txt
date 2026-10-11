@@ -1,0 +1,61 @@
+1 = 1
+1 = 2
+1 = 1.0
+0.1 + 0.2 = 0.3
+"a" = "A"
+"a" = "b"
+'a = 'A
+[1 "a"] = [1 "A"]
+[1 2] = [1 2 3]
+[1 [2]] = [1 [2]]
+1 = "1"
+none = none
+none = false
+true = true
+#"a" = #"a"
+#"a" = #"A"
+1:00 = 1:00
+1 <> 2
+2 <> 2
+1 < 2
+2 < 1
+1 < 1.5
+"a" < "b"
+"b" < "a"
+#"a" < #"b"
+1 <= 1
+1 >= 2
+2 > 1
+1 < "a"
+equal? 1 1
+not-equal? 1 1
+lesser? 1 2
+greater? 1 2
+lesser-or-equal? 2 2
+greater-or-equal? 1 2
+not 1
+not none
+not false
+not true
+not 0
+type? 1
+type? 1.5
+type? "a"
+type? first [a]
+type? first [a:]
+type? [1]
+type? type? 1
+type? none
+type? true
+type? #"a"
+integer? 1
+integer? 1.0
+string? "a"
+block? [1]
+none? none
+none? 0
+logic? false
+word? first [a]
+error? try [1 / 0]
+error? 1
+decimal? 1.5

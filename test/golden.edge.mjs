@@ -10,17 +10,17 @@ const readHex = (hex) => Buffer.from(hex, "hex").toString("latin1");
  * @usedby readGolden
  */
 const readCase = (line) => {
-  // A line has the source and the result of REBOL, each as hexadecimal text.
-  const [source, expected = ""] = line.split(" ").map(readHex);
-  return { source, expected };
+  // A line has the source, the result of REBOL and the printed text, each as hexadecimal text.
+  const [source, expected = "", output = ""] = line.split(" ").map(readHex);
+  return { source, expected, output };
 };
 
 /**
  * Reads the cases of one group and the results that REBOL 2.7.8 gave for them.
- * @param {string} name - The name of the group.
- * @returns {{ source: string, expected: string }[]}
+ * @param {string} name - The folder and the name of the group, for example "do/math.txt".
+ * @returns {{ source: string, expected: string, output: string }[]}
  * @uses readCase
- * @usedby findProblems
+ * @usedby findProblems, findProblems
  */
 export const readGolden = (name) =>
   readFileSync(new URL(`./golden/${name}`, import.meta.url), "latin1").trim().split("\n").map(readCase);

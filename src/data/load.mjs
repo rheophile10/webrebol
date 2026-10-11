@@ -1,4 +1,4 @@
-/** @import { Datum } from "./types/results.mjs" */
+/** @import { Datum } from "../types/states.mjs" */
 import { scanTokens } from "./tokens.mjs";
 import { makeDatum, readToken } from "./datum.mjs";
 
@@ -77,7 +77,8 @@ const stepLoad = (state, token) => (state.error === null ? (STEPS[token.kind] ??
  * @todo Read date, money, base-64 binary, and a path that has a paren.
  * @todo Keep the line ends of the source, because `mold` shows them.
  * @uses scanTokens, stepLoad, START, MISSING
- * @usedby loaded (bin/webrebol.mjs), moldSource (test/load.test.mjs)
+ * @usedby doText (src/natives/control.mjs), makeFunction (src/natives/globals.mjs),
+ *   interpretSource (src/natives/interpret.mjs), moldSource (test/load.test.mjs), makeReady (test/machine.test.mjs)
  */
 export const loadSource = (source) => {
   // Put each token into the frame that is open.

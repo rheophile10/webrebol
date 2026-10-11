@@ -1,0 +1,63 @@
+first [1 2]
+first "abc"
+first []
+first ""
+second [1 2]
+second [1]
+second "ab"
+pick [1 2] 1
+pick [1 2] 3
+pick [1 2] 0
+pick [1 2] -1
+pick next [1 2] -1
+pick "abc" 2
+next [1 2]
+next next [1]
+next ""
+back [1]
+back next [1 2]
+head next [1 2]
+tail [1 2]
+tail? []
+tail? [1]
+tail? tail [1]
+empty? "a"
+empty? ""
+length? [1 2 3]
+length? next [1 2 3]
+length? "hello"
+length? tail [1 2]
+index? [1 2 3]
+index? next [1 2 3]
+index? tail "abc"
+append [1] 2
+append [1] [2 3]
+append/only [1] [2 3]
+append [] "a"
+append "ab" "cd"
+append "ab" 12
+append "ab" [1 "c" d]
+append "ab" #"c"
+append next [1 2] 3
+a: [1] append a 2 a
+a: [1] b: a append b 2 a
+a: "x" b: a append b "y" a
+insert [1] 2
+head insert [1] 2
+insert tail [1] 2
+head insert next [1 3] 2
+head insert [3] [1 2]
+head insert/only [3] [1 2]
+head insert "bc" "a"
+head insert next "ac" "b"
+copy [1 2 3]
+copy next [1 2 3]
+copy "abc"
+a: [1] b: copy a append b 2 a
+a: [1 2 3] b: next a index? b
+a: [x 10 y 20] a/y
+a: [x 10 y 20] a/2
+a: [x 10 y 20] a/z
+a: [1 2] a/5
+a: [x [y 5]] a/x/y
+a: [1 2] first next a

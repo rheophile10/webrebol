@@ -1,5 +1,6 @@
-/** @import { Datatype } from "./types/categories.mjs" */
-/** @import { Token, Datum } from "./types/results.mjs" */
+/** @import { Datatype } from "../types/categories.mjs" */
+/** @import { Token } from "../types/results.mjs" */
+/** @import { Datum } from "../types/states.mjs" */
 import { unescapeText } from "./escape.mjs";
 
 const INTEGER_LIMIT = 2147483648;
@@ -13,7 +14,7 @@ const CONSTRUCTS = { "#[true]": ["logic", true], "#[false]": ["logic", false], "
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 16 declarations in datum, load
+ * @usedby 28 declarations in datum, load, machine, compare, control, globals, math, series, store
  */
 export const makeDatum = (type, value) => ({ type, value });
 

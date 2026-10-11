@@ -1,4 +1,4 @@
-/** @import { Token } from "./types/results.mjs" */
+/** @import { Token } from "../types/results.mjs" */
 
 const BRACE_DEPTH = 16;
 const NO_MATCH = "(?!)";

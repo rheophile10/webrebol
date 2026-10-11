@@ -1,12 +1,13 @@
 // Start: node bin/webrebol.mjs '<REBOL source text>'
-// This program loads a REBOL source text and shows the molded values.
-import { loadSource } from "../src/load.mjs";
-import { moldItems } from "../src/mold.mjs";
+// This program evaluates a REBOL source text. It shows the printed text and then the molded result.
+import { interpretSource, showResult } from "../src/natives/interpret.mjs";
 
+const BATCHES = 5000;
 /**
- * @uses loadSource (src/load.mjs)
+ * @uses interpretSource (src/natives/interpret.mjs), BATCHES
  * @usedby bin/webrebol.mjs
  */
-const loaded = loadSource(process.argv[2] ?? "");
+const machine = interpretSource(process.argv[2] ?? "", BATCHES);
 
-console.log(loaded.type === "error" ? `** ${loaded.value}` : moldItems(loaded.value));
+process.stdout.write(machine.store.output);
+console.log(`== ${showResult(machine)}`);
