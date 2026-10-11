@@ -10,7 +10,7 @@ const FUNCTION_TYPES = ["native", "action", "op", "function"];
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 20 declarations in call, bitsets, compare, encode, flow, globals, items, numbers, objects, parse, search, series, words
+ * @usedby 22 declarations in call, bitsets, compare, encode, files, flow, globals, items, numbers, objects, parse, random, search, series, words
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -64,7 +64,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 105 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, flow, items, loops, math, numbers, objects, parse, search, series, strings, text, words
+ * @usedby 115 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -86,7 +86,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 27 declarations in call, evaluate, path, compare, control, convert, digest, edit, encode, items, math, numbers, objects, series, words
+ * @usedby 33 declarations in call, evaluate, path, compare, control, convert, digest, edit, encode, files, items, math, numbers, objects, random, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -96,7 +96,7 @@ export const failMachine = (machine, text, args = []) =>
  * @param {string} name
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 10 declarations in call, clock, faults, items, math, parse, series, words
+ * @usedby 11 declarations in call, clock, faults, files, items, math, parse, series, words
  */
 export const makeWord = (name) => makeDatum("word", name);
 
@@ -185,7 +185,7 @@ const stepBlock = (machine, frame) => {
  * @returns {Machine}
  * @standard empty - An empty block gives the unset value.
  * @uses pushFrame, stepBlock, UNSET (src/store/store.mjs)
- * @usedby 24 declarations in evaluate, machine, control, faults, flow, items, loops, objects, words
+ * @usedby 25 declarations in evaluate, machine, control, faults, files, flow, items, loops, objects, words
  */
 export const startBlock = (machine, block) => ({
   ...pushFrame(machine, { step: stepBlock, cursor: machine.cursor }),

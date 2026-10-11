@@ -17,16 +17,17 @@ const EMPTY_BLOCK = allocate(START_STORE, { type: "block", value: [] });
 /**
  * Makes a machine that is ready to evaluate a REBOL source text in a new session.
  * @param {string} source - The REBOL source text.
+ * @param {{ disk?: object, started?: number, seed?: number }} [session] - The disk, the start time and the random seed of the session.
  * @returns {Machine}
  * @standard syntax - A source text that is not valid REBOL gives a machine that throws the error of the loader.
  * @uses loadSource (src/data/load.mjs), failSyntax, makeMachine (src/machine/machine.mjs), EMPTY_BLOCK,
  *   allocate (src/store/store.mjs), START_STORE
- * @usedby interpretWithEdge (src/edge/drive.mjs), interpretSource
+ * @usedby interpretWithEdge (src/edge/drive.mjs), interpretSource, makeScript (test/disk.test.mjs)
  */
-export const startSource = (source) => {
+export const startSource = (source, session = {}) => {
   const loaded = loadSource(source);
   if (loaded.type === "error") return failSyntax(makeMachine(EMPTY_BLOCK.store, EMPTY_BLOCK.value), loaded);
-  const made = allocate(START_STORE, loaded);
+  const made = allocate({ ...START_STORE, ...session }, loaded);
   return makeMachine(made.store, made.value);
 };
 

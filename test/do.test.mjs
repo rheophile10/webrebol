@@ -110,3 +110,11 @@ test("interpretSource reference: the char, time, pair, tuple, money and date cas
 test("interpretSource reference: the cases of the type predicates, the conversions and more functions agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/more.txt"), []);
 });
+
+test("interpretSource reference: the file and folder cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/file.txt"), []);
+});
+
+test("interpretSource reference: the cases of the properties of random agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/random.txt"), []);
+});

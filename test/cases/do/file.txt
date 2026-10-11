@@ -1,0 +1,90 @@
+write %a.txt "hello"
+write %a.txt "hello" read %a.txt
+write %a.txt "hello" type? read %a.txt
+write %a.txt "hello" read/binary %a.txt
+write %a.txt "hello" size? %a.txt
+write %a.txt "hello" exists? %a.txt
+exists? %nope.txt
+dir? %nope.txt
+write %a.txt "x" dir? %a.txt
+read %nope.txt
+size? %nope.txt
+modified? %nope.txt
+write %a.txt "x" type? modified? %a.txt
+write %a.txt "hello" write/append %a.txt " world" read %a.txt
+write %a.txt "hello" write %a.txt "new" read %a.txt
+write %b.txt 123 read %b.txt
+write %b.txt [1 "a" b] read %b.txt
+write %b.txt #{414243} read %b.txt
+write/binary %b.txt #{0001FF} read/binary %b.txt
+write %c.txt "line1^/line2^/line3" read/lines %c.txt
+write/lines %c.txt ["a" "b" "c"] read %c.txt
+write/lines %c.txt "one" read %c.txt
+write/lines %c.txt "one" write/append/lines %c.txt ["z"] read %c.txt
+write %e.txt "" read %e.txt
+write %e.txt "" read/lines %e.txt
+write %e.txt "" size? %e.txt
+make-dir %d/
+make-dir %d/ exists? %d/
+make-dir %d/ dir? %d/
+make-dir %d/ dir? %d
+make-dir %d/ make-dir %d/
+make-dir %d/ write %d/f.txt "in dir" read %d/f.txt
+make-dir %d/ write %d/f.txt "x" write %d/g.txt "y" sort read %d/
+write %a.txt "x" make-dir %d/ sort read %./
+read %./
+make-dir %x/y/z/
+make-dir/deep %x/y/z/
+make-dir/deep %x/y/z/ exists? %x/y/z/
+make-dir/deep %x/y/z/ sort read %x/
+write %nodir/f.txt "x"
+write %a.txt "x" rename %a.txt %a2.txt reduce [exists? %a.txt exists? %a2.txt]
+write %a.txt "x" rename %a.txt %a2.txt read %a2.txt
+rename %nope.txt %q.txt
+write %a.txt "x" delete %a.txt exists? %a.txt
+delete %nope.txt
+make-dir %d/ write %d/f.txt "x" delete %d/
+make-dir %d/ delete %d/ exists? %d/
+make-dir %d/ write %d/f.txt "x" delete-dir %d/ exists? %d/
+what-dir
+change-dir %x2/
+make-dir %sub/ change-dir %sub/ what-dir
+make-dir %sub/ change-dir %sub/ write %inner.txt "i" change-dir %../ read %sub/inner.txt
+make-dir %sub/ write %sub/inner.txt "i" read %sub/../sub/inner.txt
+clean-path %sub/../sub/inner.txt
+clean-path %a/./b
+clean-path %/
+clean-path %x
+clean-path %sub/
+save %s.txt [1 "a" b] read %s.txt
+save %s.txt 42 read %s.txt
+save %s.txt 42 load %s.txt
+save %s.txt "text" read %s.txt
+save %s.txt "text" load %s.txt
+save %s.txt make object! [a: 1] read %s.txt
+save %s.txt [1 2 3] length? load %s.txt
+write %script.r "REBOL [] 1 + 2" do %script.r
+write %script2.r "REBOL [Title: {x}] print {hi} x: 9" do %script2.r
+write %script2.r "REBOL [Title: {x}] x: 9" do %script2.r x
+write %noheader.r "1 + 2" do %noheader.r
+write %script.r "REBOL [] 1 + 2" length? load %script.r
+write %data.txt "1 2 3" second load %data.txt
+write %c.txt "one^/z^/" read/part %c.txt 3
+write %c.txt "abc" i: info? %c.txt reduce [i/size i/type]
+make-dir %sub/ i: info? %sub/ i/type
+info? %nope
+make-dir %sub/ size? %sub/
+exists? %./
+exists? %/
+write %c.txt "x" read %c.txt/
+make-dir %sub/ write %sub/ "x"
+make-dir %sub/ sort read %sub/
+to-local-file %/a/b
+to-rebol-file "/a/b"
+to-local-file %a
+exists? "c.txt"
+read "c.txt"
+do %nope.r
+load %nope.txt
+write %a.txt "x" write/append %a.txt [1 2] read %a.txt
+write %a.txt "abc" write/append/binary %a.txt #{21} read %a.txt

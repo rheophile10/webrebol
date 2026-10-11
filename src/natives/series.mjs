@@ -28,7 +28,7 @@ const makeItem = (series, raw) => {
  * @returns {Datum | null}
  * @standard outside - An offset that is not in the series gives null.
  * @uses readAll (src/store/store.mjs), makeItem
- * @usedby takeItems, takeFirst, selectValue, takeItem, pickIndex
+ * @usedby takeItems, takeFirst, pickSeries, selectValue, takeItem, pickIndex
  */
 export const pickItem = (store, series, offset) => {
   // Give null if the position is not in the series.
@@ -90,7 +90,7 @@ const OTHER_TYPES = {
  * @param {string | number[] | Datum[]} content
  * @returns {Machine}
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby 14 declarations in digest, encode, items, words
+ * @usedby 20 declarations in digest, encode, files, items, random, words
  */
 export const giveNew = (machine, type, content) => {
   const made = makeSeries(machine.store, type, content);

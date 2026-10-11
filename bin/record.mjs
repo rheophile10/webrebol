@@ -1,7 +1,8 @@
 // Start: node bin/record.mjs
 // This program runs each case file through REBOL Core 2.7.8 and writes the results to test/golden/.
 import { execFileSync } from "node:child_process";
-import { readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
@@ -12,6 +13,11 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
 const REBOL = `${ROOT}reference/rebol-core.sh`;
 const LIMITS = { encoding: "latin1", timeout: 20000, maxBuffer: 16 * 1024 * 1024 };
 const RESULT = /^([\s\S]*)\n@@RESULT ([0-9A-F]*)\n$/;
+
+/**
+ * @usedby recordCase
+ */
+const readHex = (hex) => Buffer.from(hex, "hex").toString("latin1");
 
 /**
  * @usedby runCase, recordCase
@@ -41,25 +47,28 @@ const LIMITS_FOR_CASE = { ...LIMITS, timeout: 5000 };
  * @uses REBOL, ROOT, writeHex, LIMITS_FOR_CASE
  * @usedby recordCase
  */
-const runCase = (source) => {
+const runCase = (source, folder) => {
   // A case that does not end in REBOL cannot be a test. Tell the person which case it is.
   try {
-    return execFileSync(REBOL, ["-qs", `${ROOT}reference/do.r`, writeHex(source)], LIMITS_FOR_CASE);
+    return execFileSync(REBOL, ["-qs", `${ROOT}reference/do.r`, writeHex(source)], { ...LIMITS_FOR_CASE, cwd: folder });
   } catch (fault) {
     throw new Error(`This case did not end in REBOL, or REBOL stopped: ${source} (${fault.code})`);
   }
 };
 
 /**
- * @uses runCase, RESULT, writeHex
+ * @uses runCase, RESULT, readHex, writeHex
  * @usedby recordDo
  */
 const recordCase = (source) => {
   // Each evaluation case runs in a new REBOL session. Thus a word of one case cannot change a different case.
-  const match = runCase(source).match(RESULT);
+  // The case runs in a new empty folder. In the results, the path of this folder becomes the root of the disk.
+  const folder = mkdtempSync(`${tmpdir()}/webrebol-`);
+  const match = runCase(source, folder).match(RESULT);
+  rmSync(folder, { recursive: true });
   if (match === null) throw new Error(`REBOL gave no result for this case: ${source}`);
-  const [, output, result] = match;
-  return `${writeHex(source)} ${result} ${writeHex(output)}\n`;
+  const [output, result] = [match[1], readHex(match[2])].map((text) => text.split(folder).join(""));
+  return `${writeHex(source)} ${writeHex(result)} ${writeHex(output)}\n`;
 };
 
 /**

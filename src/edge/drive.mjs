@@ -2,6 +2,7 @@
 import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { startSource } from "../natives/interpret.mjs";
+import { EMPTY_DISK } from "../store/disk.mjs";
 
 const SHA_1 = "SHA-1";
 /**
@@ -63,9 +64,14 @@ export const driveMachine = async (machine, batches) => {
  * Evaluates a REBOL source text in a new session, with the edge for the clock and for Web Crypto.
  * @param {string} source - The REBOL source text.
  * @param {number} batches - The budget between two requests, in groups of 1000 steps.
+ * @param {Object<string, object>} [disk] - The disk at the start of the session. Without it, the disk is empty.
  * @returns {Promise<Machine>}
  * @standard reference - The result is the result that `do` of REBOL 2.7.8 gives.
- * @uses driveMachine, startSource (src/natives/interpret.mjs)
+ * @uses EMPTY_DISK (src/store/disk.mjs), driveMachine, startSource (src/natives/interpret.mjs)
  * @usedby bin/webrebol.mjs, showRun (test/edge.test.mjs)
  */
-export const interpretWithEdge = (source, batches) => driveMachine(startSource(source), batches);
+export const interpretWithEdge = (source, batches, disk = EMPTY_DISK) => {
+  // The session starts with the time of the clock. A file that the session writes gets this time.
+  const started = Date.now();
+  return driveMachine(startSource(source, { disk, started, seed: started | 0 }), batches);
+};

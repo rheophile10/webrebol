@@ -26,13 +26,15 @@ import { WORD_NATIVES } from "./words.mjs";
 import { ENCODE_NATIVES } from "./encode.mjs";
 import { DIGEST_NATIVES } from "./digest.mjs";
 import { CLOCK_NATIVES } from "./clock.mjs";
+import { FILE_NATIVES, doFile, loadFile } from "./files.mjs";
+import { RANDOM_NATIVES } from "./random.mjs";
 
 /**
  * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
  *   TEXT_NATIVES, CONVERT_NATIVES, guardSeries, EDIT_NATIVES, SEARCH_NATIVES, STRING_NATIVES, NUMBER_NATIVES,
  *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES, ITEM_NATIVES, WORD_NATIVES, ENCODE_NATIVES, DIGEST_NATIVES,
- *   CLOCK_NATIVES
- * @usedby findAny, makeFunction, GLOBALS
+ *   CLOCK_NATIVES, FILE_NATIVES, RANDOM_NATIVES
+ * @usedby OVERRIDES, findAny, makeFunction, GLOBALS
  */
 const NATIVES = {
   ...MATH_NATIVES,
@@ -54,14 +56,27 @@ const NATIVES = {
   ...ENCODE_NATIVES,
   ...DIGEST_NATIVES,
   ...CLOCK_NATIVES,
+  ...FILE_NATIVES,
+  ...RANDOM_NATIVES,
   "q": WORD_NATIVES.quit,
 };
 
 const TYPESETS = ["number", "series", "any-block", "any-string", "any-word", "any-function", "any-type", "scalar"];
 
 /**
- * @uses findInBitset, NATIVES
+ * @uses doFile, NATIVES, loadFile, findAny
  * @usedby makeFunction
+ */
+const OVERRIDES = {
+  // A file value makes `do` and `load` read the disk.
+  "do": (machine, args, options) => (args[0].type === "file" ? doFile(machine, args[0]) : NATIVES["do"](machine, args, options)),
+  load: (machine, args, options) => (args[0].type === "file" ? loadFile(machine, args[0]) : NATIVES.load(machine, args, options)),
+  find: (machine, args, options) => findAny(machine, args, options),
+};
+
+/**
+ * @uses findInBitset, NATIVES
+ * @usedby OVERRIDES
  */
 const findAny = (machine, args, options) =>
   // A bitset is not a series, but `find` accepts it.
@@ -102,14 +117,14 @@ const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.v
 
 /**
  * @uses parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), SPECS, readSpecItem,
- *   makeDatum (src/data/datum.mjs), findAny, NATIVES
+ *   makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
  * @usedby GLOBALS
  */
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
   const spec = parseSpec(loadSource(SPECS[sign][1]).value.map(readSpecItem));
   // REBOL has three types for its own functions. The type comes from REBOL.
-  return makeDatum(type ?? SPECS[sign][0], { ...spec, native: name === "find" ? findAny : NATIVES[name] });
+  return makeDatum(type ?? SPECS[sign][0], { ...spec, native: OVERRIDES[name] ?? NATIVES[name] });
 };
 
 /**

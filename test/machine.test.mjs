@@ -203,8 +203,8 @@ test("formatError header: a word without a value gives a Script Error", () => {
 });
 
 test("formatError identity: an id without a message shows the type, the id and the fields", () => {
-  const message = formatError(EMPTY_STORE, { type: "error", value: "access cannot-open", args: [] });
-  assert.match(message, /^\*\* Access Error: .*Fields: none none none \(access cannot-open\)$/);
+  const message = formatError(EMPTY_STORE, { type: "error", value: "access timeout", args: [] });
+  assert.match(message, /^\*\* Access Error: .*Fields: none none none \(access timeout\)$/);
 });
 
 test("findError result: an error value that is the result is the error", () => {

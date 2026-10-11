@@ -1,0 +1,19 @@
+random 1
+random 0
+type? random 10
+type? random 1.5
+type? random 2:00
+type? random 5x5
+type? random 1.2.3
+type? random "abc"
+length? random "abcde"
+length? random [1 2 3]
+sort random [3 1 2]
+a: [1 2 3] random a a
+type? random/only [1 2 3]
+unset? random/seed 1
+r: random 100 all [r >= 1 r <= 100]
+r: random -5 all [r <= -1 r >= -5]
+r: random 1.0 all [r >= 0 r <= 1]
+random []
+random ""

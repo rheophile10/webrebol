@@ -50,7 +50,7 @@ const countMatches = (text, pattern) => (text.match(pattern) ?? []).length;
 const needsBraces = (text) =>
   text.includes('"') ||
   text.length > QUOTE_LIMIT ||
-  countMatches(text, /\n/g) >= LINE_LIMIT ||
+  countMatches(text, /\n(?!$)/g) >= LINE_LIMIT ||
   countMatches(text, /[\x00-\x1F\x7F^]/g) >= ESCAPE_LIMIT;
 
 /**
@@ -218,7 +218,7 @@ const MOLDERS = {
  * @returns {string}
  * @standard reference - The text is the text that `mold` of REBOL 2.7.8 gives.
  * @uses MOLDERS
- * @usedby 11 declarations in interpret, report, text, words, mold
+ * @usedby 12 declarations in files, interpret, report, text, words, mold
  */
 export const moldValue = (store, value, depth = 0) =>
   (MOLDERS[value.type] ?? (() => "?function?"))(store, value, depth);
@@ -231,7 +231,7 @@ export const moldValue = (store, value, depth = 0) =>
  * @returns {string}
  * @standard reference - The text is the text that `mold/only` of REBOL 2.7.8 gives.
  * @uses readRest, moldValue
- * @usedby MOLDERS, moldSource (test/load.test.mjs)
+ * @usedby saveValue (src/natives/files.mjs), MOLDERS, moldSource (test/load.test.mjs)
  */
 export const moldRest = (store, block, depth = 0) =>
   readRest(store, block)
@@ -254,7 +254,7 @@ const FORMERS = {
  * @returns {string}
  * @standard reference - The text is the text that `form` of REBOL 2.7.8 gives.
  * @uses isList, readRest, FORMERS, moldValue
- * @usedby 14 declarations in convert, encode, items, parse, report, search, series, text
+ * @usedby 16 declarations in convert, encode, files, items, parse, random, report, search, series, text
  */
 export const formValue = (store, value) => {
   // The items of a block are formed and joined, without brackets.

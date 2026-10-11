@@ -72,7 +72,7 @@ export const readDays = (days) => {
  * @standard carry - A time of 25 hours gives the next day and 1 hour.
  * @uses DAY
  * @usedby readDate, makeMoment (src/natives/clock.mjs), makeDateFrom (src/natives/convert.mjs),
- *   combineDate (src/natives/scalars.mjs), writeDate (src/store/parts.mjs)
+ *   makeMoment (src/natives/files.mjs), combineDate (src/natives/scalars.mjs), writeDate (src/store/parts.mjs)
  */
 export const makeDate = (days, time, zone) => {
   if (time === null) return { days, time, zone };
