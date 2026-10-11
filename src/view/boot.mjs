@@ -48,6 +48,8 @@ face-to-element: func [face /local tag props kids type] [
     ]
     if type: select theme/types face/style [append props reduce ['type type]]
     if block? face/action [append props reduce ['data-onclick face/action]]
+    if block? face/on-time [append props reduce ['data-ontime face/on-time 'data-rate any [face/rate 10]]]
+    if block? face/on-key [append props reduce ['data-onkey face/on-key]]
     if block? face/pane [foreach child face/pane [append kids face-to-element child]]
     element tag props kids
 ]

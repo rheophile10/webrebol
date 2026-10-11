@@ -6,10 +6,12 @@ import { COLORS, STYLES, measureText } from "./data.mjs";
 const FACE_WORDS = [
   ...["type", "offset", "size", "span", "pane", "text", "color", "image", "effect", "data", "edge", "font", "para"],
   ...["feel", "saved-area", "rate", "show?", "options", "parent-face", "old-offset", "old-size", "line-list"],
-  ...["changes", "face-flags", "action", "style", "css"],
+  ...["changes", "face-flags", "action", "style", "css", "on-time", "on-key"],
 ];
 const KEYWORDS = ["across", "below", "return", "at", "pad", "space", "origin"];
 const WITH_VALUE = ["at", "pad", "space", "origin"];
+// The facets that WebRebol adds to VID. Each one takes the next value of the layout block.
+const WEB_FACETS = ["css", "rate", "on-time", "on-key"];
 const TEXT_PADDING = 4;
 const START = { origin: [20, 20], space: [8, 8], place: [20, 20], across: false, line: 0, extent: [0, 0], faces: [], pending: null, expect: null };
 
@@ -90,7 +92,7 @@ const placeFace = (state) => {
   if (pending === null) return state;
   const size = findSize(pending);
   const color = pending.color ?? STYLES[pending.style].color;
-  const fields = { type: makeWord("face"), offset: makePair(state.place), size: makePair(size), color: makeTuple(color), style: makeWord(pending.style), action: pending.action ?? NONE, css: pending.css ?? NONE };
+  const fields = { type: makeWord("face"), offset: makePair(state.place), size: makePair(size), color: makeTuple(color), style: makeWord(pending.style), action: pending.action ?? NONE, css: pending.css ?? NONE, rate: pending.rate ?? NONE, "on-time": pending["on-time"] ?? NONE, "on-key": pending["on-key"] ?? NONE };
   const made = makeFace(state, { style: pending.style, text: pending.text ?? STYLES[pending.style].text, fields });
   const extent = state.extent.map((part, axis) => Math.max(part, state.place[axis] + size[axis]));
   const place = state.across ? [state.place[0] + size[0] + state.space[0], state.place[1]] : [state.place[0], state.place[1] + size[1] + state.space[1]];
@@ -140,14 +142,14 @@ const SETTERS = {
 };
 
 /**
- * @uses WITH_VALUE, placeFace, KEYWORDS, COMMANDS, STYLES, COLORS
+ * @uses WEB_FACETS, WITH_VALUE, placeFace, KEYWORDS, COMMANDS, STYLES, COLORS
  * @usedby readItem
  */
 const readWordItem = (state, item) => {
   // A word is a command, a style, or a color.
   const name = item.value.toLowerCase();
-  // The word css is a WebRebol facet. The block after it has CSS names and values for this one face.
-  if (name === "css") return { ...state, expect: "css" };
+  // A web facet has a value after it: CSS for this one face, a rate in events for each second, or the block of an event.
+  if (WEB_FACETS.includes(name)) return { ...state, expect: name };
   if (WITH_VALUE.includes(name)) return { ...placeFace(state), expect: name };
   if (KEYWORDS.includes(name)) return COMMANDS[name](placeFace(state));
   if (STYLES[name] !== undefined) {
@@ -176,13 +178,15 @@ const FACETS = {
 const nameFace = (state, word) => ({ ...placeFace(state), name: word });
 
 /**
- * @uses nameFace, SETTERS, readWordItem, FACETS
+ * @uses nameFace, WEB_FACETS, SETTERS, readWordItem, FACETS
  * @usedby makeLayout
  */
 const readItem = (state, item) => {
   if (item.type === "set-word") return nameFace(state, item);
   // A value after a command is the argument of the command. Other values are facets of the face that waits.
-  if (state.expect === "css") return { ...state, expect: null, pending: state.pending === null ? null : { ...state.pending, css: item } };
+  if (WEB_FACETS.includes(state.expect)) {
+    return { ...state, expect: null, pending: state.pending === null ? null : { ...state.pending, [state.expect]: item } };
+  }
   if (state.expect !== null) return { ...SETTERS[state.expect](state, item), expect: null };
   if (item.type === "word") return readWordItem(state, item);
   const facet = FACETS[item.type];

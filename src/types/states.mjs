@@ -29,7 +29,7 @@
  * @property {Datum[]} windows - The faces that are windows of the session.
  * @property {boolean} dirty - A face changed, and the page did not draw it yet.
  * @madeby BOOT_BUDGET
- * @changedby 11 declarations in store, windows
+ * @changedby 12 declarations in store, windows
  * @readby 19 declarations in machine, compare, digest, loops, report, series, mold, store, elements, windows
  */
 

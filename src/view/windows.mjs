@@ -1,9 +1,10 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { GLOBAL, UNSET, makeSeries, readContext, writeContext } from "../store/store.mjs";
+import { GLOBAL, UNSET, makeSeries, readContext, writeContext, writeWord } from "../store/store.mjs";
 import { askEdge, giveValue, makeMachine } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { exportElement } from "./elements.mjs";
+import { formatError } from "../natives/report.mjs";
 
 const RENDER_BUDGET = 2000;
 const HANDLER_BUDGET = 5000;
@@ -72,13 +73,58 @@ export const renderWindows = (store) => {
  * @param {number} block - The series number of the action block.
  * @returns {Store}
  * @standard dirty - After the action, the page draws the windows again.
+ * @standard fault - An error in the action adds its message to the printed text.
  * @uses runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs),
- *   HANDLER_BUDGET
- * @usedby readEvent (src/edge/page.mjs)
+ *   HANDLER_BUDGET, formatError (src/natives/report.mjs)
+ * @usedby runTimers (src/edge/page.mjs), readEvent (src/edge/page.mjs), runKeyAction
  */
 export const runAction = (store, block) => {
   const done = runMachine(makeMachine(store, makeDatum("block", { id: block, index: 0 })), HANDLER_BUDGET);
-  return { ...done.store, dirty: true };
+  // An error in the action shows in the printed text of the session.
+  const fault = done.thrown?.kind === "error" ? `${formatError(done.store, done.thrown.value)}\n` : "";
+  return { ...done.store, output: done.store.output + fault, dirty: true };
+};
+
+/**
+ * @usedby listTimers, listKeyBlocks
+ */
+const findProps = (name) => (node) =>
+  // Find each element of a tree that has an attribute, and the elements below it.
+  node.tag === undefined ? [] : [...(node.props[name] === undefined ? [] : [node.props]), ...node.children.flatMap(findProps(name))];
+
+/**
+ * Lists the timers of a view: the action block and the rate of each element that has a timer.
+ * @param {{ tag?: string, props?: object, children?: object[] }} view - The element data of the page.
+ * @returns {{ block: number, rate: number }[]}
+ * @standard rate - The rate is the number of events for each second.
+ * @uses findProps
+ * @usedby runTimers (src/edge/page.mjs)
+ */
+export const listTimers = (view) =>
+  findProps("data-ontime")(view).map((props) => ({ block: Number(props["data-ontime"]), rate: Number(props["data-rate"]) }));
+
+/**
+ * Lists the action blocks of a view that want the keys of the keyboard.
+ * @param {{ tag?: string, props?: object, children?: object[] }} view - The element data of the page.
+ * @returns {number[]}
+ * @uses findProps
+ * @usedby readKey (src/edge/page.mjs)
+ */
+export const listKeyBlocks = (view) => findProps("data-onkey")(view).map((props) => Number(props["data-onkey"]));
+
+/**
+ * Evaluates the key block of a face. The global word `key` has the name of the key, for example "ArrowLeft" or "a".
+ * @param {Store} store
+ * @param {number} block - The series number of the key block.
+ * @param {string} name - The name of the key.
+ * @returns {Store}
+ * @standard word - The block reads the name of the key from the word `key`.
+ * @uses makeSeries (src/store/store.mjs), runAction, writeWord (src/store/store.mjs), GLOBAL (src/store/store.mjs)
+ * @usedby readKey (src/edge/page.mjs)
+ */
+export const runKeyAction = (store, block, name) => {
+  const made = makeSeries(store, "string", name);
+  return runAction(writeWord(made.store, { type: "word", value: "key", bind: GLOBAL }, made.value), block);
 };
 
 /**

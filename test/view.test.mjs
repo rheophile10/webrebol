@@ -3,9 +3,9 @@ import assert from "node:assert/strict";
 import { interpretSource, showResult } from "../src/session/interpret.mjs";
 import { exportElement } from "../src/view/elements.mjs";
 import { diff } from "../src/view/diff.mjs";
-import { changeText, renderWindows, runAction } from "../src/view/windows.mjs";
+import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction } from "../src/view/windows.mjs";
 import { findThreshold, hashCell, measureCenter, smoothNoise } from "../src/view/grid.mjs";
-import { readContext, readRest } from "../src/store/store.mjs";
+import { readContext, readRest, readWord } from "../src/store/store.mjs";
 
 const BATCHES = 2000;
 const WINDOW = 'lay: layout [name: field "abc" button "Push" [print "pushed"] button "Close" [unview]] view/new lay';
@@ -121,4 +121,31 @@ test("diff keyed: a child with a key that moves gives one move patch", () => {
 test("diff minimal: a list of four keys in the reverse sequence gives three moves", () => {
   const patches = diff(makeList(["a", "b", "c", "d"]), makeList(["d", "c", "b", "a"]), [0]);
   assert.equal(patches.filter((patch) => patch.kind === "move").length, 3);
+});
+
+const GAME = 'lay: layout [ball: box 10x10 red rate 30 on-time [ball/offset: ball/offset + 2x1] on-key [last-key: key]] view/new lay';
+
+test("listTimers rate: a face with a rate and a time block gives one timer", () => {
+  const timers = listTimers(renderWindows(run(GAME).store));
+  assert.equal(timers.length, 1);
+  assert.equal(timers[0].rate, 30);
+});
+
+test("listTimers rate: the time block moves the face, and the next view has the new position", () => {
+  const store = run(GAME).store;
+  const moved = runAction(store, listTimers(renderWindows(store))[0].block);
+  assert.match(renderWindows(moved).children[0].children[0].props.style, /left:22px;top:21px/);
+});
+
+test("runKeyAction word: the key block reads the name of the key from the word key", () => {
+  const store = run(GAME).store;
+  const after = runKeyAction(store, listKeyBlocks(renderWindows(store))[0], "ArrowLeft");
+  assert.equal(showResult(interpretSource("1", 10)), "1");
+  assert.equal(readRest(after, readWord(after, { type: "word", value: "last-key", bind: 0 })), "ArrowLeft");
+});
+
+test("runAction fault: an error in the action of a button adds its message to the printed text", () => {
+  const store = run('lay: layout [button "Bad" [1 / 0]] view/new lay').store;
+  const button = renderWindows(store).children[0].children[0];
+  assert.match(runAction(store, Number(button.props["data-onclick"])).output, /^\*\* Math Error: .*\(math zero-divide\)\n$/);
 });

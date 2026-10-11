@@ -36,6 +36,13 @@
         "uriFormat": "%s",
         "webRoot": "${workspaceFolder}"
       }
+    },
+    {
+      "name": "compare: the corpus scripts in REBOL and in WebRebol",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/compare.mjs",
+      "console": "integratedTerminal"
     }
   ]
 }

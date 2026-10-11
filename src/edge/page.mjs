@@ -3,7 +3,7 @@ import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { showResult, startSource } from "../session/interpret.mjs";
 import { findError, formatError } from "../natives/report.mjs";
-import { changeText, renderWindows, runAction } from "../view/windows.mjs";
+import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction } from "../view/windows.mjs";
 import { diff } from "../view/diff.mjs";
 import { applyPatches } from "./dom.mjs";
 import { performRequest } from "./drive.mjs";
@@ -84,11 +84,45 @@ const advance = () => {
 };
 
 /**
- * @uses advance, paint, state, showEnd, findPart
+ * @usedby runTimers, readKey
+ */
+const isIdle = (machine) => machine !== undefined && ["wait", "done"].includes(machine.mode);
+
+/**
+ * @uses state, isIdle, listTimers (src/view/windows.mjs), runAction (src/view/windows.mjs)
+ * @usedby frame
+ */
+const runTimers = (now) => {
+  // A timer runs its block when its period is over. The page keeps the time of the last run of each block.
+  const machine = state.get("machine");
+  if (!isIdle(machine) || !state.has("view")) return;
+  const last = state.get("ticks") ?? new Map();
+  const due = listTimers(state.get("view")).filter((timer) => now - (last.get(timer.block) ?? 0) >= 1000 / timer.rate);
+  due.forEach((timer) => last.set(timer.block, now));
+  state.set("ticks", last);
+  state.set("machine", { ...machine, store: due.reduce((store, timer) => runAction(store, timer.block), machine.store) });
+};
+
+/**
+ * @uses state, isIdle, listKeyBlocks (src/view/windows.mjs), runKeyAction (src/view/windows.mjs)
  * @usedby boot
  */
-const frame = () => {
+const readKey = (event) => {
+  // A key goes to each face that has a key block. The arrow keys and the space key do not scroll the page.
+  const machine = state.get("machine");
+  const blocks = isIdle(machine) && state.has("view") ? listKeyBlocks(state.get("view")) : [];
+  if (blocks.length === 0 || event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
+  event.preventDefault();
+  state.set("machine", { ...machine, store: blocks.reduce((store, block) => runKeyAction(store, block, event.key), machine.store) });
+};
+
+/**
+ * @uses advance, runTimers, paint, state, showEnd, findPart
+ * @usedby boot
+ */
+const frame = (now) => {
   advance();
+  runTimers(now);
   paint();
   const machine = state.get("machine");
   const text = machine === undefined ? "" : showEnd(machine);
@@ -125,12 +159,15 @@ const start = () => {
 };
 
 /**
- * @uses findPart, DEMO, start, EVENT_TYPES, readEvent, frame
+ * @uses findPart, DEMO, readKey, start, EVENT_TYPES, readEvent, frame
  * @usedby src/edge/page.mjs
  */
 const boot = () => {
+  // The script comes from the address of the page, or from the text area of the page, or it is the demonstration.
   const given = new URLSearchParams(window.location.search).get("script");
-  Reflect.set(findPart("script"), "value", given ?? DEMO);
+  const written = findPart("script").value.trim();
+  Reflect.set(findPart("script"), "value", given ?? (written === "" ? DEMO : written));
+  document.addEventListener("keydown", readKey);
   findPart("run").addEventListener("click", start);
   EVENT_TYPES.forEach((type) => findPart("screen").addEventListener(type, readEvent));
   start();

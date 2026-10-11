@@ -80,7 +80,7 @@ const stepLoad = (state, token) => (state.error === null ? (STEPS[token.kind] ??
  * @todo Read date, money, base-64 binary, and a path that has a paren.
  * @todo Keep the line ends of the source, because `mold` shows them.
  * @uses scanTokens, stepLoad, START, makeDatum, joinChunks, MISSING, CLOSERS
- * @usedby 12 declarations in control, convert, files, items, words, globals, interpret, data, load, machine
+ * @usedby 13 declarations in compare, control, convert, files, items, words, globals, interpret, data, load, machine
  */
 export const loadSource = (source) => {
   // Put each token into the frame that is open.

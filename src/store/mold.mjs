@@ -218,7 +218,7 @@ const MOLDERS = {
  * @returns {string}
  * @standard reference - The text is the text that `mold` of REBOL 2.7.8 gives.
  * @uses MOLDERS
- * @usedby 12 declarations in files, report, text, words, interpret, mold
+ * @usedby 13 declarations in compare, files, report, text, words, interpret, mold
  */
 export const moldValue = (store, value, depth = 0) =>
   (MOLDERS[value.type] ?? (() => "?function?"))(store, value, depth);
