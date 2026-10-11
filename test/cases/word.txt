@@ -1,0 +1,26 @@
+abc
+abc Abc ABC
+PRINT print
+'a :a a: /a
++ - * ** < <= <> >= > = == =?
+/ //
+a.b a-b a? a! _a ~a a|b a&b a*b a'b a+b a^b
+a1 a-1 -a +a
+/1 /a-b
+[]
+()
+[a [b (c)] d]
+[a] (b) [[]] (())
+[1 "two" #"3" 4.0]
+a/b/c
+a/1
+a/b/1/c
+'a/b
+a/b:
+:a/b
+a/b/c: 1
+#[true] #[false] #[none]
+true false none
+a ; comment
+;only a comment
+[a ; comment ]

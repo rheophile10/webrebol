@@ -1,0 +1,15 @@
+{
+  "name": "webrebol",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "An interpreter for REBOL 2 Core and View that runs in JavaScript",
+  "steDoc": {
+    "paths": ["src", "bin", "test"]
+  },
+  "scripts": {
+    "test": "node --test",
+    "lint": "ste-lint src bin test",
+    "record": "node bin/record.mjs"
+  }
+}

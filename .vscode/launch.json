@@ -1,0 +1,20 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "webrebol: load and mold a source text",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/webrebol.mjs",
+      "args": ["[a 1.5 \"text\" 1:20]"],
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "record: write the REBOL 2.7.8 results",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/record.mjs",
+      "console": "integratedTerminal"
+    }
+  ]
+}

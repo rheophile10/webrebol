@@ -1,0 +1,21 @@
+#abc
+#123-456
+#
+%abc
+%a/b/c.txt
+%"a b"
+%a%20b
+%/c/dir/
+a@b.c
+a@
+joe.smith@example.com
+http://a.b/c?d=1
+a:b
+a:1
+mailto:joe@example.com
+ftp://user:pass@host/path
+<a>
+<a href="x y">
+</a>
+<br/>
+#abc %def <g> h@i j:k
