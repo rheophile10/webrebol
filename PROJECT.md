@@ -30,17 +30,18 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 
 ## Sessions
 
-- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine and the first 91 functions, with 288 evaluation cases.
+- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine. Added objects, paths, binding and 136 Core functions, with 503 evaluation cases.
 
 ## Todos
 
 - Loader: `date!`, `money!`, base-64 binary, a path that has a paren, `/a/b` as two refinements.
 - Loader: keep the line ends of a block, because `mold` shows them. Remove the limit of 16 levels for nested braces.
-- Evaluator: set-path, get-arguments (`:x`), `foreach` with a block of words and with a text, `any`, `all`, `case`, `switch`, `catch`, `throw`.
-- Evaluator: real error objects (`disarm`, the `arg1` field), and the `near` and `where` fields.
-- Evaluator: `object!` and `make`, `bind`, `use`, `set`, `get`, `in`.
+- Errors: real error objects (`disarm`, `make error!`, the `arg1`, `near` and `where` fields) and the REBOL error messages.
+- Evaluator: get-arguments (`:x`), `catch/name`, `case/all`, `first` and `second` of an object, a `for` with a bump of zero.
+- Series: the refinements of the series functions (`copy/part`, `copy/deep`, `find/tail`, `insert/dup`), `sort`, `reverse`, `parse`.
+- Types: arithmetic and comparison for `time!`, `pair!`, `tuple!`, `char!`. The `to-` functions for all types.
 - Store: a faster structure. At this time, each change copies the table of all series or of one context.
 - Symbols: REBOL molds a word with the spelling of its first use. WebRebol keeps the spelling of each use.
-- One group of recorded cases for each function of `reference/functions-core.txt`. 91 of 444 Core functions have a first version.
-- `parse`, then the other Core functions in JavaScript.
+- Cases: REBOL runs all the cases of one file in one session. Run each case in a new session, so that a word of one case cannot change a later case.
+- One group of recorded cases for each function of `reference/functions-core.txt`. 136 of 444 Core functions have a first version.
 - View: faces, `draw`, the frame loop, VID, `effect`.

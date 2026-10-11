@@ -1,44 +1,137 @@
-import { UNSET, makeSeries } from "../store/store.mjs";
+import { UNSET, isList, isSeries, makeSeries, readAll, readRest } from "../store/store.mjs";
 import { formValue, moldValue } from "../store/mold.mjs";
 import { giveValue } from "../machine/machine.mjs";
 import { startReduce } from "./control.mjs";
+import { insertContent, moveTo } from "./series.mjs";
 
 /**
- * @uses giveValue (src/machine/machine.mjs), UNSET (src/store/store.mjs)
- * @usedby printValue
+ * @usedby printValue, probeValue
  */
-const writeOutput = (machine, text) =>
-  giveValue({ ...machine, store: { ...machine.store, output: machine.store.output + text } }, UNSET);
+const writeOutput = (machine, text) => ({ ...machine, store: { ...machine.store, output: machine.store.output + text } });
 
 /**
- * @uses writeOutput, formValue (src/store/mold.mjs), startReduce
+ * @uses formValue (src/store/mold.mjs)
+ * @usedby printValue, reformValue
+ */
+const formAll = (store, values) => values.map((item) => formValue(store, item)).join(" ");
+
+/**
+ * @uses giveValue (src/machine/machine.mjs), writeOutput, formAll, UNSET (src/store/store.mjs), startReduce,
+ *   formValue (src/store/mold.mjs)
  * @usedby TEXT_NATIVES
  */
 const printValue = (ending) => (machine, [value]) => {
   // A block is reduced first. Its results are formed with a space between them.
-  const formValues = (reduced, values) =>
-    writeOutput(reduced, values.map((item) => formValue(reduced.store, item)).join(" ") + ending);
-  if (value.type === "block") return startReduce(machine, value, formValues);
-  return writeOutput(machine, formValue(machine.store, value) + ending);
+  const printAll = (reduced, values) => giveValue(writeOutput(reduced, formAll(reduced.store, values) + ending), UNSET);
+  if (value.type === "block") return startReduce(machine, value, printAll);
+  return giveValue(writeOutput(machine, formValue(machine.store, value) + ending), UNSET);
 };
 
 /**
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby TEXT_NATIVES
+ * @usedby giveText, rejoinValues, reformValue, remoldValue
  */
-const giveText = (write) => (machine, [value]) => {
-  const made = makeSeries(machine.store, "string", write(machine.store, value));
+const giveSeries = (machine, type, content) => {
+  const made = makeSeries(machine.store, type, content);
   return giveValue({ ...machine, store: made.store }, made.value);
 };
 
 /**
+ * @uses giveSeries
+ * @usedby remoldValue, TEXT_NATIVES
+ */
+const giveText = (write) => (machine, [value]) => giveSeries(machine, "string", write(machine.store, value));
+
+/**
+ * @uses giveValue (src/machine/machine.mjs), writeOutput, moldValue (src/store/mold.mjs)
+ * @usedby TEXT_NATIVES
+ */
+const probeValue = (machine, [value]) => giveValue(writeOutput(machine, `${moldValue(machine.store, value)}\n`), value);
+
+/**
+ * @uses isSeries (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs),
+ *   makeSeries (src/store/store.mjs)
+ * @usedby joinValues, rejoinValues
+ */
+const makeBase = (machine, value) => {
+  // A series gives a copy of itself. Other values give a string of the formed value.
+  const type = isSeries(value) ? value.type : "string";
+  const content = isSeries(value) ? readRest(machine.store, value) : formValue(machine.store, value);
+  const made = makeSeries(machine.store, type, content);
+  return { machine: { ...machine, store: made.store }, base: made.value };
+};
+
+/**
+ * @uses isList (src/store/store.mjs), formValue (src/store/mold.mjs), moveTo, readAll (src/store/store.mjs),
+ *   giveValue (src/machine/machine.mjs), insertContent
+ * @usedby joinValues, rejoinValues
+ */
+const appendAll = (machine, base, values) => {
+  // A list gets the values as its items. A text gets each value as formed text. The result is the base.
+  const content = isList(base) ? values : values.map((value) => formValue(machine.store, value)).join("");
+  const tail = moveTo(base, readAll(machine.store, base).length);
+  return giveValue(insertContent(machine, tail, content), base);
+};
+
+/**
+ * @uses makeBase, appendAll, startReduce
+ * @usedby TEXT_NATIVES
+ */
+const joinValues = (machine, [value, rest]) => {
+  const made = makeBase(machine, value);
+  const finish = (reduced, values) => appendAll(reduced, made.base, values);
+  return rest.type === "block" ? startReduce(made.machine, rest, finish) : finish(made.machine, [rest]);
+};
+
+/**
+ * @uses giveSeries, makeBase, appendAll, startReduce
+ * @usedby TEXT_NATIVES
+ */
+const rejoinValues = (machine, [block]) => {
+  // The first result gives the type of the result. An empty block gives an empty block.
+  const finish = (reduced, values) => {
+    if (values.length === 0) return giveSeries(reduced, "block", []);
+    const made = makeBase(reduced, values[0]);
+    return appendAll(made.machine, made.base, values.slice(1));
+  };
+  return startReduce(machine, block, finish);
+};
+
+/**
+ * @uses giveSeries, formAll, startReduce
+ * @usedby TEXT_NATIVES
+ */
+const reformValue = (machine, [value]) => {
+  const finish = (reduced, values) => giveSeries(reduced, "string", formAll(reduced.store, values));
+  return value.type === "block" ? startReduce(machine, value, finish) : finish(machine, [value]);
+};
+
+/**
+ * @uses makeSeries (src/store/store.mjs), giveSeries, moldValue (src/store/mold.mjs), startReduce, giveText
+ * @usedby TEXT_NATIVES
+ */
+const remoldValue = (machine, [value]) => {
+  const finish = (reduced, values) => {
+    const made = makeSeries(reduced.store, "block", values);
+    return giveSeries({ ...reduced, store: made.store }, "string", moldValue(made.store, made.value));
+  };
+  return value.type === "block" ? startReduce(machine, value, finish) : giveText(moldValue)(machine, [value]);
+};
+
+/**
  * The natives that make text. Each entry has the specification and the function.
- * @uses printValue, giveText, moldValue (src/store/mold.mjs), formValue (src/store/mold.mjs)
+ * @uses printValue, probeValue, giveText, moldValue (src/store/mold.mjs), formValue (src/store/mold.mjs), joinValues,
+ *   rejoinValues, reformValue, remoldValue
  * @usedby NATIVES
  */
 export const TEXT_NATIVES = {
   print: ["value", printValue("\n")],
   prin: ["value", printValue("")],
+  probe: ["value", probeValue],
   mold: ["value", giveText(moldValue)],
   form: ["value", giveText(formValue)],
+  join: ["value rest", joinValues],
+  rejoin: ["block [block!]", rejoinValues],
+  reform: ["value", reformValue],
+  remold: ["value", remoldValue],
 };

@@ -10,6 +10,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
  * @usedby recordCases
  */
 const REBOL = `${ROOT}reference/rebol-core.sh`;
+const LIMITS = { encoding: "latin1", timeout: 60000, maxBuffer: 64 * 1024 * 1024 };
 const CASE = /\n@@CASE ([0-9A-F]*)\n([\s\S]*?)\n@@RESULT ([0-9A-F]*)\n/g;
 
 /**
@@ -32,13 +33,13 @@ const joinCases = (output) =>
 const FORMATS = { load: (output) => output, "do": joinCases };
 
 /**
- * @uses ROOT, REBOL, FORMATS
+ * @uses ROOT, REBOL, LIMITS, FORMATS
  * @usedby recordGroup
  */
 const recordCases = (group, name) => {
   // REBOL reads the case file and writes the result of each case.
   const script = `${ROOT}reference/${group}.r`;
-  const output = execFileSync(REBOL, ["-qs", script, `${ROOT}test/cases/${group}/${name}`], { encoding: "latin1" });
+  const output = execFileSync(REBOL, ["-qs", script, `${ROOT}test/cases/${group}/${name}`], LIMITS);
   const lines = FORMATS[group](output);
   writeFileSync(`${ROOT}test/golden/${group}/${name}`, lines, "latin1");
   return `${group}/${name}: ${lines.trim().split("\n").length} cases`;

@@ -1,7 +1,7 @@
 # WebRebol
 
 WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaScript.
-At this time, it evaluates REBOL source text with a first set of natives: arithmetic, comparison, control, functions, basic series, `print`, `mold` and `form`.
+At this time, it evaluates REBOL source text with 136 of the 444 Core functions: arithmetic, comparison, control, loops, functions, objects, paths, binding, series, and text.
 
 ## Use
 
@@ -40,14 +40,14 @@ WebRebol has the MIT licence. See `LICENSE`.
 <!-- ste-doc -->
 - [`scanTokens`](src/data/tokens.mjs#L56) — Divides a source text into its lexical parts, without the spaces and the comments.
 - [`readToken`](src/data/datum.mjs#L184) — Reads the REBOL value that one token shows.
-- [`loadSource`](src/data/load.mjs#L83) — Makes the block of REBOL values that a source text shows.
-- [`allocate`](src/store/store.mjs#L100) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L163) — Makes a machine that is ready to evaluate a block.
+- [`loadSource`](src/data/load.mjs#L84) — Makes the block of REBOL values that a source text shows.
+- [`allocate`](src/store/store.mjs#L97) — Moves a loaded value into a store.
+- [`makeMachine`](src/machine/machine.mjs#L175) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L56) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L39) — Does one step of the evaluation.
-- [`evaluateOperand`](src/machine/evaluate.mjs#L81) — Evaluates the value at the cursor, without a look for an operator after it.
-- [`startCall`](src/machine/call.mjs#L120) — Starts the call of a function.
+- [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.
+- [`startCall`](src/machine/call.mjs#L130) — Starts the call of a function.
 - [`interpretSource`](src/natives/interpret.mjs#L26) — Evaluates a REBOL source text in a new session.
 - [`showResult`](src/natives/interpret.mjs#L44) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L173) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L190) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

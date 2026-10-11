@@ -8,8 +8,8 @@
  * @property {number | string | boolean | null | number[] | Datum[] | object} value - The data of the value. A time is in nanoseconds. A series in a store has its number and its index.
  * @property {number} [bind] - The number of the context of a word.
  * @madeby readToken, loadSource, makeLogic, readItem
- * @changedby makeDatum, makeSeries, allocate, readRest, readAll, readWord, bindCopy
- * @readby 18 declarations in call, machine, spec, control, mold, store
+ * @changedby 10 declarations in datum, series, store
+ * @readby 24 declarations in call, machine, path, spec, compare, control, series, mold, store
  */
 
 /**
@@ -20,8 +20,8 @@
  * @property {number} next - The number that the next series or context gets.
  * @property {string} output - The text that the session printed.
  * @madeby START_STORE
- * @changedby makeSeries, allocate, writeAll, writeWord, writeContext, bindCopy
- * @readby makeMachine, moldValue, moldRest, formValue, readRest, readAll, readWord
+ * @changedby makeSeries, allocate, writeAll, writeWord, writeContext, bindCopy, bindInPlace, makeContext
+ * @readby 10 declarations in machine, compare, series, mold, store
  */
 
 /**
@@ -34,7 +34,7 @@
  * @property {"next" | "operand" | "give" | "throw" | "done"} mode - The work of the next step.
  * @property {{ kind: string, value: Datum } | null} thrown - The error, the return or the break that moves up the stack.
  * @madeby makeMachine, interpretSource
- * @changedby 15 declarations in call, evaluate, machine, run, control
+ * @changedby 18 declarations in call, evaluate, machine, path, run, control, series
  * @readby atEnd, readItem, showResult
  */
 

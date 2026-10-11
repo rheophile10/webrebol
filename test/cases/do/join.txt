@@ -1,0 +1,44 @@
+join "a" "b"
+join "a" [1 2]
+join [1] [2 3]
+join [1] 2
+join 1 2
+a: "x" join a "y" a
+rejoin ["a" 1 "b"]
+rejoin [[1] 2 3]
+rejoin []
+reform ["a" 1 + 1]
+remold [1 + 1 "a"]
+probe [1 2]
+probe "a"
+make block! 5
+make string! 5
+make integer! "5"
+to-string 5
+to-integer "12"
+to-block "1 2"
+to-word "abc"
+to-integer 3.7
+to-decimal 3
+to-string [1 "a" b]
+join "a" none
+join [] "a"
+rejoin ["a" [1 2] "b"]
+reform 5
+reform []
+remold 5
+to-string "abc"
+to-integer "abc"
+to-integer -3.7
+to-decimal "1.5"
+to-block [1 2]
+to-block 5
+to-word 'abc
+make decimal! "2.5"
+make block! [1 2]
+rejoin [[1] [2] 3]
+join "a" [[1 2] "b"]
+join [1] [[2] 3]
+make string! "abc"
+make block! "abc"
+make integer! "x"

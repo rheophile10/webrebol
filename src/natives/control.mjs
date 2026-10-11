@@ -1,142 +1,19 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { loadSource } from "../data/load.mjs";
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, UNSET, allocate, bindCopy, isList, makeKey, makeSeries, readRest, writeContext, writeWord } from "../store/store.mjs";
-import { atEnd, failMachine, giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, throwValue } from "../machine/machine.mjs";
+import { NONE, UNSET, allocate, bindCopy, isList, makeContext, makeSeries, readRest } from "../store/store.mjs";
+import { atEnd, failMachine, giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue } from "../machine/machine.mjs";
 import { parseSpec } from "../machine/spec.mjs";
 
 const BODY = "body [block!]";
 
 /**
- * @uses popFrame (src/machine/machine.mjs), giveValue (src/machine/machine.mjs)
- * @usedby startList, loopWhile, loopUntil
- */
-const unwindLoop = (machine, frame) => {
-  // A break stops at its loop. Other thrown values continue up the stack.
-  const popped = popFrame(machine);
-  if (machine.thrown.kind !== "break") return popped;
-  return { ...giveValue(popped, machine.thrown.value), cursor: frame.cursor, thrown: null };
-};
-
-/**
- * @uses popFrame (src/machine/machine.mjs), writeWord (src/store/store.mjs), startBlock (src/machine/machine.mjs),
- *   replaceTop (src/machine/machine.mjs)
- * @usedby startList
- */
-const stepList = (machine, frame) => {
-  // After the last value, the result of the loop is the result of the last body.
-  if (frame.position >= frame.values.length) return popFrame(machine);
-  const value = frame.values[frame.position];
-  const store = frame.word === null ? machine.store : writeWord(machine.store, frame.word, value);
-  return startBlock({ ...replaceTop(machine, { ...frame, position: frame.position + 1 }), store }, frame.body);
-};
-
-/**
- * @uses stepList, unwindLoop, pushFrame (src/machine/machine.mjs)
- * @usedby loopCount, repeatCount, forEach
- */
-const startList = (machine, loop, first) => {
-  // The loop evaluates its body one time for each value of the list.
-  const frame = { ...loop, step: stepList, unwind: unwindLoop, position: 0, cursor: machine.cursor };
-  return stepList({ ...pushFrame(machine, frame), value: first, mode: "give" }, frame);
-};
-
-/**
- * @uses makeKey (src/store/store.mjs), writeContext (src/store/store.mjs), bindCopy (src/store/store.mjs)
- * @usedby repeatCount, forEach
- */
-const bindLoop = (machine, word, body) => {
-  // The word of a loop is in a new context. The body is a copy that uses this context.
-  const context = { id: machine.store.next, keys: [makeKey(word.value)] };
-  const store = { ...writeContext(machine.store, context.id, {}), next: context.id + 1 };
-  const bound = bindCopy(store, body, context);
-  return { machine: { ...machine, store: bound.store }, word: { ...word, bind: context.id }, body: bound.value };
-};
-
-/**
- * @uses startList, UNSET (src/store/store.mjs)
- * @usedby CONTROL_NATIVES
- */
-const loopCount = (machine, [count, body]) =>
-  startList(machine, { word: null, body, values: Array.from({ length: Math.max(count.value, 0) }) }, UNSET);
-
-/**
- * @uses bindLoop, makeDatum (src/data/datum.mjs), startList, UNSET (src/store/store.mjs)
- * @usedby CONTROL_NATIVES
- */
-const repeatCount = (machine, [word, count, body]) => {
-  const bound = bindLoop(machine, word, body);
-  const values = Array.from({ length: Math.max(count.value, 0) }).map((item, place) => makeDatum("integer", place + 1));
-  return startList(bound.machine, { word: bound.word, body: bound.body, values }, UNSET);
-};
-
-/**
- * @uses isList (src/store/store.mjs), failMachine (src/machine/machine.mjs), bindLoop, startList,
- *   readRest (src/store/store.mjs), NONE (src/store/store.mjs)
- * @usedby CONTROL_NATIVES
- */
-const forEach = (machine, [word, series, body]) => {
-  // Only a list is supported at this time.
-  if (!isList(series)) return failMachine(machine, "script expect-arg");
-  const bound = bindLoop(machine, word, body);
-  return startList(bound.machine, { word: bound.word, body: bound.body, values: readRest(machine.store, series) }, NONE);
-};
-
-/**
- * @uses startBlock (src/machine/machine.mjs), replaceTop (src/machine/machine.mjs), isTrue (src/machine/machine.mjs),
- *   giveValue (src/machine/machine.mjs), popFrame (src/machine/machine.mjs)
- * @usedby loopWhile
- */
-const stepWhile = (machine, frame) => {
-  // After the body, evaluate the condition again. Keep the result of the body.
-  if (!frame.testing) {
-    return startBlock(replaceTop(machine, { ...frame, testing: true, last: machine.value }), frame.condition);
-  }
-  if (!isTrue(machine.value)) return giveValue(popFrame(machine), frame.last);
-  return startBlock(replaceTop(machine, { ...frame, testing: false }), frame.body);
-};
-
-/**
- * @uses stepWhile, unwindLoop, NONE (src/store/store.mjs), startBlock (src/machine/machine.mjs),
- *   pushFrame (src/machine/machine.mjs)
- * @usedby CONTROL_NATIVES
- */
-const loopWhile = (machine, [condition, body]) => {
-  const frame = { step: stepWhile, unwind: unwindLoop, condition, body, testing: true, last: NONE };
-  return startBlock(pushFrame(machine, { ...frame, cursor: machine.cursor }), condition);
-};
-
-/**
- * @uses isTrue (src/machine/machine.mjs), popFrame (src/machine/machine.mjs), startBlock (src/machine/machine.mjs)
- * @usedby loopUntil
- */
-const stepUntil = (machine, frame) => (isTrue(machine.value) ? popFrame(machine) : startBlock(machine, frame.body));
-
-/**
- * @uses startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs), stepUntil, unwindLoop
- * @usedby CONTROL_NATIVES
- */
-const loopUntil = (machine, [body]) =>
-  startBlock(pushFrame(machine, { step: stepUntil, unwind: unwindLoop, body, cursor: machine.cursor }), body);
-
-/**
- * @uses popFrame (src/machine/machine.mjs), giveValue (src/machine/machine.mjs)
- * @usedby tryBlock
- */
-const unwindTry = (machine, frame) => {
-  // An error stops at its try, and becomes the result.
-  const popped = popFrame(machine);
-  if (machine.thrown.kind !== "error") return popped;
-  return { ...giveValue(popped, machine.thrown.value), cursor: frame.cursor, thrown: null };
-};
-
-/**
  * @uses startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs),
- *   popFrame (src/machine/machine.mjs), unwindTry
+ *   popFrame (src/machine/machine.mjs), stopThrown (src/machine/machine.mjs)
  * @usedby CONTROL_NATIVES
  */
 const tryBlock = (machine, [block]) =>
-  startBlock(pushFrame(machine, { step: popFrame, unwind: unwindTry, cursor: machine.cursor }), block);
+  startBlock(pushFrame(machine, { step: popFrame, unwind: stopThrown("error"), cursor: machine.cursor }), block);
 
 /**
  * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs)
@@ -146,18 +23,43 @@ const readSpecItem = (store) => (item) => (isList(item) ? { type: "block", value
 
 /**
  * @uses parseSpec (src/machine/spec.mjs), readRest (src/store/store.mjs), readSpecItem,
- *   writeContext (src/store/store.mjs), bindCopy (src/store/store.mjs), makeDatum (src/data/datum.mjs),
+ *   makeContext (src/store/store.mjs), bindCopy (src/store/store.mjs), makeDatum (src/data/datum.mjs),
  *   giveValue (src/machine/machine.mjs)
- * @usedby makeDoes, CONTROL_NATIVES
+ * @usedby makeWithLocals, makeDoes, CONTROL_NATIVES
  */
 const makeFunction = (machine, [spec, body]) => {
   // The function gets a context for its words. The body is a copy that uses this context.
   const parsed = parseSpec(readRest(machine.store, spec).map(readSpecItem(machine.store)));
-  const context = { id: machine.store.next, keys: parsed.keys };
-  const store = { ...writeContext(machine.store, context.id, {}), next: context.id + 1 };
-  const bound = bindCopy(store, body, context);
-  const callee = makeDatum("function", { ...parsed, context: context.id, body: bound.value });
+  const made = makeContext(machine.store, {});
+  const bound = bindCopy(made.store, body, { id: made.id, keys: parsed.keys });
+  const callee = makeDatum("function", { ...parsed, context: made.id, body: bound.value, spec });
   return giveValue({ ...machine, store: bound.store }, callee);
+};
+
+/**
+ * @uses makeDatum (src/data/datum.mjs)
+ * @usedby makeWithLocals
+ */
+const LOCAL = makeDatum("refinement", "local");
+
+/**
+ * @uses readRest (src/store/store.mjs), LOCAL, makeSeries (src/store/store.mjs), makeFunction
+ * @usedby makeHas, CONTROL_NATIVES
+ */
+const makeWithLocals = (machine, [spec, locals, body]) => {
+  // The local words go after a /local refinement in a new specification.
+  const items = [...readRest(machine.store, spec), LOCAL, ...readRest(machine.store, locals)];
+  const made = makeSeries(machine.store, "block", items);
+  return makeFunction({ ...machine, store: made.store }, [made.value, body]);
+};
+
+/**
+ * @uses makeSeries (src/store/store.mjs), makeWithLocals
+ * @usedby CONTROL_NATIVES
+ */
+const makeHas = (machine, [locals, body]) => {
+  const empty = makeSeries(machine.store, "block", []);
+  return makeWithLocals({ ...machine, store: empty.store }, [empty.value, locals, body]);
 };
 
 /**
@@ -217,7 +119,7 @@ const stepReduce = (machine, frame) =>
  * @returns {Machine}
  * @standard sequence - The results are in the sequence of the expressions.
  * @uses stepReduce, continueReduce, pushFrame (src/machine/machine.mjs)
- * @usedby reduceValue, printValue
+ * @usedby reduceValue, printValue, joinValues, rejoinValues, reformValue, remoldValue
  */
 export const startReduce = (machine, block, finish) => {
   const frame = { step: stepReduce, values: [], cursor: machine.cursor, finish };
@@ -250,9 +152,9 @@ const chooseBlock = (wanted) => (machine, [condition, block]) =>
 
 /**
  * The natives for control of the evaluation. Each entry has the specification and the function.
- * @uses chooseBlock, startBlock (src/machine/machine.mjs), isTrue (src/machine/machine.mjs), BODY, loopCount,
- *   repeatCount, forEach, loopWhile, loopUntil, UNSET (src/store/store.mjs), throwValue (src/machine/machine.mjs),
- *   makeFunction, makeDoes, doValue, reduceValue, tryBlock
+ * @uses chooseBlock, startBlock (src/machine/machine.mjs), isTrue (src/machine/machine.mjs),
+ *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), BODY, makeFunction, makeDoes, makeHas,
+ *   makeWithLocals, doValue, reduceValue, tryBlock
  * @usedby NATIVES
  */
 export const CONTROL_NATIVES = {
@@ -262,15 +164,12 @@ export const CONTROL_NATIVES = {
     "condition true-block [block!] false-block [block!]",
     (machine, [condition, yes, other]) => startBlock(machine, isTrue(condition) ? yes : other),
   ],
-  loop: [`count [integer!] ${BODY}`, loopCount],
-  repeat: [`'word [word!] value [integer!] ${BODY}`, repeatCount],
-  foreach: [`'word [word!] data [series!] ${BODY}`, forEach],
-  while: ["cond-block [block!] body-block [block!]", loopWhile],
-  until: ["block [block!]", loopUntil],
-  break: ["/return value [any-type!]", (machine, [value = UNSET]) => throwValue(machine, "break", value)],
   return: ["value [any-type!]", (machine, [value]) => throwValue(machine, "return", value)],
+  exit: ["", (machine) => throwValue(machine, "return", UNSET)],
   func: [`spec [block!] ${BODY}`, makeFunction],
   does: [BODY, makeDoes],
+  has: [`locals [block!] ${BODY}`, makeHas],
+  function: [`spec [block!] vars [block!] ${BODY}`, makeWithLocals],
   "do": ["value", doValue],
   reduce: ["value", reduceValue],
   try: ["block [block!]", tryBlock],

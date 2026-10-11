@@ -1,0 +1,52 @@
+last [1 2 3]
+last []
+third [1 2 3]
+third [1 2]
+at [1 2 3] 2
+at [1 2 3] 0
+at [1 2 3] 9
+skip [1 2 3] 2
+skip [1 2 3] -1
+skip next [1 2 3] -1
+poke [1 2 3] 2 9
+a: [1 2 3] poke a 2 9 a
+poke [1 2] 5 9
+poke "abc" 1 #"z"
+change [1 2 3] 9
+head change [1 2 3] 9
+head change next [1 2 3] [8 9]
+head change "abc" "xy"
+remove [1 2 3]
+head remove next [1 2 3]
+remove []
+clear next [1 2 3]
+head clear next [1 2 3]
+find [1 2 3] 2
+find [1 2 3] 9
+find "hello" "ll"
+find "hello" #"e"
+find [a b c] 'b
+find ["a" "b"] "B"
+select [a 1 b 2] 'b
+select [a 1 b 2] 'c
+select [1 2 3] 2
+select "abc" #"b"
+a: [1 2 3] remove a a
+a: [1 2 3] clear a a
+a: "hello" change a "J" a
+a: [1 2 3] change next a [8 9 10] a
+find "Hello" "L"
+find [1 [2] 3] [2]
+find "abc" "z"
+select [a 1] 'A
+last "abc"
+at "hello" 3
+skip "hello" 10
+a: "abc" poke a 2 #"x" a
+remove ""
+fourth [1 2 3 4]
+fifth [1 2 3 4]
+find [1 2 3 4] [2 3]
+find [1 2 3 4] [2 4]
+find [1 2] []
+select [1 2 3 4] [2 3]

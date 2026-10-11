@@ -1,7 +1,8 @@
 /** @import { Machine } from "../types/states.mjs" */
-import { NONE, UNSET, isList, makeKey, readRest, readWord, writeWord } from "../store/store.mjs";
+import { UNSET, readWord, writeWord } from "../store/store.mjs";
 import { advance, atEnd, failMachine, giveValue, isFunction, popFrame, pushFrame, readItem, startBlock } from "./machine.mjs";
 import { startCall } from "./call.mjs";
+import { evaluatePath, startSetPath } from "./path.mjs";
 
 /**
  * @uses popFrame, writeWord (src/store/store.mjs)
@@ -24,39 +25,8 @@ const evaluateWord = (machine, word) => {
 };
 
 /**
- * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), NONE (src/store/store.mjs),
- *   makeKey (src/store/store.mjs)
- * @usedby evaluatePath
- */
-const selectPart = (store, value, part) => {
-  // A number selects by position. A word selects the value after the same word.
-  if (!isList(value)) return null;
-  const items = readRest(store, value);
-  if (part.type === "integer") return items[part.value - 1] ?? NONE;
-  const sameWord = (item) => typeof item.value === "string" && makeKey(item.value) === makeKey(String(part.value));
-  const place = items.findIndex(sameWord);
-  return place < 0 ? null : (items[place + 1] ?? NONE);
-};
-
-/**
- * @uses readRest (src/store/store.mjs), readWord (src/store/store.mjs), failMachine, isFunction, startCall,
- *   makeKey (src/store/store.mjs), selectPart, giveValue
- * @usedby EVALUATORS
- */
-const evaluatePath = (machine, path) => {
-  // The first word gives the start value. For a function, the other parts are refinements.
-  const [head, ...parts] = readRest(machine.store, path);
-  const value = readWord(machine.store, head);
-  if (value.type === "unset") return failMachine(machine, "script no-value");
-  if (isFunction(value)) return startCall(machine, value, parts.map((part) => makeKey(String(part.value))));
-  // For other values, each part selects in the result of the part before it.
-  const select = (current, part) => (current === null ? null : selectPart(machine.store, current, part));
-  const found = parts.reduce(select, value);
-  return found === null ? failMachine(machine, "script invalid-path") : giveValue(machine, found);
-};
-
-/**
- * @uses evaluateWord, pushFrame, stepSet, giveValue, readWord (src/store/store.mjs), startBlock, evaluatePath
+ * @uses evaluateWord, pushFrame, stepSet, giveValue, readWord (src/store/store.mjs), startBlock, evaluatePath,
+ *   startSetPath
  * @usedby evaluateOperand
  */
 const EVALUATORS = {
@@ -66,6 +36,7 @@ const EVALUATORS = {
   "lit-word": (machine, word) => giveValue(machine, { ...word, type: "word" }),
   paren: startBlock,
   path: evaluatePath,
+  "set-path": startSetPath,
   "lit-path": (machine, path) => giveValue(machine, { ...path, type: "path" }),
 };
 
@@ -74,7 +45,6 @@ const EVALUATORS = {
  * @param {Machine} machine
  * @returns {Machine}
  * @standard end - At the end of the block, the result is the unset value.
- * @todo Evaluate a set-path.
  * @uses atEnd, giveValue, UNSET (src/store/store.mjs), readItem, EVALUATORS, advance
  * @usedby MODES
  */

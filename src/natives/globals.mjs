@@ -5,16 +5,31 @@ import { EMPTY_STORE, GLOBAL, NONE, makeKey, writeContext } from "../store/store
 import { makeLogic } from "../machine/machine.mjs";
 import { parseSpec } from "../machine/spec.mjs";
 import { MATH_NATIVES } from "./math.mjs";
-import { COMPARE_NATIVES } from "./compare.mjs";
+import { COMPARE_NATIVES, TYPES } from "./compare.mjs";
 import { CONTROL_NATIVES } from "./control.mjs";
 import { SERIES_NATIVES } from "./series.mjs";
 import { TEXT_NATIVES } from "./text.mjs";
+import { LOOP_NATIVES } from "./loops.mjs";
+import { FLOW_NATIVES } from "./flow.mjs";
+import { OBJECT_NATIVES } from "./objects.mjs";
+import { CONVERT_NATIVES } from "./convert.mjs";
 
 /**
- * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, SERIES_NATIVES, TEXT_NATIVES
+ * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
+ *   TEXT_NATIVES, CONVERT_NATIVES
  * @usedby makeFunction, GLOBALS
  */
-const NATIVES = { ...MATH_NATIVES, ...COMPARE_NATIVES, ...CONTROL_NATIVES, ...SERIES_NATIVES, ...TEXT_NATIVES };
+const NATIVES = {
+  ...MATH_NATIVES,
+  ...COMPARE_NATIVES,
+  ...CONTROL_NATIVES,
+  ...LOOP_NATIVES,
+  ...FLOW_NATIVES,
+  ...OBJECT_NATIVES,
+  ...SERIES_NATIVES,
+  ...TEXT_NATIVES,
+  ...CONVERT_NATIVES,
+};
 
 const OPERATORS = {
   "+": "add",
@@ -53,13 +68,15 @@ const makeFunction = (type, name) => {
 };
 
 /**
- * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS
+ * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS, TYPES,
+ *   makeDatum (src/data/datum.mjs)
  * @usedby START_STORE
  */
 const GLOBALS = Object.fromEntries([
   ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction("native", name)]),
   ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name)]),
   ...Object.entries(CONSTANTS).map(([name, value]) => [makeKey(name), value]),
+  ...TYPES.map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
 ]);
 
 /**

@@ -1,3 +1,4 @@
+/** @import { Datum, Store } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
 import { isList, isText, readRest } from "../store/store.mjs";
 import { failMachine, giveValue, isTrue, makeLogic } from "../machine/machine.mjs";
@@ -7,10 +8,13 @@ const ANY_PAIR = "value1 value2";
 const NUMBERS = ["integer", "decimal"];
 const WORDS = ["word", "set-word", "get-word", "lit-word", "refinement"];
 const ORDERED = ["char", "time"];
-const TYPES = [
+/**
+ * The names of the REBOL types that WebRebol has.
+ */
+export const TYPES = [
   ...["integer", "decimal", "string", "char", "word", "set-word", "get-word", "lit-word", "refinement", "block"],
   ...["paren", "path", "set-path", "lit-path", "issue", "file", "email", "url", "tag", "tuple", "pair", "time"],
-  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function"],
+  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object"],
 ];
 
 /**
@@ -24,7 +28,18 @@ const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(M
  *   isList (src/store/store.mjs), areSameLists
  * @usedby areSameLists, equate
  */
-const areEqual = (store, left, right) => {
+/**
+ * Finds if two values are equal, as the `=` operator of REBOL does.
+ * @param {Store} store
+ * @param {Datum} left
+ * @param {Datum} right
+ * @returns {boolean}
+ * @standard case - Two texts or two words are equal without regard to the case of the letters.
+ * @uses NUMBERS, isNear, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS,
+ *   isList (src/store/store.mjs), areSameLists
+ * @usedby areSameLists, equate, switchValue, startsWith
+ */
+export const areEqual = (store, left, right) => {
   // Numbers of the two number types can be equal. REBOL ignores a very small difference.
   if (NUMBERS.includes(left.type) && NUMBERS.includes(right.type)) return isNear(left.value, right.value);
   if (left.type !== right.type) return false;
@@ -32,7 +47,7 @@ const areEqual = (store, left, right) => {
   if (isText(left)) return readRest(store, left).toLowerCase() === readRest(store, right).toLowerCase();
   if (WORDS.includes(left.type)) return left.value.toLowerCase() === right.value.toLowerCase();
   if (isList(left)) return areSameLists(store, readRest(store, left), readRest(store, right));
-  return String(left.value) === String(right.value);
+  return left.type === "object" ? left.value.context === right.value.context : String(left.value) === String(right.value);
 };
 
 /**

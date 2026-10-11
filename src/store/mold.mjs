@@ -105,6 +105,8 @@ const encodeHex = (character) => `%${character.charCodeAt(0).toString(16).toUppe
  */
 const moldByte = (byte) => byte.toString(16).toUpperCase().padStart(2, "0");
 
+const INDENT = "    ";
+
 /**
  * @uses readRest, moldValue
  * @usedby MOLDERS
@@ -126,8 +128,20 @@ const moldName = (store, word) => word.value;
 const moldRaw = (store, text) => readRest(store, text);
 
 /**
+ * @uses INDENT, moldValue
+ * @usedby MOLDERS
+ */
+const moldObject = (store, object, depth) => {
+  // Each word is on its own line. An inner object has a larger indent.
+  const values = store.contexts[object.value.context];
+  const moldField = (name) =>
+    `${INDENT.repeat(depth + 1)}${name}: ${moldValue(store, values[`$${name.toLowerCase()}`], depth + 1)}`;
+  return ["make object! [", ...object.value.words.map(moldField), `${INDENT.repeat(depth)}]`].join("\n");
+};
+
+/**
  * @uses moldDecimal, moldString, readRest, moldChar, moldName, moldRest, moldPath, encodeHex, moldRaw, moldTime,
- *   moldByte
+ *   moldByte, moldObject, moldValue
  * @usedby moldValue
  */
 const MOLDERS = {
@@ -140,8 +154,8 @@ const MOLDERS = {
   "get-word": (store, word) => `:${word.value}`,
   "lit-word": (store, word) => `'${word.value}`,
   refinement: (store, word) => `/${word.value}`,
-  block: (store, block) => `[${moldRest(store, block)}]`,
-  paren: (store, paren) => `(${moldRest(store, paren)})`,
+  block: (store, block, depth) => `[${moldRest(store, block, depth + 1)}]`,
+  paren: (store, paren, depth) => `(${moldRest(store, paren, depth + 1)})`,
   path: moldPath,
   "set-path": (store, path) => `${moldPath(store, path)}:`,
   "lit-path": (store, path) => `'${moldPath(store, path)}`,
@@ -159,31 +173,36 @@ const MOLDERS = {
   unset: () => "unset",
   datatype: (store, datatype) => `${datatype.value}!`,
   error: (store, error) => `make error! [${error.value}]`,
+  object: moldObject,
+  function: (store, callee) => `func ${moldValue(store, callee.value.spec)}${moldValue(store, callee.value.body)}`,
 };
 
 /**
  * Makes the REBOL source text of one value.
  * @param {Store} store
  * @param {Datum} value
+ * @param {number} [depth] - The number of blocks and objects around the value. It gives the indent of an object.
  * @returns {string}
  * @standard reference - The text is the text that `mold` of REBOL 2.7.8 gives.
  * @uses MOLDERS
- * @usedby showResult (src/natives/interpret.mjs), TEXT_NATIVES (src/natives/text.mjs), moldPath, moldRest, formValue
+ * @usedby 9 declarations in interpret, text, mold
  */
-export const moldValue = (store, value) => (MOLDERS[value.type] ?? (() => "?function?"))(store, value);
+export const moldValue = (store, value, depth = 0) =>
+  (MOLDERS[value.type] ?? (() => "?function?"))(store, value, depth);
 
 /**
  * Makes the REBOL source text of the items of a block, without brackets around them.
  * @param {Store} store
  * @param {Datum} block
+ * @param {number} [depth] - The number of blocks and objects around the items.
  * @returns {string}
  * @standard reference - The text is the text that `mold/only` of REBOL 2.7.8 gives.
  * @uses readRest, moldValue
  * @usedby MOLDERS, moldSource (test/load.test.mjs)
  */
-export const moldRest = (store, block) =>
+export const moldRest = (store, block, depth = 0) =>
   readRest(store, block)
-    .map((item) => moldValue(store, item))
+    .map((item) => moldValue(store, item, depth))
     .join(" ");
 
 /**
@@ -202,8 +221,9 @@ const FORMERS = {
  * @returns {string}
  * @standard reference - The text is the text that `form` of REBOL 2.7.8 gives.
  * @uses isList, readRest, FORMERS, moldValue
- * @usedby makeContent (src/natives/series.mjs), printValue (src/natives/text.mjs),
- *   TEXT_NATIVES (src/natives/text.mjs)
+ * @usedby toString (src/natives/convert.mjs), makeContent (src/natives/series.mjs),
+ *   findOffset (src/natives/series.mjs), formAll (src/natives/text.mjs), printValue (src/natives/text.mjs),
+ *   makeBase (src/natives/text.mjs), appendAll (src/natives/text.mjs), TEXT_NATIVES (src/natives/text.mjs)
  */
 export const formValue = (store, value) => {
   // The items of a block are formed and joined, without brackets.

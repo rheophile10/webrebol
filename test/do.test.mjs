@@ -46,3 +46,31 @@ test("interpretSource reference: the series cases agree with REBOL 2.7.8", () =>
 test("interpretSource reference: the text and print cases agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/text.txt"), []);
 });
+
+test("interpretSource reference: the object cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/object.txt"), []);
+});
+
+test("interpretSource reference: the path and set-path cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/path.txt"), []);
+});
+
+test("interpretSource reference: the word and binding cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/word.txt"), []);
+});
+
+test("interpretSource reference: the any, all, switch, case, catch and compose cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/flow.txt"), []);
+});
+
+test("interpretSource reference: the for, forall, forever and foreach cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/loop.txt"), []);
+});
+
+test("interpretSource reference: the find, select, change and remove cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/change.txt"), []);
+});
+
+test("interpretSource reference: the join, reform and conversion cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/join.txt"), []);
+});

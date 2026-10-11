@@ -1,0 +1,20 @@
+set 'a 5 a
+set [a b] [1 2] reduce [a b]
+set [a b] 7 reduce [a b]
+set [a b] [1] reduce [a b]
+a: 3 get 'a
+value? 'zzz
+value? 'first
+unset 'a value? 'a
+a: 1 unset 'a a
+use [a] [a: 5 a]
+a: 1 use [a] [a: 5] a
+b: [a] o: make object! [a: 7] bind b o do b
+b: [a] o: make object! [a: 7] bind b in o 'a do b
+b: [a] o: make object! [a: 7] do bind/copy b o
+a: 1 b: [a] o: make object! [a: 7] bind/copy b o do b
+f: func [x] [bind [x] 'x] do f 5
+set [a b] [1 2 3] b
+x: 1 set 'x 2 x
+f: func [n] [if n > 0 [f n - 1] n] f 3
+f: func [x] [x] f 1 f 2 f 3

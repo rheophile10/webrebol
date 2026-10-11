@@ -7,11 +7,11 @@ import { acceptsType } from "./spec.mjs";
  * @uses writeContext (src/store/store.mjs)
  * @usedby stepBody, unwindBody
  */
-const restoreBody = (machine, frame) => ({
-  ...machine,
-  cursor: frame.cursor,
-  store: writeContext(machine.store, frame.context, frame.saved),
-});
+const restoreBody = (machine, frame) => {
+  // An inner call gives the old values back to the outer call. After the outer call, the words keep their values.
+  const values = frame.saved.depth > 0 ? frame.saved : { ...machine.store.contexts[frame.context], depth: 0 };
+  return { ...machine, cursor: frame.cursor, store: writeContext(machine.store, frame.context, values) };
+};
 
 /**
  * @uses atEnd, restoreBody, popFrame, throwUnused
@@ -45,7 +45,12 @@ const makeArguments = (frame) => {
 };
 
 /**
- * @uses stepBody, unwindBody, writeContext (src/store/store.mjs), makeArguments, pushFrame,
+ * @usedby invokeBody
+ */
+const countDepth = (saved) => (saved.depth ?? 0) + 1;
+
+/**
+ * @uses stepBody, unwindBody, makeArguments, countDepth, writeContext (src/store/store.mjs), pushFrame,
  *   UNSET (src/store/store.mjs)
  * @usedby invoke
  */
@@ -53,8 +58,9 @@ const invokeBody = (machine, frame) => {
   // Keep the old values of the words, because a function can call itself.
   const callee = frame.callee.value;
   const body = { step: stepBody, unwind: unwindBody, context: callee.context, cursor: machine.cursor };
-  const saved = machine.store.contexts[callee.context];
-  const store = writeContext(machine.store, callee.context, makeArguments(frame));
+  const saved = { depth: 0, ...machine.store.contexts[callee.context] };
+  const values = { ...makeArguments(frame), depth: countDepth(saved) };
+  const store = writeContext(machine.store, callee.context, values);
   return { ...pushFrame(machine, { ...body, saved }), store, cursor: { ...callee.body.value }, value: UNSET, mode: "give" };
 };
 
@@ -72,11 +78,15 @@ const invoke = (machine, frame, checked) => {
 };
 
 /**
- * @uses atEnd, giveValue, UNSET (src/store/store.mjs), advance, readItem
+ * @uses atEnd, UNSET (src/store/store.mjs), readItem, readWord (src/store/store.mjs), giveValue, advance
  * @usedby REQUESTS
  */
-const takeLiteral = (machine) =>
-  atEnd(machine) ? giveValue(machine, UNSET) : giveValue(advance(machine), readItem(machine));
+const takeLiteral = (machine) => {
+  // A get-word in the position of a literal argument gives the value of its word.
+  const item = atEnd(machine) ? UNSET : readItem(machine);
+  const value = item.type === "get-word" ? readWord(machine.store, item) : item;
+  return giveValue(atEnd(machine) ? machine : advance(machine), value);
+};
 
 /**
  * @uses takeLiteral

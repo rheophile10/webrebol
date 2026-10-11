@@ -1,0 +1,30 @@
+o: make object! [a: 1 b: 2] o/a
+o: make object! [a: 1 b: 2] o
+o: make object! [a: 1 b: "x" c: [1 2] d: make object! [e: 5]] o
+make object! []
+o: make object! [a: 1 f: func [x] [x + a]] o/f 2
+o: make object! [a: 1 f: func [x] [x + a]] p: make o [a: 10] p/f 2
+o: make object! [a: 1] p: make o [b: 2] p
+o: make object! [a: 1] p: make o [b: 2] o
+o: make object! [a: 1] o/a: 5 o/a
+o: make object! [a: 1] o/zz
+o: make object! [a: 1] o/zz: 2
+o: make object! [a: b: 3] o/a
+o: make object! [a: 1 if true [b: 2]] o
+o: context [a: 1] o/a
+o: make object! [a: 1 g: does [self/a]] o/g
+o: make object! [a: 1] in o 'a
+o: make object! [a: 1] get in o 'a
+o: make object! [a: 1] in o 'zz
+o: make object! [a: 1] type? o
+a: 5 o: make object! [a: 1] a
+o: make object! [a: 1] p: o p/a: 9 o/a
+o: make object! [a: [1]] p: make o [] append p/a 2 o/a
+o: make object! [a: 1 b: none] o/b
+object? make object! []
+o: make object! [a: 1] p: make o [a: 2] reduce [o/a p/a]
+o: make object! [n: 0 up: does [n: n + 1]] o/up o/up o/n
+o: make object! [a: 1] o = o
+o: make object! [f: func [x /twice] [either twice [x * 2] [x]]] o/f/twice 4
+o: make object! [a: 1 b: [1 2]] mold o
+o: make object! [f: func [x] [x]] o

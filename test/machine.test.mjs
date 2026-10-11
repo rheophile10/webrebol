@@ -1,9 +1,12 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadSource } from "../src/data/load.mjs";
-import { EMPTY_STORE, UNSET, allocate, bindCopy, readRest, readWord } from "../src/store/store.mjs";
+import { EMPTY_STORE, UNSET, allocate, bindCopy, bindInPlace, readRest, readWord } from "../src/store/store.mjs";
 import { formValue } from "../src/store/mold.mjs";
-import { makeMachine, startBlock, throwUnused } from "../src/machine/machine.mjs";
+import { makeMachine, startBlock, stopThrown, throwUnused, throwValue } from "../src/machine/machine.mjs";
+import { evaluatePath, startSetPath } from "../src/machine/path.mjs";
+import { areEqual } from "../src/natives/compare.mjs";
+import { makeContent } from "../src/natives/series.mjs";
 import { acceptsType, parseSpec } from "../src/machine/spec.mjs";
 import { startCall, stepLook } from "../src/machine/call.mjs";
 import { evaluateOperand } from "../src/machine/evaluate.mjs";
@@ -105,4 +108,44 @@ test("interpretSource syntax: a block without its end gives the error of the loa
 
 test("showResult error: a division by zero shows the type and the id", () => {
   assert.equal(showResult(interpretSource("1 / 0", BATCHES)), "! math zero-divide");
+});
+
+test("bindInPlace same: the block keeps its series number and its words get the context", () => {
+  const made = allocate(EMPTY_STORE, loadSource("abc [abc]"));
+  const store = bindInPlace(made.store, made.value, { id: 9, keys: ["$abc"] });
+  const items = readRest(store, made.value);
+  assert.equal(items[0].bind, 9);
+  assert.equal(readRest(store, items[1])[0].bind, 9);
+});
+
+test("stopThrown other: a frame that stops a break lets an error continue", () => {
+  const machine = { ...makeReady("1"), frames: { top: {}, below: null } };
+  const stopped = stopThrown("break")(throwValue(machine, "break", UNSET), { cursor: null });
+  const passed = stopThrown("break")(throwValue(machine, "error", UNSET), { cursor: null });
+  assert.equal(stopped.thrown, null);
+  assert.equal(passed.thrown.kind, "error");
+});
+
+test("evaluatePath invalid: a word that the block does not have gives the error", () => {
+  const made = allocate(START_STORE, loadSource("[abc 1] items/zzz"));
+  const [block, path] = readRest(made.store, made.value);
+  const store = { ...made.store, contexts: { ...made.store.contexts, 0: { ...made.store.contexts[0], $items: block } } };
+  assert.equal(evaluatePath(makeMachine(store, made.value), path).thrown.value.value, "script invalid-path");
+});
+
+test("startSetPath range: a number after the end of the block gives the error", () => {
+  assert.equal(showResult(interpretSource("items: [1 2] items/5: 9", BATCHES)), "! script out-of-range");
+  assert.equal(startSetPath(makeReady("1"), UNSET).mode, "next");
+});
+
+test("areEqual case: two words with different case are equal", () => {
+  const left = { type: "word", value: "abc" };
+  assert.equal(areEqual(EMPTY_STORE, left, { type: "word", value: "ABC" }), true);
+});
+
+test("makeContent splice: a block gives its items, and with only it is one item", () => {
+  const made = allocate(EMPTY_STORE, loadSource("[1] [2 3]"));
+  const pair = readRest(made.store, made.value);
+  assert.equal(makeContent(made.store, pair, false).length, 2);
+  assert.equal(makeContent(made.store, pair, true).length, 1);
 });
