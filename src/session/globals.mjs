@@ -36,6 +36,7 @@ import { GRID_NATIVES, GRID_SPECS } from "../view/grid.mjs";
 import { RASTER_NATIVES } from "../view/raster.mjs";
 import { CRYPTO_NATIVES, CRYPTO_SPECS } from "../natives/crypto.mjs";
 import { VIEW_BOOT } from "../view/boot.mjs";
+import { MUSIC_BOOT } from "../music/boot.mjs";
 import { allocate } from "../store/store.mjs";
 import { makeMachine } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
@@ -196,12 +197,13 @@ const BOOT_BUDGET = 5000;
 
 /**
  * @uses allocate (src/store/store.mjs), loadSource (src/data/load.mjs), VIEW_BOOT (src/view/boot.mjs),
- *   runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), BOOT_BUDGET
+ *   MUSIC_BOOT (src/music/boot.mjs), runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs),
+ *   BOOT_BUDGET
  * @usedby START_STORE
  */
 const bootStore = (store) => {
-  // Evaluate the View mezzanines one time. All sessions share the store that this gives.
-  const made = allocate(store, loadSource(VIEW_BOOT));
+  // Evaluate the View mezzanines and the music mezzanines one time. All sessions share the store that this gives.
+  const made = allocate(store, loadSource(VIEW_BOOT + MUSIC_BOOT));
   return runMachine(makeMachine(made.store, made.value), BOOT_BUDGET).store;
 };
 

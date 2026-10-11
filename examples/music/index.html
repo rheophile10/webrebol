@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRebol: music</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
+      #screen { position: relative; height: 430px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #script { width: 100%; height: 220px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
+      #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
+      details { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Music</h1>
+    <p>The text area has a tune in ABC notation. Push Soft, Organ or Chip to hear the tune with that instrument. All the music code is REBOL text: it reads the ABC notation, calculates the samples, and makes a WAV file for each layer of notes.</p>
+    <p>You can change the tune in the text area. In the REBOL script below, write the sharp sign of ABC as two carets, because one caret starts an escape in a REBOL string.</p>
+    <div id="screen"></div>
+    <pre id="output"></pre>
+    <details>
+      <summary>The REBOL script of this page</summary>
+      <textarea id="script" spellcheck="false">tune-text: {X:1
+T:Ode to Joy
+M:4/4
+L:1/4
+Q:1/4=120
+K:C
+V:1
+E E F G | G F E D | C C D E | E3/2 D/2 D2 |
+E E F G | G F E D | C C D E | D3/2 C/2 C2 |
+V:2
+C,2 G,2 | C,2 G,2 | C,2 G,2 | C,2 G,2 |
+C,2 G,2 | C,2 G,2 | C,2 G,2 | G,2 C,2 |
+}
+instruments: [
+    soft [sine 1 0.6 sine 2 0.25 sine 3 0.1 fade 0.3 gap 0.1]
+    organ [sine 1 0.5 sine 2 0.3 sine 4 0.2 fade 1 gap 0.05]
+    chip [square 1 0.5 fade 0.6 gap 0.2]
+]
+play-with: func [name /local score] [
+    score: abc-to-score tune/text
+    play-score/with player score select instruments name
+    status/text: rejoin [
+        select score &#x27;title &quot;: &quot; (length? select score &#x27;notes) / 4 &quot; notes, &quot;
+        length? get in player/data &#x27;children &quot; layers, &quot; form name
+    ]
+    show status
+]
+window: layout [
+    h2 &quot;WebRebol music&quot;
+    text 440 &quot;Write a tune in ABC notation. Then push a button to hear it.&quot;
+    tune: area 440x230 tune-text
+    across
+    button 90 &quot;Soft&quot; [play-with &#x27;soft]
+    button 90 &quot;Organ&quot; [play-with &#x27;organ]
+    button 90 &quot;Chip&quot; [play-with &#x27;chip]
+    button 90 &quot;Stop&quot; [player/data: none show player]
+    return
+    status: text 440x24 &quot;&quot;
+    return
+    player: box 10x10
+]
+view window</textarea>
+      <button id="run">Run again</button>
+    </details>
+    <script type="module" src="../../src/edge/page.mjs"></script>
+  </body>
+</html>

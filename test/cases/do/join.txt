@@ -42,3 +42,13 @@ join [1] [[2] 3]
 make string! "abc"
 make block! "abc"
 make integer! "x"
+join #{01} #{0203}
+rejoin [#{} "RIFF" #{0102} 7]
+join #{01} ["a" #{02} 1 + 1]
+append #{} 65
+append #{01} [#{02} "A" #"B" 7 1.5]
+head insert/dup #{} #"A" 3
+head change #{010203} "AB"
+append/only #{} [1 2]
+head insert/part #{} #{010203} 2
+append #{} to-char 255

@@ -50,3 +50,6 @@ find [1 2 3 4] [2 3]
 find [1 2 3 4] [2 4]
 find [1 2] []
 select [1 2 3 4] [2 3]
+remove none
+remove/part none 2
+remove/part find [1 2] 3 2

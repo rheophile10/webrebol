@@ -1,8 +1,8 @@
 import { UNSET, isList, isSeries, makeSeries, readAll, readRest } from "../store/store.mjs";
-import { formValue, moldValue } from "../store/mold.mjs";
+import { formValue, moldRest, moldValue } from "../store/mold.mjs";
 import { giveValue } from "../machine/machine.mjs";
 import { startReduce } from "./control.mjs";
-import { insertContent, moveTo } from "./series.mjs";
+import { insertContent, moveTo, readBytes } from "./series.mjs";
 
 /**
  * @usedby printValue, probeValue
@@ -29,7 +29,7 @@ const printValue = (ending) => (machine, [value]) => {
 
 /**
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby giveText, rejoinValues, reformValue, remoldValue
+ * @usedby giveText, rejoinValues, reformValue, remoldValue, moldText
  */
 const giveSeries = (machine, type, content) => {
   const made = makeSeries(machine.store, type, content);
@@ -62,13 +62,16 @@ const makeBase = (machine, value) => {
 };
 
 /**
- * @uses isList (src/store/store.mjs), formValue (src/store/mold.mjs), moveTo, readAll (src/store/store.mjs),
- *   giveValue (src/machine/machine.mjs), insertContent
+ * @uses formValue (src/store/mold.mjs), readBytes, isList (src/store/store.mjs), moveTo,
+ *   readAll (src/store/store.mjs), giveValue (src/machine/machine.mjs), insertContent
  * @usedby joinValues, rejoinValues
  */
 const appendAll = (machine, base, values) => {
-  // A list gets the values as its items. A text gets each value as formed text. The result is the base.
-  const content = isList(base) ? values : values.map((value) => formValue(machine.store, value)).join("");
+  // A list gets the values as its items. A binary gets the bytes of each value. A text gets each value as formed text. The result is the base.
+  const text = () => values.map((value) => formValue(machine.store, value)).join("");
+  const bytes = () => values.flatMap((value) => readBytes(machine.store, value));
+  const flat = () => (base.type === "binary" ? bytes() : text());
+  const content = isList(base) ? values : flat();
   const tail = moveTo(base, readAll(machine.store, base).length);
   return giveValue(insertContent(machine, tail, content), base);
 };
@@ -119,16 +122,27 @@ const remoldValue = (machine, [value]) => {
 };
 
 /**
+ * @uses giveSeries, moldRest (src/store/mold.mjs), moldValue (src/store/mold.mjs)
+ * @usedby TEXT_NATIVES
+ */
+const moldText = (machine, [value], options) => {
+  // With /only, a block gives its items without the brackets. With /flat, the lines have no indent.
+  const store = options.$flat === undefined ? machine.store : { ...machine.store, flat: true };
+  const only = options.$only !== undefined && value.type === "block";
+  return giveSeries(machine, "string", only ? moldRest(store, value) : moldValue(store, value));
+};
+
+/**
  * The natives that make text. Each entry has the name of REBOL and the function.
- * @uses printValue, probeValue, giveText, moldValue (src/store/mold.mjs), formValue (src/store/mold.mjs), joinValues,
- *   rejoinValues, reformValue, remoldValue
+ * @uses printValue, probeValue, moldText, giveText, formValue (src/store/mold.mjs), joinValues, rejoinValues,
+ *   reformValue, remoldValue
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const TEXT_NATIVES = {
   print: printValue("\n"),
   prin: printValue(""),
   probe: probeValue,
-  mold: giveText(moldValue),
+  mold: moldText,
   form: giveText(formValue),
   join: joinValues,
   rejoin: rejoinValues,

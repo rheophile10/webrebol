@@ -1,0 +1,59 @@
+abc-to-score {X:1^/T:Test^/M:4/4^/L:1/8^/Q:1/4=100^/K:G^/|: G2 B2 d2 g2 | [GBd]4 z4 :|}
+abc-to-score ""
+abc-to-score {C D E}
+select abc-to-score {K:C^/C D E F G A B c d e f g a b} 'notes
+select abc-to-score {K:G^/F G} 'notes
+select abc-to-score {K:D^/F C} 'notes
+select abc-to-score {K:F^/A B} 'notes
+select abc-to-score {K:Bb^/B E A} 'notes
+select abc-to-score {K:F#^/C D E F G A B} 'notes
+select abc-to-score {K:Am^/F G} 'notes
+select abc-to-score {K:Em^/F G} 'notes
+select abc-to-score {K:Dm^/A B} 'notes
+select abc-to-score {K:D mix^/F C} 'notes
+select abc-to-score {K:Ador^/F C} 'notes
+select abc-to-score {K:A minor^/F C G} 'notes
+select abc-to-score {K:E phr^/F} 'notes
+select abc-to-score {K:F lyd^/B} 'notes
+select abc-to-score {K:C#m^/C D E F G A B} 'notes
+select abc-to-score {K:Bbmin^/C D E F G A B} 'notes
+select abc-to-score {K:Hp^/F C} 'notes
+select abc-to-score {Q:120^/K:C} 'tempo
+select abc-to-score {Q:1/4=90^/K:C} 'tempo
+select abc-to-score {Q:3/8=80^/K:C} 'tempo
+select abc-to-score {Q:"Allegro" 1/2=60^/K:C} 'tempo
+select abc-to-score {Q:1/8=200^/K:C} 'tempo
+select abc-to-score {Q:C=100^/K:C} 'tempo
+select abc-to-score {K:C} 'tempo
+select abc-to-score {M:2/4^/K:C^/C} 'notes
+select abc-to-score {M:6/8^/K:C^/C} 'notes
+select abc-to-score {M:C^/K:C^/C} 'notes
+select abc-to-score {M:2/4^/L:1/4^/K:C^/C} 'notes
+select abc-to-score {K:G^/F ^^F F | F =F F _B __B ^^^^c} 'notes
+select abc-to-score {K:C^/C, C,, c' c'' C c} 'notes
+select abc-to-score {K:C^/C2 C/2 C/ C// C3/2 C3/ C/4 C8} 'notes
+select abc-to-score {K:C^/(3ABc A (2AB (4ABcd (5abcde} 'notes
+select abc-to-score {K:C^/(3:2:2AB c (3:2:4ABcd e} 'notes
+select abc-to-score {K:C^/C-C D-|D E- F} 'notes
+select abc-to-score {K:C^/[CE]/ [C-E-]2 [CE] C} 'notes
+select abc-to-score {K:C^/A>B A<B B>>c B<<c [CE]>D z>c} 'notes
+select abc-to-score {K:C^/[CEG]2 [C2E2G2] [C E G] [CEG]/ D} 'notes
+select abc-to-score {K:C^/C z D z2 E x/ F} 'notes
+select abc-to-score {M:3/4^/K:C^/C Z D Z2 E} 'notes
+select abc-to-score {K:D^/c [L:1/4] c [K:C] c [M:3/4] Z c} 'notes
+select abc-to-score {K:C^/|: C D :| E} 'notes
+select abc-to-score {K:C^/C D :| E} 'notes
+select abc-to-score {K:C^/C |: D :: E :| F} 'notes
+select abc-to-score {K:C^/|: C D |1 E :|2 F | G |]} 'notes
+select abc-to-score {K:C^/|: C [1 D :| [2 E |]} 'notes
+select abc-to-score {K:C^/|: C2 :|^/|: D2 :|} 'notes
+select abc-to-score {K:C^/V:1^/C D E F^/V:2^/C,4^/V:1^/G4^/V:2^/|: G,2 :|} 'notes
+select abc-to-score {K:C^/V:T1 name="Tenor"^/C^/V:B1^/D} 'notes
+select abc-to-score {K:C^/"Am" !f! {gf} e2 ~d2 .c2 (A B) vA uB} 'notes
+select abc-to-score {K:C^/C D % a comment^/w: words that are not notes^/% a full comment^/E} 'notes
+select abc-to-score {T:One^/T:Two^/K:C} 'title
+select abc-to-score {X:1^/T:Ode to Joy^/M:4/4^/L:1/4^/Q:1/4=120^/K:C^/E E F G | G F E D | C C D E | E3/2 D/2 D2 |} 'notes
+pitch-to-hertz 69
+pitch-to-hertz 81
+pitch-to-hertz 57
+to-integer 100 * pitch-to-hertz 60

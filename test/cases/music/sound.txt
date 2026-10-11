@@ -1,0 +1,29 @@
+make-wav #{8081}
+music/rate: 8000 make-wav #{}
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [square 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [saw 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [triangle 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 0.5 sine 2 0.5]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 2 square 3 1]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 1 fade 0]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 1 gap 0.5]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 1 gap 0]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/c} music/voice
+music/rate: 2000 music/level: 20 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 1]
+music/rate: 2000 music/steps: 2 render-score abc-to-score {L:1/16^/K:C^/c} [sine 1 1 fade 0]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/z c z} [sine 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/16^/K:C^/[ce]} [sine 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/32^/K:C^/[c2e] g} [sine 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/32^/K:C^/V:1^/c^/V:2^/zC} [square 1 1]
+music/rate: 2000 render-score abc-to-score {L:1/32^/Q:1/4=240^/K:C^/c} [square 1 1]
+music/rate: 2000 render-score abc-to-score {K:C} [sine 1 1]
+map-each samples render-score abc-to-score {K:C^/C E G [CEG]2} music/voice [length? samples]
+map-each samples render-score abc-to-score {Q:1/4=60^/L:1/4^/K:C^/C} music/voice [length? samples]
+copy/part first render-score abc-to-score {L:1/4^/K:C^/A} music/voice 60
+copy/part first render-score abc-to-score {L:1/4^/K:C^/A,,} [square 1 1 saw 2 0.5] 60
+length? make-wav first render-score abc-to-score {L:1/4^/K:C^/A} music/voice
+music/rate: 1000 tone-maker/read [sine 1 1] map-each value tone-maker/make-wave 60 [to-integer 1000 * value]
+music/rate: 1000 tone-maker/read [sine 1 1] map-each value tone-maker/make-wave 69 [to-integer 1000 * value]
+tone-maker/read [sine 1 1] length? tone-maker/make-wave 60
+tone-maker/read [sine 1 1] length? tone-maker/make-wave 72

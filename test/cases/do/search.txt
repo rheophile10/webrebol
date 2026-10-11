@@ -81,3 +81,9 @@ sort []
 sort/reverse "cab"
 head? tail []
 sort [2 1 2 1]
+find "ab1c" charset "0123456789"
+find/match "1ab" charset "0123456789"
+find/tail "ab1c" charset "01"
+find/reverse tail "a1b" charset "01"
+find/last "1a1b" charset "01"
+find "abc" charset "01"

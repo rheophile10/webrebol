@@ -1,25 +1,38 @@
-import { NONE, isList, makeSeries, readAll, readRest, readValues } from "../store/store.mjs";
+import { NONE, isList, isText, makeSeries, readAll, readRest, readValues } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
-import { giveValue, makeLogic } from "../machine/machine.mjs";
+import { failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
 import { areEqual, areSame, readOrder } from "./compare.mjs";
 import { insertContent, makeContent, moveTo, pickItem } from "./series.mjs";
 import { readPart, replaceItems } from "./edit.mjs";
+import { hasBit } from "./bitsets.mjs";
 
 const TYPE_RANKS = { word: 1, integer: 2, decimal: 2, char: 3, string: 4 };
 
 /**
- * @usedby listPlaces
+ * @usedby listPlaces, sortItems
  */
 const countUp = (size) => Array.from({ length: Math.max(size, 0) });
 
 /**
- * @uses isList (src/store/store.mjs), readAll (src/store/store.mjs), formValue (src/store/mold.mjs),
- *   readRest (src/store/store.mjs), areSame, areEqual
+ * @uses readAll (src/store/store.mjs), hasBit
+ * @usedby makeSearch
+ */
+const makeBitSearch = (store, [series, bitset]) => {
+  // A bitset matches one character of a text, if the bitset has the code of the character.
+  // REBOL gives the position of the character also with /tail and /match, and it ignores /last. Thus the size is 0.
+  const all = readAll(store, series);
+  return { all, wanted: " ", size: 0, matches: (place) => place < all.length && hasBit(bitset, all.charCodeAt(place)) };
+};
+
+/**
+ * @uses isText (src/store/store.mjs), makeBitSearch, isList (src/store/store.mjs), readAll (src/store/store.mjs),
+ *   formValue (src/store/mold.mjs), readRest (src/store/store.mjs), areSame, areEqual
  * @usedby searchSeries, replaceInList
  */
 const makeSearch = (store, [series, value], options) => {
   // In a text, the search is for the formed value. In a list, a block is a sequence of items, but not with /only.
   const exact = options.$case !== undefined;
+  if (isText(series) && value.type === "bitset") return makeBitSearch(store, [series, value]);
   if (!isList(series)) {
     const texts = [readAll(store, series), formValue(store, value)];
     const [all, wanted] = exact ? texts : texts.map((text) => text.toLowerCase());
@@ -58,8 +71,9 @@ const searchSeries = (store, pair, options) => {
   // Give the position of the first match and the size of the match, or null.
   const search = makeSearch(store, pair, options);
   if (search.wanted.length === 0) return null;
-  const place = listPlaces(pair[0], search.all.length, options).find(search.matches);
-  return place === undefined ? null : { place, size: search.wanted.length };
+  const places = listPlaces(pair[0], search.all.length, search.size === 0 ? { ...options, $last: undefined } : options);
+  const place = places.find(search.matches);
+  return place === undefined ? null : { place, size: search.size ?? search.wanted.length };
 };
 
 /**
@@ -218,16 +232,33 @@ const compareLists = (store, compare) => (left, right) => {
 };
 
 /**
- * @uses readValues (src/store/store.mjs), compareLists, compareItems, isList (src/store/store.mjs),
- *   giveValue (src/machine/machine.mjs), replaceItems
+ * @uses readRest (src/store/store.mjs)
+ * @usedby sortItems
+ */
+const readFields = (store, option) => {
+  // With /compare, an integer or a block of integers gives the fields of a record that the order uses.
+  if (option?.type === "integer") return [option.value - 1];
+  const fields = option?.type === "block" ? readRest(store, option).filter((item) => item.type === "integer").map((item) => item.value - 1) : [];
+  return fields.length === 0 ? [0] : fields;
+};
+
+/**
+ * @uses readValues (src/store/store.mjs), failMachine (src/machine/machine.mjs), countUp, compareLists, compareItems,
+ *   readFields, NONE (src/store/store.mjs), isList (src/store/store.mjs), giveValue (src/machine/machine.mjs),
+ *   replaceItems
  * @usedby SEARCH_NATIVES
  */
 const sortItems = (machine, [series], options) => {
-  // The items from the position are sorted. Equal items keep their sequence.
+  // The items from the position are sorted. Equal items keep their sequence. With /skip, a number of items is one record.
   const values = readValues(machine.store, series);
+  const size = options.$skip === undefined ? 1 : options.$skip[0].value;
+  if (size < 1 || values.length % size !== 0) return failMachine(machine, "script invalid-arg", [options.$skip[0]]);
+  const records = countUp(values.length / size).map((unused, place) => values.slice(place * size, (place + 1) * size));
   const compare = compareLists(machine.store, compareItems(machine.store, options.$case !== undefined));
+  const fields = readFields(machine.store, options.$compare?.[0]);
+  const order = (left, right) => fields.reduce((found, field) => (found !== 0 ? found : compare(left[field] ?? NONE, right[field] ?? NONE)), 0);
   // With /reverse, the comparison is the opposite. Thus equal items keep their sequence.
-  const ordered = [...values].sort(options.$reverse === undefined ? compare : (left, right) => compare(right, left));
+  const ordered = [...records].sort(options.$reverse === undefined ? order : (left, right) => order(right, left)).flat();
   const content = isList(series) ? ordered : ordered.map((char) => String.fromCharCode(char.value)).join("");
   return giveValue(replaceItems(machine, series, { content, size: values.length }), series);
 };

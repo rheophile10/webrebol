@@ -57,9 +57,31 @@ export const guardSeries = (natives) => {
   const guard = (native, name) => (machine, args, options) => {
     if (isSeries(args[0])) return native(machine, args, options);
     const other = OTHER_TYPES[`${name} ${args[0].type}`];
-    return other === undefined ? failMachine(machine, "script expect-arg") : giveValue(machine, other(args));
+    return other === undefined ? failMachine(machine, "script expect-arg") : giveValue(machine, other(args, options, machine.store));
   };
   return Object.fromEntries(Object.entries(natives).map(([name, native]) => [name, guard(native, name)]));
+};
+
+/**
+ * @usedby OTHER_TYPES
+ */
+const reverseParts = ([value], options) => {
+  // A pair or a tuple gives a new value with its parts in the opposite sequence. With /part, only the first parts are.
+  const size = options.$part === undefined ? value.value.length : Math.max(options.$part[0].value, 0);
+  return { ...value, value: [...[...value.value.slice(0, size)].reverse(), ...value.value.slice(size)] };
+};
+
+/**
+ * @uses readRest (src/store/store.mjs)
+ * @usedby OTHER_TYPES
+ */
+const removeBits = ([bitset], options, store) => {
+  // With /part, the characters of a text, or one character code, go out of the bitset.
+  const range = options.$part?.[0];
+  if (range === undefined) return bitset;
+  const codes = range.type === "integer" ? [range.value] : [...readRest(store, range)].map((char) => char.charCodeAt(0));
+  const clearBits = (byte, place) => codes.filter((code) => code >> 3 === place).reduce((bits, code) => bits & ~(1 << (code & 7)), byte);
+  return { ...bitset, value: bitset.value.map(clearBits) };
 };
 
 const DAY = 86400e9;
@@ -81,8 +103,8 @@ const joinBits = (combine) => ([left, right]) => {
 };
 
 /**
- * @uses makeDatum (src/data/datum.mjs), joinBits, NONE (src/store/store.mjs), readField (src/store/parts.mjs),
- *   readMoment
+ * @uses makeDatum (src/data/datum.mjs), joinBits, NONE (src/store/store.mjs), removeBits, reverseParts,
+ *   readField (src/store/parts.mjs), readMoment
  * @usedby guardSeries
  */
 const OTHER_TYPES = {
@@ -93,6 +115,10 @@ const OTHER_TYPES = {
   "difference bitset": joinBits((left, right) => left ^ right),
   "exclude bitset": joinBits((left, right) => left & ~right),
   "clear none": () => NONE,
+  "remove none": () => NONE,
+  "remove bitset": removeBits,
+  "reverse tuple": reverseParts,
+  "reverse pair": reverseParts,
   "pick tuple": ([tuple, index]) => readField(tuple, index) ?? NONE,
   "difference date": ([first, second]) => makeDatum("time", readMoment(first) - readMoment(second)),
 };
@@ -109,7 +135,7 @@ const OTHER_TYPES = {
  * @param {string | number[] | Datum[]} content
  * @returns {Machine}
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby 21 declarations in digest, encode, files, items, numbers, random, words
+ * @usedby 24 declarations in digest, encode, files, items, numbers, random, words
  */
 export const giveNew = (machine, type, content) => {
   const made = makeSeries(machine.store, type, content);
@@ -147,10 +173,12 @@ const takeItem = (offset) => (machine, [series]) => {
 };
 
 /**
- * @uses pickItem, giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs)
+ * @uses giveValue (src/machine/machine.mjs), readPixel (src/store/pictures.mjs), NONE (src/store/store.mjs), pickItem
  * @usedby SERIES_NATIVES
  */
 const pickIndex = (machine, [series, index]) => {
+  // A pair is the column and the row of a pixel of an image, counted from zero.
+  if (index.type === "pair") return giveValue(machine, readPixel(machine.store, series, index.value[0] < (series.value.size?.[0] ?? 0) ? index.value[0] + index.value[1] * series.value.size[0] : -1) ?? NONE);
   // A positive index counts from the position. A negative index counts back from it.
   const offset = index.value > 0 ? index.value - 1 : index.value;
   const item = index.value === 0 ? null : pickItem(machine.store, series, offset);
@@ -187,6 +215,20 @@ const move = (find) => (machine, [series]) => {
 const measure = (find) => (machine, [series]) =>
   giveValue(machine, find(series.value.index, countItems(machine.store, series)));
 
+const BYTE_MASK = 255;
+
+/**
+ * Makes the bytes that a value adds to a binary.
+ * @param {Store} store
+ * @param {Datum} part - The value to add.
+ * @returns {number[]}
+ * @standard bytes - A binary gives its bytes. A different value gives the character codes of its formed text.
+ * @uses readRest (src/store/store.mjs), formValue (src/store/mold.mjs), BYTE_MASK
+ * @usedby makeContent, appendAll
+ */
+export const readBytes = (store, part) =>
+  part.type === "binary" ? readRest(store, part) : [...formValue(store, part)].map((char) => char.charCodeAt(0) & BYTE_MASK);
+
 /**
  * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs)
  * @usedby appendValue, insertValue
@@ -196,15 +238,17 @@ const measure = (find) => (machine, [series]) =>
  * @param {Store} store
  * @param {Datum[]} pair - The series and the value.
  * @param {boolean} only - With true, a block is one item of a list.
- * @returns {string | Datum[]}
+ * @returns {string | Datum[] | number[]}
  * @standard splice - Without only, a block gives its items to a list.
- * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs)
+ * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), readBytes, formValue (src/store/mold.mjs)
  * @usedby buildContent, makeKeep, replaceInList, alterValue
  */
 export const makeContent = (store, [series, value], only) => {
   // A block gives its items to a list, but with /only the block is one item.
   if (isList(series)) return isList(value) && !only ? readRest(store, value) : [value];
   const parts = isList(value) ? readRest(store, value) : [value];
+  // A binary gets the bytes of each part. A text gets the formed parts.
+  if (series.type === "binary") return parts.flatMap((part) => readBytes(store, part));
   return parts.map((part) => formValue(store, part)).join("");
 };
 
