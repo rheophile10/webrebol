@@ -64,6 +64,14 @@ face-to-element: func [face /local tag props kids type] [
         if integer? face/rate [append props reduce ['data-rate face/rate]]
     ]
     if block? face/pane [foreach child face/pane [append kids face-to-element child]]
+    if element? face/data [append kids face/data]
+    if image? face/image [
+        append kids element "canvas" reduce [
+            'class "wr-image" 'width first face/image/size 'height second face/image/size
+            'style [position "absolute" left 0 top 0 pointer-events "none"]
+            'data-image face/image
+        ] copy []
+    ]
     if block? face/effect [
         if find face/effect 'reveal [append kids reveal-element face]
         if find face/effect 'draw [append kids draw-element face select face/effect 'draw]

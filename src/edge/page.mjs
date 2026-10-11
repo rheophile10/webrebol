@@ -3,12 +3,12 @@ import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { showResult, startSource } from "../session/interpret.mjs";
 import { findError, formatError } from "../natives/report.mjs";
-import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, listEngageTimers, runKeyAction, runPointerAction } from "../view/windows.mjs";
+import { changeText, continueAction, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, listEngageTimers, runKeyAction, runPointerAction } from "../view/windows.mjs";
 import { diff } from "../view/diff.mjs";
 import { applyPatches } from "./dom.mjs";
 import { performRequest } from "./drive.mjs";
 import { paintReveals } from "./reveal.mjs";
-import { paintCanvases } from "./paint.mjs";
+import { downloadFace, paintCanvases, paintImages, readFacePixels } from "./paint.mjs";
 
 const BATCHES = 50;
 const EVENT_TYPES = ["click", "input"];
@@ -29,7 +29,7 @@ view lay`;
 const state = new Map();
 
 /**
- * @usedby paint, frame, start, boot
+ * @usedby paint, serveRequest, servePaused, frame, start, boot
  */
 const findPart = (id) => document.getElementById(id);
 
@@ -60,7 +60,7 @@ const paint = () => {
 };
 
 /**
- * @uses state, answerRequest (src/machine/machine.mjs), performRequest
+ * @uses state, answerRequest (src/machine/machine.mjs), readFacePixels, findPart, downloadFace, performRequest
  * @usedby advance
  */
 const serveRequest = (machine) => {
@@ -70,18 +70,40 @@ const serveRequest = (machine) => {
   }
   if (state.get("busy") === true) return state;
   state.set("busy", true);
-  return performRequest(machine.request).then((answer) => {
+  // The page does the work for a picture of a face. The other requests are the work of the edge.
+  const pageWork = { "to-image": () => readFacePixels(findPart("screen"), machine.request.face), download: () => downloadFace(findPart("screen"), machine.request) };
+  const work = pageWork[machine.request.kind] ?? (() => performRequest(machine.request));
+  return work().then((answer) => {
     state.set("machine", answerRequest(state.get("machine"), answer));
     state.set("busy", false);
   });
 };
 
 /**
- * @uses state, serveRequest, runMachine (src/machine/run.mjs), BATCHES
+ * @uses state, readFacePixels, findPart, downloadFace, performRequest, continueAction (src/view/windows.mjs)
+ * @usedby advance
+ */
+const servePaused = (machine) => {
+  // An action of a face waits for the page, for example for a picture of a face. Do the work, then continue the action.
+  if (state.get("busy") === true) return state;
+  state.set("busy", true);
+  const request = machine.store.paused.request;
+  const pageWork = { "to-image": () => readFacePixels(findPart("screen"), request.face), download: () => downloadFace(findPart("screen"), request) };
+  const work = pageWork[request.kind] ?? (() => performRequest(request));
+  return work().then((answer) => {
+    const current = state.get("machine");
+    state.set("machine", { ...current, store: continueAction(current.store, answer) });
+    state.set("busy", false);
+  });
+};
+
+/**
+ * @uses state, servePaused, serveRequest, runMachine (src/machine/run.mjs), BATCHES
  * @usedby frame
  */
 const advance = () => {
   const machine = state.get("machine");
+  if (machine !== undefined && machine.store.paused) return servePaused(machine);
   if (machine === undefined || machine.mode === "done") return state;
   return machine.mode === "wait" ? serveRequest(machine) : state.set("machine", runMachine(machine, BATCHES));
 };
@@ -89,7 +111,7 @@ const advance = () => {
 /**
  * @usedby runTimers, readKey, readPointer
  */
-const isIdle = (machine) => machine !== undefined && ["wait", "done"].includes(machine.mode);
+const isIdle = (machine) => machine !== undefined && ["wait", "done"].includes(machine.mode) && !machine.store.paused;
 
 /**
  * @uses state, isIdle, listTimers (src/view/windows.mjs), listEngageTimers (src/view/windows.mjs),
@@ -126,7 +148,7 @@ const readKey = (event) => {
 };
 
 /**
- * @uses advance, runTimers, paint, paintReveals, findPart, paintCanvases, state, showEnd
+ * @uses advance, runTimers, paint, paintReveals, findPart, paintCanvases, state, paintImages, showEnd
  * @usedby boot
  */
 const frame = (now) => {
@@ -135,6 +157,7 @@ const frame = (now) => {
   paint();
   paintReveals(findPart("screen"), now);
   paintCanvases(findPart("screen"));
+  if (state.get("machine") !== undefined) paintImages(findPart("screen"), state.get("machine").store);
   const machine = state.get("machine");
   const text = machine === undefined ? "" : showEnd(machine);
   if (findPart("output").textContent !== text) findPart("output").replaceChildren(document.createTextNode(text));

@@ -1,7 +1,7 @@
-/** @import { Datum, Store } from "../types/states.mjs" */
+/** @import { Datum, Machine, Store } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { GLOBAL, UNSET, makeSeries, readContext, writeContext, writeWord } from "../store/store.mjs";
-import { askEdge, giveValue, makeMachine } from "../machine/machine.mjs";
+import { GLOBAL, UNSET, allocate, makeSeries, readContext, readRest, writeContext, writeWord } from "../store/store.mjs";
+import { answerRequest, askEdge, giveValue, makeMachine } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { exportElement } from "./elements.mjs";
 import { formatError } from "../natives/report.mjs";
@@ -36,6 +36,35 @@ const closeWindow = (machine, args, options) => {
   const kept = options.$all === undefined ? windows.slice(0, -1) : [];
   return giveValue({ ...machine, store: markChange(machine.store, kept) }, UNSET);
 };
+
+/**
+ * @usedby readImage
+ */
+const makePixels = (bytes) =>
+  Array.from({ length: Math.floor(bytes.length / 4) }, (unused, place) => bytes.slice(place * 4, place * 4 + 4));
+
+/**
+ * @uses giveValue (src/machine/machine.mjs), allocate (src/store/store.mjs), makePixels,
+ *   askEdge (src/machine/machine.mjs)
+ * @usedby WINDOW_NATIVES
+ */
+const readImage = (machine, [value]) => {
+  // An image gives itself. A face gives a picture of its element. The page makes the picture, thus the machine waits.
+  if (value.type !== "object") return giveValue(machine, value);
+  const resume = (waiting, answer) => {
+    const made = allocate(waiting.store, { type: "image", value: makePixels(answer.bytes), size: answer.size });
+    return giveValue({ ...waiting, store: made.store }, made.value);
+  };
+  return askEdge(machine, { kind: "to-image", face: value.value.context, resume });
+};
+
+/**
+ * @uses askEdge (src/machine/machine.mjs), readRest (src/store/store.mjs), giveValue (src/machine/machine.mjs)
+ * @usedby WINDOW_NATIVES
+ */
+const downloadImage = (machine, [face, name]) =>
+  // The page gives the picture of the face to the person as a PNG file.
+  askEdge(machine, { kind: "download", face: face.value.context, name: readRest(machine.store, name), resume: (waiting) => giveValue(waiting, face) });
 
 /**
  * @uses giveValue (src/machine/machine.mjs)
@@ -74,16 +103,37 @@ export const renderWindows = (store) => {
  * @returns {Store}
  * @standard dirty - After the action, the page draws the windows again.
  * @standard fault - An error in the action adds its message to the printed text.
- * @uses runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs),
- *   HANDLER_BUDGET, formatError (src/natives/report.mjs)
+ * @uses endAction, runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs),
+ *   makeDatum (src/data/datum.mjs), HANDLER_BUDGET
  * @usedby runTimers (src/edge/page.mjs), readEvent (src/edge/page.mjs), runKeyAction, runPointerAction, runEngage
  */
-export const runAction = (store, block) => {
-  const done = runMachine(makeMachine(store, makeDatum("block", { id: block, index: 0 })), HANDLER_BUDGET);
+export const runAction = (store, block) =>
+  endAction(runMachine(makeMachine({ ...store, paused: null }, makeDatum("block", { id: block, index: 0 })), HANDLER_BUDGET));
+
+/**
+ * Gives the store after an action. An action that waits for the page is kept in the store, and the page continues it.
+ * @param {Machine} done - The machine of the action, after it stopped.
+ * @returns {Store}
+ * @standard paused - An action that waits for the edge gives a store that holds the waiting machine.
+ * @uses formatError (src/natives/report.mjs)
+ * @usedby runAction, continueAction
+ */
+export const endAction = (done) => {
   // An error in the action shows in the printed text of the session.
   const fault = done.thrown?.kind === "error" ? `${formatError(done.store, done.thrown.value)}\n` : "";
-  return { ...done.store, output: done.store.output + fault, dirty: true };
+  return { ...done.store, output: done.store.output + fault, dirty: true, paused: done.mode === "wait" ? done : null };
 };
+
+/**
+ * Continues an action that waited for the page, with the answer of the page.
+ * @param {Store} store - A store that holds a waiting action.
+ * @param {*} answer
+ * @returns {Store}
+ * @standard resume - The action continues to its end, or to its next wait.
+ * @uses endAction, runMachine (src/machine/run.mjs), answerRequest (src/machine/machine.mjs), HANDLER_BUDGET
+ * @usedby servePaused (src/edge/page.mjs)
+ */
+export const continueAction = (store, answer) => endAction(runMachine(answerRequest(store.paused, answer), HANDLER_BUDGET));
 
 /**
  * @usedby listTimers, listKeyBlocks, listEngageTimers
@@ -189,11 +239,13 @@ export const changeText = (store, context, text) => {
 
 /**
  * The natives for the windows of View. Each entry has the name of REBOL and the function.
- * @uses openWindow, closeWindow, showFace
+ * @uses openWindow, closeWindow, showFace, readImage, downloadImage
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WINDOW_NATIVES = {
   view: openWindow,
   unview: closeWindow,
   show: showFace,
+  "to-image": readImage,
+  "download-image": downloadImage,
 };

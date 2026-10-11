@@ -33,6 +33,8 @@ import { VIEW_NATIVES } from "../view/layout.mjs";
 import { WEB_NATIVES, WEB_SPECS } from "../view/elements.mjs";
 import { WINDOW_NATIVES } from "../view/windows.mjs";
 import { GRID_NATIVES, GRID_SPECS } from "../view/grid.mjs";
+import { RASTER_NATIVES } from "../view/raster.mjs";
+import { CRYPTO_NATIVES, CRYPTO_SPECS } from "../natives/crypto.mjs";
 import { VIEW_BOOT } from "../view/boot.mjs";
 import { allocate } from "../store/store.mjs";
 import { makeMachine } from "../machine/machine.mjs";
@@ -52,7 +54,7 @@ import { runMachine } from "../machine/run.mjs";
  *   DIGEST_NATIVES (src/natives/digest.mjs), CLOCK_NATIVES (src/natives/clock.mjs),
  *   FILE_NATIVES (src/natives/files.mjs), RANDOM_NATIVES (src/natives/random.mjs),
  *   VIEW_NATIVES (src/view/layout.mjs), WEB_NATIVES (src/view/elements.mjs), WINDOW_NATIVES (src/view/windows.mjs),
- *   GRID_NATIVES (src/view/grid.mjs)
+ *   GRID_NATIVES (src/view/grid.mjs), RASTER_NATIVES (src/view/raster.mjs), CRYPTO_NATIVES (src/natives/crypto.mjs)
  * @usedby OVERRIDES, findAny, makeFunction, BUILT
  */
 const NATIVES = {
@@ -81,6 +83,8 @@ const NATIVES = {
   ...WEB_NATIVES,
   ...WINDOW_NATIVES,
   ...GRID_NATIVES,
+  ...RASTER_NATIVES,
+  ...CRYPTO_NATIVES,
   "q": WORD_NATIVES.quit,
 };
 
@@ -152,13 +156,13 @@ const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.v
 
 /**
  * @uses SPECS (src/natives/specs.mjs), VIEW_SPECS (src/view/data.mjs), WEB_SPECS (src/view/elements.mjs),
- *   GRID_SPECS (src/view/grid.mjs), parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), readSpecItem,
- *   makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
+ *   GRID_SPECS (src/view/grid.mjs), CRYPTO_SPECS (src/natives/crypto.mjs), parseSpec (src/machine/spec.mjs),
+ *   loadSource (src/data/load.mjs), readSpecItem, makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
  * @usedby BUILT
  */
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
-  const facts = SPECS[sign] ?? VIEW_SPECS[sign] ?? WEB_SPECS[sign] ?? GRID_SPECS[sign];
+  const facts = SPECS[sign] ?? VIEW_SPECS[sign] ?? WEB_SPECS[sign] ?? GRID_SPECS[sign] ?? CRYPTO_SPECS[sign];
   const spec = parseSpec(loadSource(facts[1]).value.map(readSpecItem));
   // REBOL has three types for its own functions. The type comes from REBOL.
   return makeDatum(type ?? facts[0], { ...spec, native: OVERRIDES[name] ?? NATIVES[name] });

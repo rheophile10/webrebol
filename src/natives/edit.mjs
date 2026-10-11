@@ -160,7 +160,10 @@ const pokeItem = (machine, [series, index, value]) => {
   const place = series.value.index + index.value - 1;
   const inside = index.value > 0 && place < readAll(machine.store, series).length;
   if (!inside) return failMachine(machine, "script out-of-range", [index]);
-  const content = isList(series) ? [value] : String.fromCharCode(value.value);
+  // A pixel of an image is a tuple. A color without an alpha part gets the alpha 0, which is not transparent in REBOL.
+  const pixel = [value.value?.[0] ?? 0, value.value?.[1] ?? 0, value.value?.[2] ?? 0, value.value?.[3] ?? 0];
+  const item = series.type === "image" ? [pixel] : [value];
+  const content = isList(series) || series.type === "image" ? item : String.fromCharCode(value.value);
   return giveValue(replaceItems(machine, moveTo(series, place), { content, size: 1 }), value);
 };
 

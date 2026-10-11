@@ -38,6 +38,23 @@ Three comparisons run the same code in REBOL 2.7.8 and in WebRebol:
 
 The downloaded scripts and the reports are in `corpus/`, which is not in git. REBOL View runs in Docker without a network.
 
+## Words that REBOL 2 does not have
+
+| Group | Words |
+|---|---|
+| Elements and SVG | `element`, `element?`, `form-element`, `form-points` |
+| Layout facets | `css`, `rate`, `on-time`, `on-key`, `on-down`, `on-move`, `on-up` |
+| Pictures | `download-image`, the `flood` command of `draw`, the effects `paint` and `reveal` |
+| Animation numbers | `find-threshold`, `hash-cell`, `smooth-noise`, `measure-center`, `make-reveal` |
+| Web Crypto | `crypto-digest`, `crypto-random`, `crypto-uuid`, `crypto-hmac`, `crypto-derive`, `crypto-encrypt`, `crypto-decrypt`, `crypto-key-pair`, `crypto-sign`, `crypto-verify` |
+
+```
+key: crypto-derive "a passphrase" crypto-random 16 600000
+sealed: crypto-encrypt "a secret text" key
+to-string crypto-decrypt sealed key        ; "a secret text"
+crypto-digest "abc" 'sha256
+```
+
 ## The look of View
 
 The View functions are REBOL code on the web word `element`. A script changes the look with the object `theme`:
@@ -66,7 +83,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | `random` | The numbers are random, but the same seed does not give the same numbers as REBOL 2. REBOL does not publish its algorithm. |
 | `call` | Not available. A browser page cannot start a program. |
 | `library!`, `routine!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
-| `image!`, `event!` | Available in a first form. `poke` and `draw` on an image, and `to-image`, are not done. |
+| `image!`, `event!` | Available. `draw` on an image has the commands `pen`, `fill-pen`, `line-width`, `line`, `box`, `circle` and `flood`. |
 | `struct!` | Not available at this time. This type is possible, and it is planned. |
 | View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. `view` shows each face as a DOM element with CSS. A face can have an action, a timer, keyboard events and pointer events. `effect [draw [...]]` gives SVG shapes for `line`, `box` and `circle`. The other draw commands and the other effects are not available at this time. The pixels are not equal to REBOL 2, because a browser draws the elements and the fonts. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
@@ -92,8 +109,8 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`readToken`](src/data/datum.mjs#L326) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L183) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L126) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L213) — Makes a machine that is ready to evaluate a block.
-- [`runMachine`](src/machine/run.mjs#L72) — Does steps until the evaluation is done or the budget is used.
+- [`makeMachine`](src/machine/machine.mjs#L214) — Makes a machine that is ready to evaluate a block.
+- [`runMachine`](src/machine/run.mjs#L70) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L52) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L52) — Evaluates the value at the cursor, without a look for an operator after it.
 - [`startCall`](src/machine/call.mjs#L208) — Starts the call of a function.

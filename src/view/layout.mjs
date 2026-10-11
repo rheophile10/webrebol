@@ -1,5 +1,5 @@
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, allocate, makeRecord, makeSeries, readContext, readRest, writeWord } from "../store/store.mjs";
+import { NONE, allocate, makeRecord, makeSeries, readContext, readRest, readWord, writeWord } from "../store/store.mjs";
 import { giveValue, makeLogic, makeWord } from "../machine/machine.mjs";
 import { COLORS, STYLES, measureText } from "./data.mjs";
 
@@ -142,7 +142,8 @@ const SETTERS = {
 };
 
 /**
- * @uses WEB_FACETS, WITH_VALUE, placeFace, KEYWORDS, COMMANDS, STYLES, COLORS
+ * @uses WEB_FACETS, WITH_VALUE, placeFace, KEYWORDS, COMMANDS, STYLES, COLORS, readWord (src/store/store.mjs),
+ *   readItem
  * @usedby readItem
  */
 const readWordItem = (state, item) => {
@@ -156,7 +157,10 @@ const readWordItem = (state, item) => {
     const placed = placeFace(state);
     return { ...placed, name: undefined, pending: { style: name, text: null, size: null, width: null, color: null, name: placed.name } };
   }
-  return COLORS[name] === undefined || state.pending === null ? state : { ...state, pending: { ...state.pending, color: COLORS[name] } };
+  if (COLORS[name] !== undefined) return state.pending === null ? state : { ...state, pending: { ...state.pending, color: COLORS[name] } };
+  // A word that is not a command, a style or a color gives its value as the facet, as VID does.
+  const value = readWord(state.store, item);
+  return value.type === "unset" || value.type === "word" ? state : readItem(state, value);
 };
 
 /**
@@ -179,7 +183,7 @@ const nameFace = (state, word) => ({ ...placeFace(state), name: word });
 
 /**
  * @uses nameFace, WEB_FACETS, SETTERS, readWordItem, FACETS
- * @usedby makeLayout
+ * @usedby readWordItem, makeLayout
  */
 const readItem = (state, item) => {
   if (item.type === "set-word") return nameFace(state, item);

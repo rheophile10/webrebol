@@ -62,7 +62,7 @@ const describeOther = (fields) => `REBOL gives this error, but WebRebol has no m
  * @keypoint The message texts are not the texts of REBOL. Only the type, the id and the fields agree with REBOL.
  * @uses formValue (src/store/mold.mjs), moldValue (src/store/mold.mjs), NONE (src/store/store.mjs), TITLES, MESSAGES,
  *   describeOther
- * @usedby showEnd (bin/webrebol.mjs), showEnd (src/edge/page.mjs), runAction (src/view/windows.mjs)
+ * @usedby showEnd (bin/webrebol.mjs), showEnd (src/edge/page.mjs), endAction (src/view/windows.mjs)
  */
 export const formatError = (store, fault) => {
   // A user error shows its text as it is. The other fields show as REBOL source text.

@@ -51,7 +51,7 @@ export const interpretSource = (source, batches) => runMachine(startSource(sourc
  * @standard error - An error shows as "!", its type, its id, and its three molded fields.
  * @uses findError (src/natives/report.mjs), moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
  * @usedby showEnd (bin/webrebol.mjs), showEnd (src/edge/page.mjs), showRun (test/do.test.mjs),
- *   showRun (test/edge.test.mjs)
+ *   showRun (test/edge.test.mjs), runWithEdge (test/edge.test.mjs)
  */
 export const showResult = (machine) => {
   if (machine.mode !== "done") return machine.mode === "wait" ? "! wait" : "! budget";

@@ -57,6 +57,8 @@ const writeProp = (store, name, value) => {
   // A handler is a block. The page gets the number of its series. A face gives the number of its context.
   if (name.startsWith("data-on") && isList(value)) return String(value.value.id);
   if (value.type === "object") return String(value.value.context);
+  // An image gives the number of its series. The page reads the pixels from the store.
+  if (value.type === "image") return String(value.value.id);
   if (value.type === "logic") return value.value;
   return value.type === "tuple" ? writeCssValue(store, name, value) : formValue(store, value);
 };
@@ -77,7 +79,7 @@ const isElementObject = (store, value) => value.type === "object" && readContext
  * @standard style - A style block gives one CSS text. A number is a number of pixels, and a tuple is a color.
  * @uses isElementObject, formValue (src/store/mold.mjs), readContext (src/store/store.mjs),
  *   isList (src/store/store.mjs), readPairs, writeProp, readRest (src/store/store.mjs), isText (src/store/store.mjs)
- * @usedby renderWindows
+ * @usedby formElement, renderWindows
  */
 export const exportElement = (store, value) => {
   if (!isElementObject(store, value)) return { text: formValue(store, value) };
@@ -99,6 +101,47 @@ const testElement = (machine, [value]) =>
 
 /**
  * The web words: the natives that make elements as data. These words are not in REBOL 2.
+ */
+const ESCAPES = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" };
+
+/**
+ * @uses ESCAPES
+ * @usedby writeMarkup
+ */
+const escapeMarkup = (text) => String(text).replace(/[&<>"]/g, (sign) => ESCAPES[sign]);
+
+/**
+ * Makes the HTML or SVG text of element data.
+ * @param {{ tag?: string, props?: object, children?: object[], text?: string }} node - Element data in the format of Plastron.
+ * @param {boolean} [top] - The node is the top of the text. Only the top svg element gets the attribute xmlns.
+ * @returns {string}
+ * @standard escape - The special characters of a text and of an attribute value are written as entities.
+ * @standard namespace - An svg element at the top gets the attribute xmlns, thus the text is a correct SVG file.
+ * @uses escapeMarkup
+ * @usedby formElement
+ */
+export const writeMarkup = (node, top = true) => {
+  if (node.tag === undefined) return escapeMarkup(node.text);
+  const named = top && node.tag === "svg" && node.props.xmlns === undefined;
+  const props = named ? { xmlns: "http://www.w3.org/2000/svg", ...node.props } : node.props;
+  const attributes = Object.entries(props)
+    .filter(([, value]) => value !== false)
+    .map(([name, value]) => ` ${name}="${escapeMarkup(value === true ? "" : value)}"`);
+  const inner = node.children.map((child) => writeMarkup(child, false));
+  return node.children.length === 0 ? `<${node.tag}${attributes.join("")}/>` : `<${node.tag}${attributes.join("")}>${inner.join("")}</${node.tag}>`;
+};
+
+/**
+ * @uses makeSeries (src/store/store.mjs), writeMarkup, exportElement, giveValue (src/machine/machine.mjs)
+ * @usedby WEB_NATIVES
+ */
+const formElement = (machine, [value]) => {
+  // The result is the text of the element, for example the text of an SVG file.
+  const made = makeSeries(machine.store, "string", writeMarkup(exportElement(machine.store, value)));
+  return giveValue({ ...machine, store: made.store }, made.value);
+};
+
+/**
  * @uses readRest (src/store/store.mjs), makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
  * @usedby WEB_NATIVES
  */
@@ -110,12 +153,13 @@ const formPoints = (machine, [points]) => {
 };
 
 /**
- * @uses makeElement, formPoints, testElement
+ * @uses makeElement, formPoints, formElement, testElement
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WEB_NATIVES = {
   element: makeElement,
   "form-points": formPoints,
+  "form-element": formElement,
   "element?": testElement,
 };
 
@@ -126,5 +170,7 @@ export const WEB_SPECS = {
   element: ["native", "tag [word! string!] props [block! none!] children [block! none!]"],
   "element?": ["native", "value [any-type!]"],
   "form-points": ["native", "points [block!]"],
+  "form-element": ["native", "value [object! string!]"],
   "layout-faces": ["native", "specs [block!]"],
+  "download-image": ["native", "face [object!] name [string! file!]"],
 };

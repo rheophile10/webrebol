@@ -1,3 +1,5 @@
+import { readEntry } from "../store/table.mjs";
+
 // The painter of a paint canvas. A canvas with the attribute data-paint has a list of draw commands as text.
 // The canvas keeps its pixels, thus the painter draws only the commands that are new since the last frame.
 
@@ -88,3 +90,98 @@ const paintCanvas = (canvas) => {
  * @usedby frame
  */
 export const paintCanvases = (root) => root.querySelectorAll("canvas[data-paint]").forEach(paintCanvas);
+
+/** The pixel list that each image canvas showed last. */
+const shown = new WeakMap();
+
+/**
+ * @uses readEntry (src/store/table.mjs), shown
+ * @usedby paintImages
+ */
+const paintImage = (store) => (canvas) => {
+  // The store makes a new pixel list for each change. Thus an equal list needs no work.
+  const pixels = readEntry(store.series, Number(canvas.getAttribute("data-image")));
+  if (pixels === undefined || shown.get(canvas) === pixels) return;
+  shown.set(canvas, pixels);
+  const bytes = Uint8ClampedArray.from(pixels.flatMap((pixel) => [pixel[0], pixel[1], pixel[2], 255]));
+  canvas.getContext("2d").putImageData(Reflect.construct(ImageData, [bytes, canvas.width, canvas.height]), 0, 0);
+};
+
+/**
+ * Paints each image canvas of the page with the pixels of its image in the store.
+ * @param {Element} root - The container of the view.
+ * @param {object} store - The store of the session.
+ * @returns {void}
+ * @uses paintImage
+ * @usedby frame
+ */
+export const paintImages = (root, store) => root.querySelectorAll("canvas[data-image]").forEach(paintImage(store));
+
+/**
+ * @usedby findCanvas
+ */
+const drawElement = (element) =>
+  // Make a picture of an element: put its HTML into an SVG image, and draw that image on a canvas.
+  Reflect.construct(Promise, [
+    (resolve) => {
+      const box = element.getBoundingClientRect();
+      const copy = element.cloneNode(true);
+      copy.setAttribute("style", `${copy.getAttribute("style") ?? ""};left:0px;top:0px`);
+      const html = Reflect.construct(XMLSerializer, []).serializeToString(copy);
+      const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${box.width}" height="${box.height}"><foreignObject width="100%" height="100%">${html}</foreignObject></svg>`;
+      const picture = Reflect.construct(Image, []);
+      picture.addEventListener("load", () => {
+        const canvas = document.createElement("canvas");
+        canvas.setAttribute("width", String(Math.round(box.width)));
+        canvas.setAttribute("height", String(Math.round(box.height)));
+        canvas.getContext("2d").drawImage(picture, 0, 0);
+        resolve(canvas);
+      });
+      picture.setAttribute("src", `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`);
+    },
+  ]);
+
+/**
+ * @uses drawElement
+ * @usedby readFacePixels, downloadFace
+ */
+const findCanvas = (root, face) => {
+  // A face with an image or a paint effect has a canvas with its pixels. Other faces need a picture of the element.
+  const element = root.querySelector(`[data-face="${face}"]`);
+  const canvas = element === null ? null : element.querySelector(":scope > canvas");
+  return canvas === null && element !== null ? drawElement(element) : Promise.resolve(canvas);
+};
+
+/**
+ * Reads the pixels of a face of the page, for the function to-image.
+ * @param {Element} root - The container of the view.
+ * @param {number} face - The context number of the face.
+ * @returns {Promise<{ bytes: number[], size: number[] }>}
+ * @uses findCanvas
+ * @usedby serveRequest, servePaused
+ */
+export const readFacePixels = async (root, face) => {
+  const canvas = await findCanvas(root, face);
+  if (canvas === null) return { bytes: [], size: [0, 0] };
+  const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
+  // REBOL uses the alpha value 0 for a pixel that is not transparent.
+  return { bytes: Array.from(data, (byte, place) => (place % 4 === 3 ? 255 - byte : byte)), size: [canvas.width, canvas.height] };
+};
+
+/**
+ * Gives the picture of a face to the person as a PNG file.
+ * @param {Element} root - The container of the view.
+ * @param {{ face: number, name: string }} request
+ * @returns {Promise<null>}
+ * @uses findCanvas
+ * @usedby serveRequest, servePaused
+ */
+export const downloadFace = async (root, request) => {
+  const canvas = await findCanvas(root, request.face);
+  if (canvas === null) return null;
+  const link = document.createElement("a");
+  link.setAttribute("href", canvas.toDataURL("image/png"));
+  link.setAttribute("download", request.name);
+  link.click();
+  return null;
+};

@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRebol: SVG</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
+      #screen { position: relative; height: 640px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #script { width: 100%; height: 220px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
+      #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
+      details { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>SVG</h1>
+    <p>The script makes a bar chart as SVG elements. It shows the picture, and it shows the SVG text of the same picture.</p>
+    <div id="screen"></div>
+    <pre id="output"></pre>
+    <details>
+      <summary>The REBOL script of this page</summary>
+      <textarea id="script" spellcheck="false">sales: [Jan 12 Feb 19 Mar 7 Apr 25 May 16 Jun 30]
+bars: copy []
+place: 0
+foreach [month amount] sales [
+    append bars element &#x27;rect reduce [
+        &#x27;x 30 + (place * 55) &#x27;y 220 - (amount * 6) &#x27;width 40 &#x27;height amount * 6
+        &#x27;fill 40.110.220 &#x27;rx 4
+    ] copy []
+    append bars element &#x27;text reduce [
+        &#x27;x 50 + (place * 55) &#x27;y 238 &#x27;text-anchor &quot;middle&quot; &#x27;font-size 13 &#x27;fill 60.60.60
+    ] reduce [form month]
+    append bars element &#x27;text reduce [
+        &#x27;x 50 + (place * 55) &#x27;y 214 - (amount * 6) &#x27;text-anchor &quot;middle&quot; &#x27;font-size 12 &#x27;fill 0.0.0
+    ] reduce [form amount]
+    place: place + 1
+]
+append bars element &#x27;line [x1 20 y1 220 x2 370 y2 220 stroke 0.0.0 stroke-width 2] copy []
+append bars element &#x27;circle [cx 340 cy 40 r 22 fill 250.210.30 stroke 240.140.20 stroke-width 4] copy []
+chart: element &#x27;svg [width 380 height 250 viewBox &quot;0 0 380 250&quot;] bars
+markup: form-element chart
+write %chart.svg markup
+note: rejoin [&quot;The file has &quot; size? %chart.svg &quot; bytes.&quot;]
+window: layout [
+    h2 &quot;An SVG picture made in REBOL&quot;
+    picture: box 380x250 255.255.255
+    text 380 &quot;The same picture as text. The script also wrote it to the file %chart.svg on the disk.&quot;
+    area 380x120 markup
+    text 380 note
+]
+picture/data: chart
+view window</textarea>
+      <button id="run">Run again</button>
+    </details>
+    <script type="module" src="../../src/edge/page.mjs"></script>
+  </body>
+</html>

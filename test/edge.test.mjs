@@ -70,3 +70,22 @@ test("performRequest kinds: the clock request gives the time and the offset of t
   assert.equal(typeof answer.milliseconds, "number");
   assert.equal(typeof answer.offset, "number");
 });
+
+/**
+ * @uses showResult (src/session/interpret.mjs), interpretWithEdge (src/edge/drive.mjs), BATCHES
+ */
+const runWithEdge = async (source) => showResult(await interpretWithEdge(source, BATCHES));
+
+test("interpretWithEdge reference: the SHA-256 digest of abc is the standard digest", async () => {
+  assert.match(await runWithEdge("crypto-digest \"abc\" 'sha256"), /BA7816BF8F01CFEA414140DE5DAE2223B00361A396177A9CB410FF61F20015AD/);
+});
+
+test("interpretWithEdge reference: encrypted bytes give the first text again with the key, and none with a different key", async () => {
+  const source = 'key: crypto-derive "secret" "salt" 1000 sealed: crypto-encrypt "hello" key reduce [to-string crypto-decrypt sealed key crypto-decrypt sealed crypto-random 32]';
+  assert.equal(await runWithEdge(source), '["hello" none]');
+});
+
+test("interpretWithEdge reference: a signature agrees with its message and not with a different message", async () => {
+  const source = 'keys: crypto-key-pair mark: crypto-sign "message" second keys reduce [crypto-verify "message" mark first keys crypto-verify "other" mark first keys]';
+  assert.equal(await runWithEdge(source), "[true false]");
+});

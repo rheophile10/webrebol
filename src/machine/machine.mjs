@@ -11,7 +11,7 @@ const FUNCTION_TYPES = ["native", "action", "op", "function"];
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 23 declarations in call, bitsets, compare, encode, files, flow, items, numbers, objects, parse, random, search, series, words, globals, layout
+ * @usedby 24 declarations in call, bitsets, compare, crypto, encode, files, flow, items, numbers, objects, parse, random, search, series, words, globals, layout
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -68,7 +68,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { ...machin
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 131 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
+ * @usedby 137 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, raster, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -90,7 +90,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 44 declarations in call, evaluate, path, run, bitsets, compare, control, convert, digest, edit, encode, files, items, math, numbers, objects, random, series, words
+ * @usedby 46 declarations in call, evaluate, path, run, bitsets, compare, control, convert, crypto, digest, edit, encode, files, items, math, numbers, objects, random, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -124,7 +124,8 @@ export const stopThrown = (kind) => (machine, frame) => {
  * @param {{ kind: string, resume: Function }} request - The work for the edge, and the function that continues with the answer.
  * @returns {Machine}
  * @standard wait - The mode of the machine is "wait".
- * @usedby readClock (src/natives/clock.mjs), askDigest (src/natives/digest.mjs), openWindow (src/view/windows.mjs)
+ * @usedby readClock (src/natives/clock.mjs), askCrypto (src/natives/crypto.mjs), askDigest (src/natives/digest.mjs),
+ *   openWindow (src/view/windows.mjs), readImage (src/view/windows.mjs), downloadImage (src/view/windows.mjs)
  */
 export const askEdge = (machine, request) => ({ ...machine, mode: "wait", request });
 
@@ -134,7 +135,7 @@ export const askEdge = (machine, request) => ({ ...machine, mode: "wait", reques
  * @param {*} answer
  * @returns {Machine}
  * @standard resume - The function of the request gets the machine and the answer.
- * @usedby driveMachine (src/edge/drive.mjs), serveRequest (src/edge/page.mjs)
+ * @usedby driveMachine (src/edge/drive.mjs), serveRequest (src/edge/page.mjs), continueAction (src/view/windows.mjs)
  */
 export const answerRequest = (machine, answer) => machine.request.resume({ ...machine, mode: "give", request: null }, answer);
 

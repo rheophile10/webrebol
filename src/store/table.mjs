@@ -33,8 +33,8 @@ const readNode = (node, shift, key) => {
  * @returns {*}
  * @standard absent - A key without a value gives undefined.
  * @uses BITS, readNode
- * @usedby atEnd (src/machine/machine.mjs), readItem (src/machine/machine.mjs), readRest, readAll, readWord,
- *   readContext, writeWord
+ * @usedby paintImage (src/edge/paint.mjs), atEnd (src/machine/machine.mjs), readItem (src/machine/machine.mjs),
+ *   readRest, readAll, readWord, readContext, writeWord
  */
 export const readEntry = (table, key) => (key >> (table.shift + BITS) > 0 ? undefined : readNode(table.root, table.shift, key));
 

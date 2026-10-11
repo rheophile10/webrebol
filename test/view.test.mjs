@@ -1,9 +1,11 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { interpretSource, showResult } from "../src/session/interpret.mjs";
-import { exportElement } from "../src/view/elements.mjs";
+import { exportElement, writeMarkup } from "../src/view/elements.mjs";
+import { drawCommands } from "../src/view/raster.mjs";
+import { answerRequest } from "../src/machine/machine.mjs";
 import { diff } from "../src/view/diff.mjs";
-import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, runKeyAction, runPointerAction } from "../src/view/windows.mjs";
+import { changeText, continueAction, endAction, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, runKeyAction, runPointerAction } from "../src/view/windows.mjs";
 import { findThreshold, hashCell, measureCenter, smoothNoise } from "../src/view/grid.mjs";
 import { readContext, readRest, readWord } from "../src/store/store.mjs";
 
@@ -12,6 +14,7 @@ const WINDOW = 'lay: layout [name: field "abc" button "Push" [print "pushed"] bu
 
 /**
  * @uses interpretSource (src/session/interpret.mjs), BATCHES
+ * @usedby readCommands
  */
 const run = (source) => interpretSource(source, BATCHES);
 
@@ -172,4 +175,64 @@ test("runEngage arguments: the engage function gets the face, the action word an
   assert.equal(after.output, "");
   const seen = readRest(after, readWord(after, { type: "word", value: "seen", bind: 0 }));
   assert.deepEqual(seen.map((item) => item.value), ["down", [3, 5], [50, 50]]);
+});
+
+test("writeMarkup escape: the special characters of a text and of an attribute are entities", () => {
+  const node = { tag: "p", props: { title: 'a "b" <c>' }, children: [{ text: "1 < 2 & 3" }] };
+  assert.equal(writeMarkup(node), '<p title="a &quot;b&quot; &lt;c&gt;">1 &lt; 2 &amp; 3</p>');
+});
+
+test("writeMarkup namespace: only the top svg element gets the attribute xmlns", () => {
+  const node = { tag: "svg", props: { width: "10" }, children: [{ tag: "svg", props: {}, children: [] }] };
+  assert.equal(writeMarkup(node), '<svg xmlns="http://www.w3.org/2000/svg" width="10"><svg/></svg>');
+});
+
+const WHITE = [255, 255, 255, 0];
+
+/**
+ * @uses WHITE
+ */
+const makePicture = (width, height) => ({ size: [width, height], pixels: Array.from({ length: width * height }, () => WHITE) });
+
+/**
+ * @uses run, readRest (src/store/store.mjs)
+ */
+const readCommands = (source) => {
+  const machine = run(source);
+  return readRest(machine.store, machine.value);
+};
+
+test("drawCommands line: a line changes the pixels of its row and not the other rows", () => {
+  const drawn = drawCommands(makePicture(6, 3), readCommands("[pen 255.0.0 line 0x1 5x1]"));
+  assert.deepEqual(drawn.pixels[6], [255, 0, 0, 0]);
+  assert.deepEqual(drawn.pixels[11], [255, 0, 0, 0]);
+  assert.equal(drawn.pixels[0], WHITE);
+  assert.equal(drawn.pixels[17], WHITE);
+});
+
+test("drawCommands flood: a flood fills one side of a line and not the other side", () => {
+  const lined = drawCommands(makePicture(6, 5), readCommands("[pen 0.0.0 line 0x2 5x2]"));
+  const filled = drawCommands(lined, readCommands("[pen 0.255.0 flood 3x0]"));
+  assert.deepEqual(filled.pixels[0], [0, 255, 0, 0]);
+  assert.deepEqual(filled.pixels[11], [0, 255, 0, 0]);
+  assert.deepEqual(filled.pixels[12], [0, 0, 0, 0]);
+  assert.equal(filled.pixels[29], WHITE);
+});
+
+test("endAction paused: an action that waits for the page gives a store that holds the waiting machine", () => {
+  const store = run('lay: layout [button "Save" [download-image lay "pic.png" print "saved"]] view/new lay').store;
+  const button = renderWindows(store).children[0].children[0];
+  const waiting = runAction(store, Number(button.props["data-onclick"]));
+  assert.equal(waiting.paused.request.kind, "download");
+  assert.equal(waiting.paused.request.name, "pic.png");
+  assert.equal(endAction(run("1")).paused, null);
+});
+
+test("continueAction resume: the action continues to its end after the answer of the page", () => {
+  const store = run('lay: layout [button "Save" [download-image lay "pic.png" print "saved"]] view/new lay').store;
+  const button = renderWindows(store).children[0].children[0];
+  const done = continueAction(runAction(store, Number(button.props["data-onclick"])), null);
+  assert.equal(done.output, "saved\n");
+  assert.equal(done.paused, null);
+  assert.equal(typeof answerRequest, "function");
 });
