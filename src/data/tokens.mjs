@@ -10,7 +10,7 @@ const nestBraces = (inner) => `\\{(?:\\^[\\s\\S]|[^{}^]|${inner})*\\}`;
 
 /**
  * @uses BRACE_DEPTH, nestBraces, NO_MATCH
- * @usedby PATTERN
+ * @usedby PATTERN, KINDS
  */
 const PIECES = [
   ["space", "\\s+"],
@@ -37,12 +37,19 @@ const PATTERN = new RegExp(PIECES.map(([kind, piece]) => `(?<${kind}>${piece})`)
 const IGNORED_KINDS = ["space", "comment"];
 
 /**
+ * @uses PIECES
+ * @usedby makeToken
+ */
+const KINDS = PIECES.map(([kind]) => kind);
+
+/**
+ * @uses KINDS
  * @usedby scanTokens
  */
 const makeToken = (match) => {
-  // Find the one group that has text. Its name is the kind.
-  const [kind, text] = Object.entries(match.groups).find(([, part]) => part !== undefined);
-  return { kind, text };
+  // Find the one group that has text. Its position gives the kind.
+  const place = match.findIndex((part, index) => index > 0 && part !== undefined);
+  return { kind: KINDS[place - 1], text: match[place] };
 };
 
 /**

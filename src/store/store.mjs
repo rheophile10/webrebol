@@ -1,5 +1,6 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
+import { EMPTY_CHUNKS, joinChunks, pushItem } from "../data/chunks.mjs";
 import { EMPTY_DISK } from "./disk.mjs";
 import { EMPTY_TABLE, readEntry, writeEntry } from "./table.mjs";
 
@@ -25,6 +26,7 @@ export const NONE = makeDatum("none", null);
 export const EMPTY_STORE = {
   series: EMPTY_TABLE,
   contexts: writeEntry(EMPTY_TABLE, GLOBAL, {}),
+  globals: EMPTY_TABLE,
   base: {},
   next: 1,
   output: "",
@@ -41,6 +43,14 @@ export const EMPTY_STORE = {
  * @usedby 19 declarations in path, spec, loops, objects, words, globals, store
  */
 export const makeKey = (name) => `$${name.toLowerCase()}`;
+
+const HASH_MASK = 0xfffff;
+
+/**
+ * @uses HASH_MASK
+ * @usedby readWord, writeWord
+ */
+const hashKey = (key) => [...key].reduce((sum, char) => (Math.imul(sum, 31) + char.charCodeAt(0)) | 0, 7) & HASH_MASK;
 
 /**
  * Finds if a value is a block, a paren or a path.
@@ -84,13 +94,13 @@ export const makeSeries = (store, type, content) => ({
 });
 
 /**
- * @uses allocate
+ * @uses allocate, pushItem (src/data/chunks.mjs)
  * @usedby allocate
  */
 const allocateItem = (made, item) => {
   // Put the item into the store that the items before it made.
   const next = allocate(made.store, item);
-  return { store: next.store, values: [...made.values, next.value] };
+  return { store: next.store, values: pushItem(made.values, next.value) };
 };
 
 /**
@@ -98,14 +108,15 @@ const allocateItem = (made, item) => {
  * @param {Store} store
  * @param {Datum} datum - A value from the loader.
  * @returns {{ store: Store, value: Datum }}
- * @uses LIST_TYPES, allocateItem, makeSeries, isSeries, WORD_TYPES, GLOBAL
+ * @uses LIST_TYPES, allocateItem, EMPTY_CHUNKS (src/data/chunks.mjs), makeSeries, joinChunks (src/data/chunks.mjs),
+ *   isSeries, WORD_TYPES, GLOBAL
  * @usedby 10 declarations in control, convert, files, words, interpret, store, load, machine
  */
 export const allocate = (store, datum) => {
   // A list holds values that also go into the store.
   if (LIST_TYPES.includes(datum.type)) {
-    const made = datum.value.reduce(allocateItem, { store, values: [] });
-    return makeSeries(made.store, datum.type, made.values);
+    const made = datum.value.reduce(allocateItem, { store, values: EMPTY_CHUNKS });
+    return makeSeries(made.store, datum.type, joinChunks(made.values));
   }
   if (isSeries(datum)) return makeSeries(store, datum.type, datum.value);
   return { store, value: WORD_TYPES.includes(datum.type) ? { ...datum, bind: GLOBAL } : datum };
@@ -153,14 +164,14 @@ export const writeAll = (store, series, content) => ({
  * @param {Datum} word
  * @returns {Datum}
  * @standard unset - A word without a value gives the unset value.
- * @uses makeKey, readEntry, GLOBAL, UNSET
+ * @uses makeKey, GLOBAL, readEntry, hashKey, UNSET
  * @usedby 16 declarations in call, evaluate, path, items, loops, objects, parse, words
  */
 export const readWord = (store, word) => {
-  // The global context has the words that the session set. The base has the words of REBOL.
+  // The global words that the session set are in a table by the hash of the key. The base has the words of REBOL.
   const key = makeKey(word.value);
-  const value = word.bind === undefined ? undefined : readEntry(store.contexts, word.bind)?.[key];
-  return value ?? (word.bind === GLOBAL ? store.base[key] : undefined) ?? UNSET;
+  if (word.bind === GLOBAL) return readEntry(store.globals, hashKey(key))?.[key] ?? store.base[key] ?? UNSET;
+  return (word.bind === undefined ? undefined : readEntry(store.contexts, word.bind)?.[key]) ?? UNSET;
 };
 
 /**
@@ -179,13 +190,18 @@ export const readContext = (store, context) => readEntry(store.contexts, context
  * @param {Datum} word
  * @param {Datum} value
  * @returns {Store}
- * @uses writeEntry, readEntry, makeKey
+ * @uses makeKey, GLOBAL, readEntry, hashKey, writeEntry
  * @usedby 11 declarations in evaluate, path, items, loops, objects, parse, words
  */
-export const writeWord = (store, word, value) => ({
-  ...store,
-  contexts: writeEntry(store.contexts, word.bind, { ...readEntry(store.contexts, word.bind), [makeKey(word.value)]: value }),
-});
+export const writeWord = (store, word, value) => {
+  // A global word changes only the small group of words that have the same hash.
+  const key = makeKey(word.value);
+  if (word.bind === GLOBAL) {
+    const group = { ...readEntry(store.globals, hashKey(key)), [key]: value };
+    return { ...store, globals: writeEntry(store.globals, hashKey(key), group) };
+  }
+  return { ...store, contexts: writeEntry(store.contexts, word.bind, { ...readEntry(store.contexts, word.bind), [key]: value }) };
+};
 
 /**
  * Makes a store in which a context has new values for all its words.

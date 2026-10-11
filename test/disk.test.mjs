@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { makeTestFolder, readTestFile, removeTestFolder } from "./folder.edge.mjs";
 import { EMPTY_DISK, listFolder, makeFolder, removeEntry, renameEntry, resolvePath, writeFile } from "../src/store/disk.mjs";
 import { EMPTY_TABLE, readEntry, writeEntry } from "../src/store/table.mjs";
+import { EMPTY_CHUNKS, joinChunks, pushItem } from "../src/data/chunks.mjs";
 import { readFolder, writeFolder } from "../src/edge/folder.mjs";
 import { doFile, loadFile } from "../src/natives/files.mjs";
 import { nextRandom } from "../src/natives/random.mjs";
@@ -103,4 +104,15 @@ test("writeEntry shared: the old table does not change, and a large key adds lev
   assert.equal(readEntry(small, 100000), undefined);
   assert.equal(readEntry(large, 5), "five");
   assert.equal(readEntry(large, 100000), "large");
+});
+
+test("pushItem shared: the old list does not change", () => {
+  const first = pushItem(EMPTY_CHUNKS, 1);
+  assert.deepEqual(joinChunks(pushItem(first, 2)), [1, 2]);
+  assert.deepEqual(joinChunks(first), [1]);
+});
+
+test("joinChunks sequence: 200 items come out in the sequence in which they went in", () => {
+  const numbers = Array.from({ length: 200 }, (unused, place) => place);
+  assert.deepEqual(joinChunks(numbers.reduce(pushItem, EMPTY_CHUNKS)), numbers);
 });

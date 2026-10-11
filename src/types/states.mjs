@@ -18,6 +18,7 @@
  * @typedef {object} Store
  * @property {object} series - The table of the content of each series, by its number.
  * @property {object} contexts - The table of the values of the words of each context, by its number.
+ * @property {object} globals - The table of the global words that the session set, by the hash of their key.
  * @property {Object<string, Datum>} base - The words of REBOL: the functions, the constants and the datatypes. A session does not change this table.
  * @property {number} next - The number that the next series or context gets.
  * @property {string} output - The text that the session printed.

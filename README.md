@@ -58,10 +58,10 @@ WebRebol has the MIT licence. See `LICENSE`.
 ## Route through the code
 
 <!-- ste-doc -->
-- [`scanTokens`](src/data/tokens.mjs#L56) — Divides a source text into its lexical parts, without the spaces and the comments.
+- [`scanTokens`](src/data/tokens.mjs#L63) — Divides a source text into its lexical parts, without the spaces and the comments.
 - [`readToken`](src/data/datum.mjs#L279) — Reads the REBOL value that one token shows.
-- [`loadSource`](src/data/load.mjs#L83) — Makes the block of REBOL values that a source text shows.
-- [`allocate`](src/store/store.mjs#L104) — Moves a loaded value into a store.
+- [`loadSource`](src/data/load.mjs#L85) — Makes the block of REBOL values that a source text shows.
+- [`allocate`](src/store/store.mjs#L115) — Moves a loaded value into a store.
 - [`makeMachine`](src/machine/machine.mjs#L209) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L59) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
