@@ -64,7 +64,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 103 declarations in call, evaluate, machine, path, bitsets, compare, control, convert, edit, encode, faults, flow, items, loops, math, numbers, objects, parse, search, series, strings, text, words
+ * @usedby 105 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, flow, items, loops, math, numbers, objects, parse, search, series, strings, text, words
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -86,7 +86,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 26 declarations in call, evaluate, path, compare, control, convert, edit, encode, items, math, numbers, objects, series, words
+ * @usedby 27 declarations in call, evaluate, path, compare, control, convert, digest, edit, encode, items, math, numbers, objects, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -96,7 +96,7 @@ export const failMachine = (machine, text, args = []) =>
  * @param {string} name
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 9 declarations in call, faults, items, math, parse, series, words
+ * @usedby 10 declarations in call, clock, faults, items, math, parse, series, words
  */
 export const makeWord = (name) => makeDatum("word", name);
 
@@ -113,6 +113,26 @@ export const stopThrown = (kind) => (machine, frame) => {
   if (machine.thrown.kind !== kind) return popped;
   return { ...giveValue(popped, machine.thrown.value), cursor: frame.cursor, thrown: null };
 };
+
+/**
+ * Stops the machine until an edge module gives an answer. The edge does the work that a pure function cannot do.
+ * @param {Machine} machine
+ * @param {{ kind: string, resume: Function }} request - The work for the edge, and the function that continues with the answer.
+ * @returns {Machine}
+ * @standard wait - The mode of the machine is "wait".
+ * @usedby readClock (src/natives/clock.mjs), askDigest (src/natives/digest.mjs)
+ */
+export const askEdge = (machine, request) => ({ ...machine, mode: "wait", request });
+
+/**
+ * Continues a machine that waits, with the answer of the edge.
+ * @param {Machine} machine
+ * @param {*} answer
+ * @returns {Machine}
+ * @standard resume - The function of the request gets the machine and the answer.
+ * @usedby driveMachine (src/edge/drive.mjs)
+ */
+export const answerRequest = (machine, answer) => machine.request.resume({ ...machine, mode: "give", request: null }, answer);
 
 /**
  * Finds if the cursor is at the end of its block.
@@ -180,7 +200,7 @@ export const startBlock = (machine, block) => ({
  * @param {Datum} block
  * @returns {Machine}
  * @uses startBlock, UNSET (src/store/store.mjs)
- * @usedby interpretSource (src/natives/interpret.mjs), matchParen (src/natives/parse.mjs),
+ * @usedby startSource (src/natives/interpret.mjs), matchParen (src/natives/parse.mjs),
  *   makeReady (test/machine.test.mjs)
  */
 export const makeMachine = (store, block) =>

@@ -63,7 +63,8 @@ const READERS = {
  * @returns {Datum | null | undefined}
  * @standard absent - A field that the type does not have gives null. A type without fields gives undefined.
  * @uses READERS
- * @usedby selectPart (src/machine/path.mjs), OTHER_TYPES (src/natives/series.mjs), takeItem (src/natives/series.mjs)
+ * @usedby selectPart (src/machine/path.mjs), giveMoment (src/natives/clock.mjs),
+ *   OTHER_TYPES (src/natives/series.mjs), takeItem (src/natives/series.mjs)
  */
 export const readField = (value, part) => {
   const reader = READERS[value.type];

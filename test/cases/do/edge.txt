@@ -1,0 +1,27 @@
+checksum "abc"
+checksum ""
+checksum "a"
+checksum "hello world"
+checksum "The quick brown fox"
+checksum #{000102}
+checksum/tcp "abc"
+checksum/tcp ""
+checksum/tcp "a"
+checksum/tcp "hello world"
+checksum/method "abc" 'md5
+checksum/method "" 'md5
+checksum/method "abcd" 'md5
+checksum/method "abc" 'sha1
+checksum/method "hello world" 'sha1
+checksum/secure "abc"
+checksum/secure ""
+checksum/secure "The quick brown fox"
+type? now
+type? now/date
+type? now/time
+now/year > 2000
+type? now/precise
+type? now/zone
+type? now/weekday
+now/date = now/date
+n: now n/year = now/year

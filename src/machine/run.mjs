@@ -26,6 +26,7 @@ const MODES = {
   throw: (machine) =>
     machine.frames === null ? finish(machine) : (machine.frames.top.unwind ?? popFrame)(machine, machine.frames.top),
   done: (machine) => machine,
+  wait: (machine) => machine,
 };
 
 /**
@@ -50,8 +51,10 @@ const stepBatch = (machine) => BATCH.reduce(stepMachine, machine);
  * @param {number} batches - The budget, in groups of 1000 steps.
  * @returns {Machine}
  * @standard budget - An evaluation that does not end stops when the budget is used, and its mode is not "done".
+ * @standard wait - A machine that waits for the edge stops, and its mode is "wait".
  * @uses stepBatch
- * @usedby interpretSource (src/natives/interpret.mjs), matchParen (src/natives/parse.mjs)
+ * @usedby driveMachine (src/edge/drive.mjs), interpretSource (src/natives/interpret.mjs),
+ *   matchParen (src/natives/parse.mjs)
  */
 export const runMachine = (machine, batches) =>
-  machine.mode === "done" || batches <= 0 ? machine : runMachine(stepBatch(machine), batches - 1);
+  ["done", "wait"].includes(machine.mode) || batches <= 0 ? machine : runMachine(stepBatch(machine), batches - 1);

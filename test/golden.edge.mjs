@@ -20,7 +20,7 @@ const readCase = (line) => {
  * @param {string} name - The folder and the name of the group, for example "do/math.txt".
  * @returns {{ source: string, expected: string, output: string }[]}
  * @uses readCase
- * @usedby findProblems, findProblems
+ * @usedby findProblems, findProblems, findProblems
  */
 export const readGolden = (name) =>
   readFileSync(new URL(`./golden/${name}`, import.meta.url), "latin1").trim().split("\n").map(readCase);

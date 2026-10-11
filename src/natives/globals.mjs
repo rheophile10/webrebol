@@ -24,11 +24,14 @@ import { PARSE_NATIVES } from "./parse.mjs";
 import { ITEM_NATIVES } from "./items.mjs";
 import { WORD_NATIVES } from "./words.mjs";
 import { ENCODE_NATIVES } from "./encode.mjs";
+import { DIGEST_NATIVES } from "./digest.mjs";
+import { CLOCK_NATIVES } from "./clock.mjs";
 
 /**
  * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
  *   TEXT_NATIVES, CONVERT_NATIVES, guardSeries, EDIT_NATIVES, SEARCH_NATIVES, STRING_NATIVES, NUMBER_NATIVES,
- *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES, ITEM_NATIVES, WORD_NATIVES, ENCODE_NATIVES
+ *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES, ITEM_NATIVES, WORD_NATIVES, ENCODE_NATIVES, DIGEST_NATIVES,
+ *   CLOCK_NATIVES
  * @usedby findAny, makeFunction, GLOBALS
  */
 const NATIVES = {
@@ -49,6 +52,8 @@ const NATIVES = {
   ...ITEM_NATIVES,
   ...WORD_NATIVES,
   ...ENCODE_NATIVES,
+  ...DIGEST_NATIVES,
+  ...CLOCK_NATIVES,
   "q": WORD_NATIVES.quit,
 };
 
@@ -123,6 +128,6 @@ const GLOBALS = Object.fromEntries([
  * The store at the start of a session. Its global context has the natives, the operators and the constants.
  * @type {Store}
  * @uses writeContext (src/store/store.mjs), EMPTY_STORE (src/store/store.mjs), GLOBAL (src/store/store.mjs), GLOBALS
- * @usedby EMPTY_BLOCK, interpretSource, makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
+ * @usedby EMPTY_BLOCK, startSource, makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
  */
 export const START_STORE = writeContext(EMPTY_STORE, GLOBAL, GLOBALS);

@@ -81,7 +81,7 @@ const makeDoes = (machine, [body]) => {
  * @returns {Machine}
  * @standard fields - The texts of the loader are the fields arg1 and arg2 of the error.
  * @uses makeSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs)
- * @usedby doText, toBlock, interpretSource, loadText
+ * @usedby doText, toBlock, startSource, loadText
  */
 export const failSyntax = (machine, fault) => {
   const addText = (made, text) => {

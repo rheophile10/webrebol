@@ -10,30 +10,37 @@ import { findError } from "./report.mjs";
 
 /**
  * @uses allocate (src/store/store.mjs), START_STORE
- * @usedby interpretSource
+ * @usedby startSource
  */
 const EMPTY_BLOCK = allocate(START_STORE, { type: "block", value: [] });
 
 /**
- * Evaluates a REBOL source text in a new session.
+ * Makes a machine that is ready to evaluate a REBOL source text in a new session.
+ * @param {string} source - The REBOL source text.
+ * @returns {Machine}
+ * @standard syntax - A source text that is not valid REBOL gives a machine that throws the error of the loader.
+ * @uses loadSource (src/data/load.mjs), failSyntax, makeMachine (src/machine/machine.mjs), EMPTY_BLOCK,
+ *   allocate (src/store/store.mjs), START_STORE
+ * @usedby interpretWithEdge (src/edge/drive.mjs), interpretSource
+ */
+export const startSource = (source) => {
+  const loaded = loadSource(source);
+  if (loaded.type === "error") return failSyntax(makeMachine(EMPTY_BLOCK.store, EMPTY_BLOCK.value), loaded);
+  const made = allocate(START_STORE, loaded);
+  return makeMachine(made.store, made.value);
+};
+
+/**
+ * Evaluates a REBOL source text in a new session, without an edge.
  * @param {string} source - The REBOL source text.
  * @param {number} batches - The budget, in groups of 1000 steps.
  * @returns {Machine}
  * @standard reference - The result is the result that `do` of REBOL 2.7.8 gives.
  * @standard syntax - A source text that is not valid REBOL gives a machine with the error of the loader.
- * @uses loadSource (src/data/load.mjs), runMachine (src/machine/run.mjs), failSyntax,
- *   makeMachine (src/machine/machine.mjs), EMPTY_BLOCK, allocate (src/store/store.mjs), START_STORE
- * @usedby machine (bin/webrebol.mjs), showRun (test/do.test.mjs)
+ * @uses runMachine (src/machine/run.mjs), startSource
+ * @usedby showRun (test/do.test.mjs)
  */
-export const interpretSource = (source, batches) => {
-  // A source text that does not load gives a machine that only holds the error.
-  const loaded = loadSource(source);
-  if (loaded.type === "error") {
-    return runMachine(failSyntax(makeMachine(EMPTY_BLOCK.store, EMPTY_BLOCK.value), loaded), 1);
-  }
-  const made = allocate(START_STORE, loaded);
-  return runMachine(makeMachine(made.store, made.value), batches);
-};
+export const interpretSource = (source, batches) => runMachine(startSource(source), batches);
 
 /**
  * Makes the text that shows the end of an evaluation: the molded result, or the error.
@@ -41,10 +48,10 @@ export const interpretSource = (source, batches) => {
  * @returns {string}
  * @standard error - An error shows as "!", its type, its id, and its three molded fields.
  * @uses findError, moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
- * @usedby bin/webrebol.mjs, showRun (test/do.test.mjs)
+ * @usedby showEnd (bin/webrebol.mjs), showRun (test/do.test.mjs), showRun (test/edge.test.mjs)
  */
 export const showResult = (machine) => {
-  if (machine.mode !== "done") return "! budget";
+  if (machine.mode !== "done") return machine.mode === "wait" ? "! wait" : "! budget";
   // An error value that is the result of the source text is also an error.
   const fault = findError(machine);
   if (fault === null) return moldValue(machine.store, machine.value);

@@ -90,7 +90,7 @@ const OTHER_TYPES = {
  * @param {string | number[] | Datum[]} content
  * @returns {Machine}
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby 12 declarations in encode, items, words
+ * @usedby 14 declarations in digest, encode, items, words
  */
 export const giveNew = (machine, type, content) => {
   const made = makeSeries(machine.store, type, content);

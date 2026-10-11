@@ -90,7 +90,7 @@ const allocateItem = (made, item) => {
  * @returns {{ store: Store, value: Datum }}
  * @uses LIST_TYPES, allocateItem, makeSeries, isSeries, WORD_TYPES, GLOBAL
  * @usedby doText (src/natives/control.mjs), toBlock (src/natives/convert.mjs),
- *   EMPTY_BLOCK (src/natives/interpret.mjs), interpretSource (src/natives/interpret.mjs),
+ *   EMPTY_BLOCK (src/natives/interpret.mjs), startSource (src/natives/interpret.mjs),
  *   loadText (src/natives/words.mjs), allocateItem, moldSource (test/load.test.mjs),
  *   makeReady (test/machine.test.mjs)
  */
@@ -109,7 +109,7 @@ export const allocate = (store, datum) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @usedby 71 declarations in path, bitsets, compare, control, convert, edit, encode, faults, flow, items, loops, objects, parse, search, series, strings, text, words, mold, store
+ * @usedby 72 declarations in path, bitsets, compare, control, convert, digest, edit, encode, faults, flow, items, loops, objects, parse, search, series, strings, text, words, mold, store
  */
 export const readRest = (store, series) => store.series[series.value.id].slice(series.value.index);
 
