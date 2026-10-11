@@ -358,7 +358,7 @@ export const makeRecord = (store, words, values) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {Datum[]}
- * @uses isList, readRest, makeDatum (src/data/datum.mjs)
+ * @uses isList, readRest, makeDatum (src/data/datum.mjs), unpackPixel (src/data/pixels.mjs)
  * @usedby findExtreme (src/natives/items.mjs), groupValues (src/natives/loops.mjs), forEach (src/natives/loops.mjs),
  *   combine (src/natives/search.mjs), sortItems (src/natives/search.mjs)
  */

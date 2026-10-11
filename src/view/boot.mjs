@@ -141,6 +141,9 @@ reveal-element: func [face /local spec] [
         'data-lights select spec 'lights
         'data-cover select spec 'cover
         'data-run select spec 'run
+        'data-hole any [select spec 'hole 0]
+        'data-glyphs any [select spec 'glyphs copy []]
+        'data-letters any [select spec 'letters ""]
     ] copy []
 ]
 
@@ -174,6 +177,10 @@ reveal-timers: reduce [
         strip: to-integer cell/y / 3
         (0.8 * hash-cell as-pair 7 strip) + (0.2 * hash-cell as-pair to-integer cell/x / 9 strip)
     ]
+    'rain func [cell grid] [(0.55 * hash-cell as-pair cell/x 91) + (0.45 * (cell/y / grid/y))]
+    'punch func [cell grid] [(0.7 * smooth-noise cell 6) + (0.3 * hash-cell cell)]
+    'printer func [cell grid] [(cell/y * grid/x) + cell/x]
+    'cipher func [cell grid] [(0.6 * hash-cell cell) + (0.4 * smooth-noise cell 8)]
     'burn func [cell grid /local rough] [
         rough: (0.6 * smooth-noise cell 5) + (0.25 * hash-cell cell) + (0.15 * find-threshold cell)
         ((measure-center cell grid) * 0.65) + (rough * 0.35)
@@ -189,6 +196,19 @@ reveal-looks: [
     sweep [band 0.07 duration 1500 lights [0 0.008 245.243.255 2 2 0.008 0.07 167.139.250 0.7 0]]
     glitch [band 0.08 duration 1000 lights [0 0.08 255.0.80 1.3 0]]
     burn [band 0.2 duration 2200 lights [-0.1 0 219.39.119 0 0.7 0 0.07 255.250.220 2 1 0.07 0.2 249.115.22 1 0]]
+    rain [
+        band 0.24 duration 2400 hole 0.08 lights []
+        glyphs [0 0.02 236.253.245 1 1 1 1 1 40 over 0.02 0.24 74.222.128 0.92 0 1 1 1 40 over]
+    ]
+    punch [band 0.28 duration 2200 hole 0.28 lights [] glyphs [0 0.28 0.0.0 1 1 0.5 2.2 1 0 cut]]
+    printer [
+        band 0.3 duration 2400 hole 0 lights [0 0.004 249.115.22 2 2]
+        glyphs [0 0.3 241.235.255 1 0 1 1 1 0 over]
+    ]
+    cipher [
+        band 0.3 duration 2400 hole 0.3 lights [0 0.3 18.10.34 2 2]
+        glyphs [0 0.21 167.139.250 1 1 1 1 7 56.67 over 0.21 0.3 241.235.255 1 1 1 1 1 0 over]
+    ]
 ]
 
 make-reveal-field: func [grid timer band /local times low span] [
@@ -199,9 +219,12 @@ make-reveal-field: func [grid timer band /local times low span] [
     map-each time times [either span > 0 [((1 - band) * (time - low)) / span] [1 - band]]
 ]
 
-make-reveal: func [name grid cover /local look] [
+make-reveal: func [name grid cover /text message /local look] [
     look: select reveal-looks name
     reduce [
+        'hole any [select look 'hole 0]
+        'glyphs any [select look 'glyphs copy []]
+        'letters replace/all copy any [message "WEBREBOL"] " " ""
         'reveal name 'grid grid 'cover cover 'run 1
         'duration select look 'duration
         'lights select look 'lights

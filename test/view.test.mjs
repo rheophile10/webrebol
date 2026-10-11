@@ -299,3 +299,12 @@ test("unpackPixel inverse: the bytes of a packed color are the same bytes", () =
 test("countItems image: foreach on an image of 3x2 gives one tuple for each pixel", () => {
   assert.equal(showResult(run("p: make image! [3x2 255.0.0] poke p 2 0.9.0 n: 0 foreach x p [if x/1 > 200 [n: n + 1]] n")), "5");
 });
+
+test("renderWindows windows: a face with a letter reveal gets a canvas with the letters, the glyph rules and the hole delay", () => {
+  const source = "lay: layout [card: box 100x60] card/effect: make-reveal/text 'cipher 5x3 9.9.9 \"hi you\" view/new lay";
+  const canvas = renderWindows(run(source).store).children[0].children[0].children.find((child) => child.tag === "canvas");
+  assert.equal(canvas.props["data-letters"], "hiyou");
+  assert.equal(canvas.props["data-hole"], "0.3");
+  assert.match(canvas.props["data-glyphs"], /^0 0\.21 167\.139\.250 1 1 1 1 7 56\.67 over 0\.21 0\.3 /);
+  assert.equal(canvas.props["data-reveal"].split(" ").length, 15);
+});

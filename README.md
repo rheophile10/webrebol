@@ -45,7 +45,7 @@ The downloaded scripts and the reports are in `corpus/`, which is not in git. RE
 | Elements and SVG | `element`, `element?`, `form-element`, `form-points` |
 | Layout facets | `css`, `rate`, `on-time`, `on-key`, `on-down`, `on-move`, `on-up` |
 | Pictures | `download-image`, the `flood` command of `draw`, the effects `paint` and `reveal` |
-| Animation numbers | `find-threshold`, `hash-cell`, `smooth-noise`, `measure-center`, `make-reveal` |
+| Animation numbers | `find-threshold`, `hash-cell`, `smooth-noise`, `measure-center`, `make-reveal` (12 reveals; `/text` gives the message of a letter reveal) |
 | Web Crypto | `crypto-digest`, `crypto-random`, `crypto-uuid`, `crypto-hmac`, `crypto-derive`, `crypto-expand`, `crypto-encrypt`, `crypto-decrypt`, `crypto-key-pair`, `crypto-sign`, `crypto-verify`, `crypto-agree`, `crypto-wrap`, `crypto-unwrap`, `crypto-export`, `crypto-import` |
 
 ```
@@ -134,7 +134,7 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`scanTokens`](src/data/tokens.mjs#L88) — Divides a source text into its lexical parts, without the spaces and the comments.
 - [`readToken`](src/data/datum.mjs#L327) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L183) — Makes the block of REBOL values that a source text shows.
-- [`allocate`](src/store/store.mjs#L126) — Moves a loaded value into a store.
+- [`allocate`](src/store/store.mjs#L127) — Moves a loaded value into a store.
 - [`makeMachine`](src/machine/machine.mjs#L214) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L70) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L52) — Does one step of the evaluation.

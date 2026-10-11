@@ -5,7 +5,7 @@
     <title>WebRebol: reveals</title>
     <style>
       body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
-      #screen { position: relative; height: 420px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #screen { position: relative; height: 560px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
       #script { width: 100%; height: 260px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
       #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
       .wr-box { color: #ffffff; font-size: 22px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
@@ -13,12 +13,12 @@
   </head>
   <body>
     <h1>Reveals</h1>
-    <p>The eight cell animations of the animations project, with the times of the cells calculated in REBOL. Click a card to play its reveal again.</p>
+    <p>The twelve reveal animations of the animations project, with the times of the cells calculated in REBOL. The last four reveals show the letters of a message. Click a card to play its reveal again.</p>
     <div id="screen"></div>
     <pre id="output"></pre>
     <details>
       <summary>The REBOL script of this page</summary>
-      <textarea id="script" spellcheck="false">names: [dissolve wipe blinds ripple melt sweep glitch burn]
+      <textarea id="script" spellcheck="false">names: [dissolve wipe blinds ripple melt sweep glitch burn rain punch printer cipher]
 cards: copy []
 play: func [card] [
     card/effect/run: 1 + select card/effect &#x27;run
@@ -39,7 +39,8 @@ foreach card sampler/pane [append cards card]
 repeat index length? names [
     card: pick cards index
     card/text: form pick names index
-    card/effect: make-reveal pick names index 50x38 90.60.160
+    grid: either index > 8 [20x15] [50x38]
+    card/effect: make-reveal/text pick names index grid 90.60.160 "WebRebol runs REBOL in a page"
 ]
 view sampler</textarea>
       <button id="run">Run again</button>

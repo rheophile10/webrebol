@@ -21,6 +21,6 @@ export const packPixel = (bytes) =>
  * @returns {number[]}
  * @standard inverse - The bytes of a packed color are the same bytes again.
  * @uses OPAQUE
- * @usedby moldImage (src/store/mold.mjs), readPixel (src/store/pictures.mjs)
+ * @usedby moldImage (src/store/mold.mjs), readPixel (src/store/pictures.mjs), readValues (src/store/store.mjs)
  */
 export const unpackPixel = (pixel) => [pixel & 255, (pixel >> 8) & 255, (pixel >> 16) & 255, OPAQUE - (pixel >>> 24)];

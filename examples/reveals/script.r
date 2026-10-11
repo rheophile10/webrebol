@@ -1,4 +1,4 @@
-names: [dissolve wipe blinds ripple melt sweep glitch burn]
+names: [dissolve wipe blinds ripple melt sweep glitch burn rain punch printer cipher]
 cards: copy []
 play: func [card] [
     card/effect/run: 1 + select card/effect 'run
@@ -19,6 +19,7 @@ foreach card sampler/pane [append cards card]
 repeat index length? names [
     card: pick cards index
     card/text: form pick names index
-    card/effect: make-reveal pick names index 50x38 90.60.160
+    grid: either index > 8 [20x15] [50x38]
+    card/effect: make-reveal/text pick names index grid 90.60.160 "WebRebol runs REBOL in a page"
 ]
 view sampler
