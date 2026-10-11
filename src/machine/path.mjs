@@ -47,8 +47,19 @@ const selectInText = (text, part) => {
 const makeByte = (byte) => (byte === undefined ? NONE : makeDatum("integer", byte));
 
 /**
+ * @uses makeDatum (src/data/datum.mjs), readRest (src/store/store.mjs), NONE (src/store/store.mjs)
+ * @usedby selectPart
+ */
+const selectInImage = (store, image, part) => {
+  // An image has its size, and a pixel for each position.
+  if (part.type !== "integer") return String(part.value).toLowerCase() === "size" ? makeDatum("pair", image.value.size) : null;
+  const pixel = readRest(store, image)[part.value - 1];
+  return pixel === undefined ? NONE : makeDatum("tuple", pixel);
+};
+
+/**
  * @uses readContext (src/store/store.mjs), makeKey (src/store/store.mjs), isList (src/store/store.mjs), selectInList,
- *   readRest (src/store/store.mjs), isText (src/store/store.mjs), selectInText, makeByte,
+ *   readRest (src/store/store.mjs), isText (src/store/store.mjs), selectInText, makeByte, selectInImage,
  *   readField (src/store/parts.mjs), NONE (src/store/store.mjs)
  * @usedby walkPart, putField, stepSetPath
  */
@@ -58,6 +69,7 @@ const selectPart = (store, value, part) => {
   if (isList(value)) return selectInList(readRest(store, value), part);
   if (isText(value)) return selectInText(readRest(store, value), part);
   if (value.type === "binary") return part.type === "integer" ? makeByte(readRest(store, value)[part.value - 1]) : null;
+  if (value.type === "image") return selectInImage(store, value, part);
   // A value that is not a series can have fields. A position without a field gives none.
   const field = readField(value, part);
   return field === null && part.type === "integer" ? NONE : (field ?? null);

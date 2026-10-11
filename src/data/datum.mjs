@@ -17,7 +17,7 @@ const SERIES_CONSTRUCTS = ["string", "file", "email", "url", "tag", "issue", "bi
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 104 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
+ * @usedby 108 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
  */
 export const makeDatum = (type, value) => ({ type, value });
 
@@ -279,11 +279,27 @@ const TOKEN_READERS = {
 };
 
 /**
+ * Makes an image value from its size, the bytes of its colors, and the bytes of its alpha values.
+ * @param {number[]} size - The width and the height.
+ * @param {number[]} colors - Three bytes for each pixel: red, green and blue. Absent bytes are zero.
+ * @param {number[]} alphas - One byte for each pixel. Absent bytes are zero.
+ * @returns {Datum}
+ * @standard pixels - Each pixel is a list of four bytes: red, green, blue and alpha.
+ * @uses makeDatum
+ * @usedby makeConstruct, giveImage (src/natives/objects.mjs)
+ */
+export const makeImage = (size, colors, alphas) => {
+  const count = Math.max(size[0], 0) * Math.max(size[1], 0);
+  const readPixel = (unused, place) => [colors[place * 3] ?? 0, colors[place * 3 + 1] ?? 0, colors[place * 3 + 2] ?? 0, alphas[place] ?? 0];
+  return { ...makeDatum("image", Array.from({ length: count }, readPixel)), size };
+};
+
+/**
  * Makes the value of a construct: the values between "#[" and "]" in a source text.
  * @param {Datum[]} items - The loaded values of the construct.
  * @returns {Datum}
  * @standard series - A series construct can have a position after its content, counted from 1.
- * @uses SIMPLE_CONSTRUCTS, makeDatum, SERIES_CONSTRUCTS, INVALID
+ * @uses SIMPLE_CONSTRUCTS, makeDatum, makeImage, SERIES_CONSTRUCTS, INVALID
  * @usedby closeFrame
  */
 export const makeConstruct = (items) => {
@@ -293,6 +309,7 @@ export const makeConstruct = (items) => {
   const type = name.replace(/!$/, "");
   const content = items[1]?.value;
   if (type === "bitset" && items[1]?.type === "binary") return makeDatum("bitset", content);
+  if (type === "image" && items[1]?.type === "pair") return makeImage(items[1].value, items[2]?.value ?? [], items[3]?.value ?? []);
   const fits = SERIES_CONSTRUCTS.includes(type) && (Array.isArray(content) || typeof content === "string");
   if (!fits) return { ...INVALID, args: ["construct", name] };
   return items[2] === undefined ? makeDatum(type, content) : { ...makeDatum(type, content), index: items[2].value - 1 };

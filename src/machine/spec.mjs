@@ -15,7 +15,7 @@ const TEXTS = ["string", "file", "email", "url", "tag", "issue"];
  */
 export const TYPESETS = {
   "number!": ["integer", "decimal"],
-  "series!": [...LISTS, ...TEXTS, "binary"],
+  "series!": [...LISTS, ...TEXTS, "binary", "image"],
   "any-block!": LISTS,
   "any-string!": [...TEXTS, "binary"],
   "any-word!": ["word", "set-word", "get-word", "lit-word", "refinement"],

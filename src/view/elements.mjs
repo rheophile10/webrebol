@@ -126,4 +126,5 @@ export const WEB_SPECS = {
   element: ["native", "tag [word! string!] props [block! none!] children [block! none!]"],
   "element?": ["native", "value [any-type!]"],
   "form-points": ["native", "points [block!]"],
+  "layout-faces": ["native", "specs [block!]"],
 };

@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { interpretSource, showResult } from "../src/session/interpret.mjs";
 import { exportElement } from "../src/view/elements.mjs";
 import { diff } from "../src/view/diff.mjs";
-import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction, runPointerAction } from "../src/view/windows.mjs";
+import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, runKeyAction, runPointerAction } from "../src/view/windows.mjs";
 import { findThreshold, hashCell, measureCenter, smoothNoise } from "../src/view/grid.mjs";
 import { readContext, readRest, readWord } from "../src/store/store.mjs";
 
@@ -161,4 +161,15 @@ test("runPointerAction word: the pointer block reads the position from the word 
   assert.equal(line.tag, "polyline");
   assert.equal(line.props.points, "10,21 30,40");
   assert.equal(line.props.stroke, "rgb(255,0,0)");
+});
+
+test("runEngage arguments: the engage function gets the face, the action word and the event", () => {
+  const source = "seen: copy [] lay: layout [box 50x50 feel [engage: func [face action event] [append seen reduce [action event/offset face/size]]]] view/new lay";
+  const store = run(source).store;
+  const face = Number(renderWindows(store).children[0].children[0].props["data-engage"]);
+  const after = runEngage(store, face, { kind: "down", offset: [3.2, 4.9] });
+  assert.equal(showResult(interpretSource(`${source} seen`, BATCHES)), "[]");
+  assert.equal(after.output, "");
+  const seen = readRest(after, readWord(after, { type: "word", value: "seen", bind: 0 }));
+  assert.deepEqual(seen.map((item) => item.value), ["down", [3, 5], [50, 50]]);
 });

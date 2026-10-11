@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadSource } from "../src/data/load.mjs";
-import { makeConstruct, readToken } from "../src/data/datum.mjs";
+import { makeConstruct, makeImage, readToken } from "../src/data/datum.mjs";
 import { EMPTY_STORE, allocate } from "../src/store/store.mjs";
 import { moldRest, moldValue } from "../src/store/mold.mjs";
 import { readGolden } from "./golden.edge.mjs";
@@ -71,4 +71,10 @@ test("makeConstruct series: a block construct with a position gives the block at
   const made = makeConstruct([{ type: "word", value: "block!" }, { type: "block", value: [] }, { type: "integer", value: 2 }]);
   assert.deepEqual(made, { type: "block", value: [], index: 1 });
   assert.equal(makeConstruct([{ type: "word", value: "foo" }]).type, "error");
+});
+
+test("makeImage pixels: each pixel has the three color bytes and the alpha byte", () => {
+  const image = makeImage([2, 1], [255, 0, 0, 0, 255], [9]);
+  assert.deepEqual(image.value, [[255, 0, 0, 9], [0, 255, 0, 0]]);
+  assert.deepEqual(image.size, [2, 1]);
 });

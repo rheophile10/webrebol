@@ -16,7 +16,7 @@ const MINUTE = 60 * NANOSECONDS;
 
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby readTimeParts, readDateParts, READERS
+ * @usedby readTimeParts, readDateParts, readEventParts, READERS
  */
 const makeInteger = (number) => makeDatum("integer", number);
 
@@ -46,10 +46,23 @@ const readDateParts = (date) => {
 };
 
 /**
- * @uses readTimeParts, readDateParts, makeInteger
+ * @uses makeDatum (src/data/datum.mjs), makeInteger
+ * @usedby READERS
+ */
+const readEventParts = (event) => {
+  // The key of an event is a char for one character, and a word for a key with a name.
+  const key = event.value.key ?? null;
+  const single = key !== null && key.length === 1;
+  const shown = key === null ? makeDatum("none", null) : makeDatum(single ? "char" : "word", single ? key.charCodeAt(0) : key);
+  return { type: makeDatum("word", event.value.kind), offset: makeDatum("pair", event.value.offset), key: shown, face: event.value.face, time: makeInteger(0) };
+};
+
+/**
+ * @uses readEventParts, readTimeParts, readDateParts, makeInteger
  * @usedby readField, writeField
  */
 const READERS = {
+  event: readEventParts,
   time: readTimeParts,
   date: readDateParts,
   pair: (pair) => ({ x: makeInteger(pair.value[0]), y: makeInteger(pair.value[1]) }),

@@ -76,7 +76,7 @@ export const renderWindows = (store) => {
  * @standard fault - An error in the action adds its message to the printed text.
  * @uses runMachine (src/machine/run.mjs), makeMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs),
  *   HANDLER_BUDGET, formatError (src/natives/report.mjs)
- * @usedby runTimers (src/edge/page.mjs), readEvent (src/edge/page.mjs), runKeyAction, runPointerAction
+ * @usedby runTimers (src/edge/page.mjs), readEvent (src/edge/page.mjs), runKeyAction, runPointerAction, runEngage
  */
 export const runAction = (store, block) => {
   const done = runMachine(makeMachine(store, makeDatum("block", { id: block, index: 0 })), HANDLER_BUDGET);
@@ -86,7 +86,7 @@ export const runAction = (store, block) => {
 };
 
 /**
- * @usedby listTimers, listKeyBlocks
+ * @usedby listTimers, listKeyBlocks, listEngageTimers
  */
 const findProps = (name) => (node) =>
   // Find each element of a tree that has an attribute, and the elements below it.
@@ -139,6 +139,38 @@ export const runKeyAction = (store, block, name) => {
  */
 export const runPointerAction = (store, block, position) =>
   runAction(writeWord(store, { type: "word", value: "pointer", bind: GLOBAL }, makeDatum("pair", position.map(Math.round))), block);
+
+/**
+ * Calls the engage function of the feel of a face, as REBOL View does for an event.
+ * @param {Store} store
+ * @param {number} context - The context number of the face.
+ * @param {{ kind: string, offset: number[], key?: string }} event - The action word, the position in the face, and the key.
+ * @returns {Store}
+ * @standard arguments - The function gets the face, the action as a word, and an event value.
+ * @uses readContext (src/store/store.mjs), makeDatum (src/data/datum.mjs), makeSeries (src/store/store.mjs),
+ *   runAction
+ * @usedby runTimers (src/edge/page.mjs), readPointer (src/edge/page.mjs)
+ */
+export const runEngage = (store, context, event) => {
+  const face = readContext(store, context);
+  const feel = face?.$feel?.type === "object" ? readContext(store, face.$feel.value.context) : undefined;
+  if (feel?.$engage === undefined) return store;
+  const value = makeDatum("event", { ...event, offset: event.offset.map(Math.round), face: face.$self });
+  const call = makeSeries(store, "block", [feel.$engage, face.$self, makeDatum("lit-word", event.kind), value]);
+  return runAction(call.store, call.value.value.id);
+};
+
+/**
+ * Lists the faces of a view that have a feel and a rate: the context number of the face and the rate.
+ * @param {{ tag?: string, props?: object, children?: object[] }} view - The element data of the page.
+ * @returns {{ face: number, rate: number }[]}
+ * @uses findProps
+ * @usedby runTimers (src/edge/page.mjs)
+ */
+export const listEngageTimers = (view) =>
+  findProps("data-engage")(view)
+    .filter((props) => props["data-rate"] !== undefined)
+    .map((props) => ({ face: Number(props["data-engage"]), rate: Number(props["data-rate"]) }));
 
 /**
  * Puts the text that a person typed into the face of a field.

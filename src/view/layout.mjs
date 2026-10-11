@@ -11,7 +11,7 @@ const FACE_WORDS = [
 const KEYWORDS = ["across", "below", "return", "at", "pad", "space", "origin"];
 const WITH_VALUE = ["at", "pad", "space", "origin"];
 // The facets that WebRebol adds to VID. Each one takes the next value of the layout block.
-const WEB_FACETS = ["css", "rate", "on-time", "on-key", "on-down", "on-move", "on-up"];
+const WEB_FACETS = ["css", "rate", "feel", "on-time", "on-key", "on-down", "on-move", "on-up"];
 const TEXT_PADDING = 4;
 const START = { origin: [20, 20], space: [8, 8], place: [20, 20], across: false, line: 0, extent: [0, 0], faces: [], pending: null, expect: null };
 
@@ -92,7 +92,7 @@ const placeFace = (state) => {
   if (pending === null) return state;
   const size = findSize(pending);
   const color = pending.color ?? STYLES[pending.style].color;
-  const fields = { type: makeWord("face"), offset: makePair(state.place), size: makePair(size), color: makeTuple(color), style: makeWord(pending.style), action: pending.action ?? NONE, css: pending.css ?? NONE, rate: pending.rate ?? NONE, "on-time": pending["on-time"] ?? NONE, "on-key": pending["on-key"] ?? NONE, "on-down": pending["on-down"] ?? NONE, "on-move": pending["on-move"] ?? NONE, "on-up": pending["on-up"] ?? NONE };
+  const fields = { type: makeWord("face"), offset: makePair(state.place), size: makePair(size), color: makeTuple(color), style: makeWord(pending.style), action: pending.action ?? NONE, feel: pending.feel ?? NONE, css: pending.css ?? NONE, rate: pending.rate ?? NONE, "on-time": pending["on-time"] ?? NONE, "on-key": pending["on-key"] ?? NONE, "on-down": pending["on-down"] ?? NONE, "on-move": pending["on-move"] ?? NONE, "on-up": pending["on-up"] ?? NONE };
   const made = makeFace(state, { style: pending.style, text: pending.text ?? STYLES[pending.style].text, fields });
   const extent = state.extent.map((part, axis) => Math.max(part, state.place[axis] + size[axis]));
   const place = state.across ? [state.place[0] + size[0] + state.space[0], state.place[1]] : [state.place[0], state.place[1] + size[1] + state.space[1]];
@@ -235,6 +235,6 @@ const readStyleWords = (store, value) =>
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const VIEW_NATIVES = {
-  layout: makeLayout,
+  "layout-faces": makeLayout,
   "size-text": sizeText,
 };

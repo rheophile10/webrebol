@@ -143,7 +143,7 @@ const CONSTANTS = {
 };
 
 // REBOL has these types, and WebRebol does not. Their words are there, thus a script can compare a type with them.
-const ABSENT_TYPES = ["routine", "library", "struct", "port", "event", "image", "symbol"];
+const ABSENT_TYPES = ["routine", "library", "struct", "port", "symbol"];
 
 /**
  * @usedby makeFunction

@@ -13,7 +13,7 @@
   </head>
   <body>
     <h1>Paint</h1>
-    <p>Click a color, select a brush size, and draw on the white area with the mouse.</p>
+    <p>Click a color, select a brush size, and draw on the white area with the mouse. The canvas keeps its pixels, and the script uses the feel and engage functions of REBOL View.</p>
     <div id="screen"></div>
     <pre id="output"></pre>
     <details>
@@ -39,15 +39,23 @@ append spec [
     button 40 &quot;16&quot; [size: 16]
     text 50x24 &quot;Color:&quot;
     swatch: box 28x24 0.0.0
+    button 70 &quot;Eraser&quot; [pick-color 255.255.255]
     button 70 &quot;Clear&quot; [clear strokes show canvas]
     return
-    canvas: box 520x300 255.255.255 css [cursor &quot;crosshair&quot; touch-action &quot;none&quot;]
-        on-down [down?: true append strokes reduce [&#x27;pen color &#x27;line-width size &#x27;line pointer pointer] show canvas]
-        on-move [if down? [append strokes pointer show canvas]]
-        on-up [down?: false]
+    canvas: box 520x300 255.255.255 css [cursor &quot;crosshair&quot; touch-action &quot;none&quot;] feel [
+        engage: func [face action event] [
+            if action = &#x27;down [
+                down?: true
+                append strokes reduce [&#x27;pen color &#x27;line-width size &#x27;line event/offset event/offset]
+                show face
+            ]
+            if all [down? action = &#x27;over] [append strokes event/offset show face]
+            if action = &#x27;up [down?: false]
+        ]
+    ]
 ]
 window: layout spec
-canvas/effect: reduce [&#x27;draw strokes]
+canvas/effect: reduce [&#x27;paint strokes]
 view window</textarea>
       <button id="run">Run again</button>
     </details>

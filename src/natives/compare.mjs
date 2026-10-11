@@ -16,7 +16,7 @@ const DAY = 86400e9;
 export const TYPES = [
   ...["integer", "decimal", "string", "char", "word", "set-word", "get-word", "lit-word", "refinement", "block"],
   ...["paren", "path", "set-path", "lit-path", "issue", "file", "email", "url", "tag", "tuple", "pair", "time"],
-  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date", "action", "hash", "list"],
+  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date", "action", "hash", "list", "event", "image"],
 ];
 
 const FUNCTIONS = ["native", "action", "op", "function"];
@@ -82,6 +82,8 @@ export const areEqual = (store, left, right) => {
   // Two functions are equal only if they are the same function. A tuple ignores the zeros at its end.
   if (FUNCTIONS.includes(left.type)) return left.value === right.value;
   if (left.type === "binary") return readRest(store, left).join() === readRest(store, right).join();
+  // Two images are equal if they have the same size and the same pixels.
+  if (left.type === "image") return left.value.size.join() === right.value.size.join() && readRest(store, left).join() === readRest(store, right).join();
   if (left.type === "tuple") return trimTuple(left) === trimTuple(right);
   return String(left.value) === String(right.value);
 };
@@ -209,7 +211,7 @@ const choose = (wanted) => (machine, [left, right]) => {
  */
 const testType = (type) => (machine, [value]) => giveValue(machine, makeLogic(value.type === type));
 
-const ABSENT_TYPES = ["routine", "struct", "library", "port", "event", "image", "map", "typeset", "closure", "get-path"];
+const ABSENT_TYPES = ["routine", "struct", "library", "port", "map", "typeset", "closure", "get-path"];
 
 /**
  * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs), TYPESETS (src/machine/spec.mjs)

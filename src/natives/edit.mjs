@@ -60,7 +60,10 @@ const copySeries = (machine, [series], options) => {
   const span = makeSpan(machine.store, series, size);
   const content = readAll(machine.store, series).slice(span.from, span.upto);
   const made = options.$deep === undefined ? makeSeries(machine.store, series.type, content) : copyDeep(machine.store, { type: series.type, content }, 0);
-  return giveValue({ ...machine, store: made.store }, made.value);
+  // A copy of an image keeps the size. A part of an image is one row of pixels.
+  const extent = options.$part === undefined ? series.value.size : [content.length, Math.min(content.length, 1)];
+  const value = series.type === "image" ? { ...made.value, value: { ...made.value.value, size: extent } } : made.value;
+  return giveValue({ ...machine, store: made.store }, value);
 };
 
 /**

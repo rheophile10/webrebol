@@ -16,7 +16,7 @@ export const GLOBAL = 0;
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 54 declarations in call, path, bitsets, control, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
+ * @usedby 55 declarations in call, path, bitsets, control, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
  */
 export const NONE = makeDatum("none", null);
 /**
@@ -79,7 +79,7 @@ export const isText = (value) => TEXT_TYPES.includes(value.type);
  * @uses isList, isText
  * @usedby 9 declarations in edit, items, objects, random, series, text, store
  */
-export const isSeries = (value) => isList(value) || isText(value) || value.type === "binary";
+export const isSeries = (value) => isList(value) || isText(value) || value.type === "binary" || value.type === "image";
 
 /**
  * Puts a new series into a store.
@@ -88,7 +88,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 43 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, elements, layout, windows
+ * @usedby 44 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, elements, layout, windows
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
@@ -98,9 +98,11 @@ export const makeSeries = (store, type, content) => ({
 /**
  * @usedby allocate
  */
-const placeSeries = (made, datum) =>
-  // A construct can give a position to its series.
-  datum.index === undefined ? made : { store: made.store, value: { ...made.value, value: { ...made.value.value, index: datum.index } } };
+const placeSeries = (made, datum) => {
+  // A construct can give a position to its series. An image keeps its size with its series.
+  const extra = { ...(datum.index === undefined ? {} : { index: datum.index }), ...(datum.size === undefined ? {} : { size: datum.size }) };
+  return { store: made.store, value: { ...made.value, value: { ...made.value.value, ...extra } } };
+};
 
 /**
  * @uses allocate, pushItem (src/data/chunks.mjs)
@@ -119,7 +121,7 @@ const allocateItem = (made, item) => {
  * @returns {{ store: Store, value: Datum }}
  * @uses LIST_TYPES, allocateItem, EMPTY_CHUNKS (src/data/chunks.mjs), placeSeries, makeSeries,
  *   joinChunks (src/data/chunks.mjs), isSeries, WORD_TYPES, GLOBAL
- * @usedby 14 declarations in compare, conform, control, convert, files, words, globals, interpret, store, layout, load, machine
+ * @usedby 15 declarations in compare, conform, control, convert, files, objects, words, globals, interpret, store, layout, load, machine
  */
 export const allocate = (store, datum) => {
   // A list holds values that also go into the store.
@@ -137,7 +139,7 @@ export const allocate = (store, datum) => {
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 91 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
+ * @usedby 93 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
  */
 export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
 
@@ -189,7 +191,7 @@ export const readWord = (store, word) => {
  * @param {number} context - The number of the context.
  * @returns {Object<string, Datum> | undefined}
  * @uses readEntry
- * @usedby 18 declarations in call, path, objects, series, words, mold, elements, layout, windows
+ * @usedby 19 declarations in call, path, objects, series, words, mold, elements, layout, windows
  */
 export const readContext = (store, context) => readEntry(store.contexts, context);
 

@@ -52,3 +52,11 @@ lay: layout [vtext "The quick brown fox"] lay/pane/1/size
 lay: layout [text "ABCDEFGHIJKLMNOPQRSTUVWXYZ"] lay/pane/1/size
 lay: layout [text "0123456789 .,;:!?"] lay/pane/1/size
 lay: layout [lab "x"] lay/pane/1/size
+i: make image! [2x1 255.0.0] reduce [image? i length? i first i i/size]
+i: make image! 1x1 first i
+mold make image! [2x1 255.0.0]
+equal? make image! 1x1 make image! 1x1
+equal? make image! 1x2 make image! 1x1
+type? make image! 0x0
+lay: layout [box 50x50 feel [engage: func [face action event] [none]]] object? lay/pane/1/feel
+event? 1

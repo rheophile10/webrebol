@@ -19,13 +19,21 @@ append spec [
     button 40 "16" [size: 16]
     text 50x24 "Color:"
     swatch: box 28x24 0.0.0
+    button 70 "Eraser" [pick-color 255.255.255]
     button 70 "Clear" [clear strokes show canvas]
     return
-    canvas: box 520x300 255.255.255 css [cursor "crosshair" touch-action "none"]
-        on-down [down?: true append strokes reduce ['pen color 'line-width size 'line pointer pointer] show canvas]
-        on-move [if down? [append strokes pointer show canvas]]
-        on-up [down?: false]
+    canvas: box 520x300 255.255.255 css [cursor "crosshair" touch-action "none"] feel [
+        engage: func [face action event] [
+            if action = 'down [
+                down?: true
+                append strokes reduce ['pen color 'line-width size 'line event/offset event/offset]
+                show face
+            ]
+            if all [down? action = 'over] [append strokes event/offset show face]
+            if action = 'up [down?: false]
+        ]
+    ]
 ]
 window: layout spec
-canvas/effect: reduce ['draw strokes]
+canvas/effect: reduce ['paint strokes]
 view window

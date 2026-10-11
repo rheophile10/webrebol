@@ -8,7 +8,7 @@
  * @property {number | string | boolean | null | number[] | Datum[] | object} value - The data of the value. A time is in nanoseconds. A series in a store has its number and its index.
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
- * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError, readContext
+ * @madeby makeImage, readToken, loadSource, makeLogic, makeWord, readItem, findError, readContext
  * @changedby 20 declarations in datum, bitsets, loops, scalars, series, parts, store
  * @readby 43 declarations in call, machine, path, spec, bitsets, compare, control, convert, digest, edit, faults, files, loops, report, scalars, series, mold, store, elements
  */
@@ -29,7 +29,7 @@
  * @property {Datum[]} windows - The faces that are windows of the session.
  * @property {boolean} dirty - A face changed, and the page did not draw it yet.
  * @madeby BOOT_BUDGET
- * @changedby 13 declarations in store, windows
+ * @changedby 14 declarations in store, windows
  * @readby 19 declarations in machine, compare, digest, loops, report, series, mold, store, elements, windows
  */
 

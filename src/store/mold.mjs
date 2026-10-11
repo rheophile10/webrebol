@@ -100,7 +100,7 @@ const moldTime = (nanoseconds) => {
 const encodeHex = (character) => `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`;
 
 /**
- * @usedby moldBinary
+ * @usedby moldBinary, moldImage
  */
 const moldByte = (byte) => byte.toString(16).toUpperCase().padStart(2, "0");
 
@@ -147,6 +147,19 @@ const moldBinary = (bytes) => {
 };
 
 /**
+ * @uses BINARY_LINE, moldByte
+ * @usedby MOLDERS
+ */
+const moldImage = (size, pixels) => {
+  // The colors of an image show in lines of 32 bytes, between two line ends.
+  const bytes = pixels.flatMap((pixel) => pixel.slice(0, 3));
+  const lines = Array.from({ length: Math.ceil(bytes.length / BINARY_LINE) }, (unused, place) =>
+    bytes.slice(place * BINARY_LINE, (place + 1) * BINARY_LINE).map(moldByte).join(""),
+  );
+  return `make image! [${size.join("x")} #{${bytes.length === 0 ? "" : `\n${lines.join("\n")}\n`}}]`;
+};
+
+/**
  * @uses readRest, moldValue
  * @usedby MOLDERS
  */
@@ -180,7 +193,7 @@ const moldObject = (store, object, depth) => {
 
 /**
  * @uses moldDecimal, moldString, readRest, moldChar, moldName, moldRest, moldPath, encodeHex, moldRaw, moldTime,
- *   moldBinary, moldObject, moldMoney, moldDate, moldValue
+ *   moldBinary, moldObject, moldImage, moldMoney, moldDate, moldValue
  * @usedby moldValue
  */
 const MOLDERS = {
@@ -213,6 +226,8 @@ const MOLDERS = {
   datatype: (store, datatype) => `${datatype.value}!`,
   error: (store, error) => `make error! [${error.value}]`,
   object: moldObject,
+  image: (store, image) => moldImage(image.value.size, readRest(store, image)),
+  event: (store, event) => `make event! [type: '${event.value.kind} offset: ${event.value.offset.join("x")}]`,
   hash: (store, hash, depth) => `make hash! [${moldRest(store, hash, depth + 1)}]`,
   list: (store, list, depth) => `make list! [${moldRest(store, list, depth + 1)}]`,
   native: () => "native",

@@ -1,5 +1,5 @@
-import { makeDatum } from "../data/datum.mjs";
-import { bindCopy, bindInPlace, GLOBAL, isList, isSeries, makeContext, makeKey, makeSeries, NONE, readContext, readRest, readWord, UNSET, writeContext, writeWord } from "../store/store.mjs";
+import { makeDatum, makeImage } from "../data/datum.mjs";
+import { bindCopy, bindInPlace, GLOBAL, isList, isSeries, makeContext, makeKey, makeSeries, NONE, readContext, readRest, readWord, UNSET, writeContext, writeWord, allocate } from "../store/store.mjs";
 import { CONVERT_NATIVES, convertValue } from "./convert.mjs";
 import { makeError } from "./faults.mjs";
 import { giveValue, makeLogic, popFrame, pushFrame, startBlock, failMachine } from "../machine/machine.mjs";
@@ -87,10 +87,28 @@ const LIST_NAMES = ["block", "paren", "path", "set-path", "lit-path", "hash", "l
 const SERIES_NAMES = [...LIST_NAMES, "string", "file", "email", "url", "tag", "issue", "binary"];
 
 /**
- * @uses makeObject, giveSeries, makeError, CONVERT_NATIVES
+ * @uses readRest (src/store/store.mjs), failMachine (src/machine/machine.mjs), allocate (src/store/store.mjs),
+ *   makeImage (src/data/datum.mjs), giveValue (src/machine/machine.mjs)
+ * @usedby MAKERS
+ */
+const giveImage = (machine, spec) => {
+  // The specification is the size, or a block of the size and a color, or a block of the size and the bytes.
+  const items = spec.type === "block" ? readRest(machine.store, spec) : [spec];
+  if (items[0]?.type !== "pair") return failMachine(machine, "script bad-make-arg", [spec]);
+  const count = items[0].value[0] * items[0].value[1];
+  const fill = items[1]?.type === "tuple" ? Array.from({ length: count }).flatMap(() => items[1].value.slice(0, 3)) : null;
+  const colors = fill ?? (items[1]?.type === "binary" ? readRest(machine.store, items[1]) : []);
+  const alphas = items[2]?.type === "binary" ? readRest(machine.store, items[2]) : [];
+  const made = allocate(machine.store, makeImage(items[0].value, colors, alphas));
+  return giveValue({ ...machine, store: made.store }, made.value);
+};
+
+/**
+ * @uses giveImage, makeObject, giveSeries, makeError, CONVERT_NATIVES
  * @usedby makeValue
  */
 const MAKERS = {
+  image: giveImage,
   object: (machine, spec) => makeObject(machine, null, spec),
   block: giveSeries("block", []),
   string: giveSeries("string", ""),

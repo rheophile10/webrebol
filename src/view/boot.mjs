@@ -16,6 +16,12 @@ theme: make object! [
     css: [button [cursor "pointer"] btn [cursor "pointer"] toggle [cursor "pointer"]]
 ]
 
+layout: func [specs /local window] [
+    window: layout-faces specs
+    foreach face window/pane [if block? face/feel [face/feel: make object! face/feel]]
+    window
+]
+
 face-css: func [face /local css color] [
     css: reduce [
         'position "absolute" 'box-sizing "border-box" 'margin 0 'padding 0 'overflow "hidden"
@@ -53,10 +59,21 @@ face-to-element: func [face /local tag props kids type] [
     if block? face/on-down [append props reduce ['data-onpointerdown face/on-down]]
     if block? face/on-move [append props reduce ['data-onpointermove face/on-move]]
     if block? face/on-up [append props reduce ['data-onpointerup face/on-up]]
+    if object? face/feel [
+        append props reduce ['data-engage face]
+        if integer? face/rate [append props reduce ['data-rate face/rate]]
+    ]
     if block? face/pane [foreach child face/pane [append kids face-to-element child]]
     if block? face/effect [
         if find face/effect 'reveal [append kids reveal-element face]
         if find face/effect 'draw [append kids draw-element face select face/effect 'draw]
+        if find face/effect 'paint [
+            append kids element "canvas" reduce [
+                'class "wr-paint" 'width face/size/x 'height face/size/y
+                'style [position "absolute" left 0 top 0 pointer-events "none"]
+                'data-paint select face/effect 'paint
+            ] copy []
+        ]
     ]
     element tag props kids
 ]

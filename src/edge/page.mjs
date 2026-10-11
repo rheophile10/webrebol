@@ -3,11 +3,12 @@ import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { showResult, startSource } from "../session/interpret.mjs";
 import { findError, formatError } from "../natives/report.mjs";
-import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKeyAction, runPointerAction } from "../view/windows.mjs";
+import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, listEngageTimers, runKeyAction, runPointerAction } from "../view/windows.mjs";
 import { diff } from "../view/diff.mjs";
 import { applyPatches } from "./dom.mjs";
 import { performRequest } from "./drive.mjs";
 import { paintReveals } from "./reveal.mjs";
+import { paintCanvases } from "./paint.mjs";
 
 const BATCHES = 50;
 const EVENT_TYPES = ["click", "input"];
@@ -91,7 +92,8 @@ const advance = () => {
 const isIdle = (machine) => machine !== undefined && ["wait", "done"].includes(machine.mode);
 
 /**
- * @uses state, isIdle, listTimers (src/view/windows.mjs), runAction (src/view/windows.mjs)
+ * @uses state, isIdle, listTimers (src/view/windows.mjs), listEngageTimers (src/view/windows.mjs),
+ *   runAction (src/view/windows.mjs), runEngage (src/view/windows.mjs)
  * @usedby frame
  */
 const runTimers = (now) => {
@@ -101,8 +103,13 @@ const runTimers = (now) => {
   const last = state.get("ticks") ?? new Map();
   const due = listTimers(state.get("view")).filter((timer) => now - (last.get(timer.block) ?? 0) >= 1000 / timer.rate);
   due.forEach((timer) => last.set(timer.block, now));
+  // A face with a feel and a rate gets a time event.
+  const faces = listEngageTimers(state.get("view")).filter((timer) => now - (last.get(-timer.face) ?? 0) >= 1000 / timer.rate);
+  faces.forEach((timer) => last.set(-timer.face, now));
   state.set("ticks", last);
-  state.set("machine", { ...machine, store: due.reduce((store, timer) => runAction(store, timer.block), machine.store) });
+  const ticked = due.reduce((store, timer) => runAction(store, timer.block), machine.store);
+  const engaged = faces.reduce((store, timer) => runEngage(store, timer.face, { kind: "time", offset: [0, 0] }), ticked);
+  state.set("machine", { ...machine, store: engaged });
 };
 
 /**
@@ -119,7 +126,7 @@ const readKey = (event) => {
 };
 
 /**
- * @uses advance, runTimers, paint, paintReveals, findPart, state, showEnd
+ * @uses advance, runTimers, paint, paintReveals, findPart, paintCanvases, state, showEnd
  * @usedby boot
  */
 const frame = (now) => {
@@ -127,6 +134,7 @@ const frame = (now) => {
   runTimers(now);
   paint();
   paintReveals(findPart("screen"), now);
+  paintCanvases(findPart("screen"));
   const machine = state.get("machine");
   const text = machine === undefined ? "" : showEnd(machine);
   if (findPart("output").textContent !== text) findPart("output").replaceChildren(document.createTextNode(text));
@@ -150,18 +158,25 @@ const readEvent = (event) => {
   state.set("machine", { ...machine, store });
 };
 
+const ENGAGE_KINDS = { pointerdown: "down", pointerup: "up", pointermove: "over" };
+
 /**
- * @uses state, isIdle, runPointerAction (src/view/windows.mjs)
+ * @uses state, isIdle, runEngage (src/view/windows.mjs), ENGAGE_KINDS, runPointerAction (src/view/windows.mjs)
  * @usedby boot
  */
 const readPointer = (event) => {
-  // A pointer event gives its position in the face to the block of the face.
+  // A pointer event gives its position in the face to the block of the face, or to the engage function of its feel.
   const machine = state.get("machine");
-  const target = event.target instanceof Element ? event.target.closest(`[data-on${event.type}]`) : null;
+  const target = event.target instanceof Element ? event.target.closest(`[data-on${event.type}], [data-engage]`) : null;
   if (target === null || !isIdle(machine)) return;
   const box = target.getBoundingClientRect();
-  const block = Number(target.getAttribute(`data-on${event.type}`));
-  state.set("machine", { ...machine, store: runPointerAction(machine.store, block, [event.clientX - box.left, event.clientY - box.top]) });
+  const offset = [event.clientX - box.left, event.clientY - box.top];
+  const block = target.getAttribute(`data-on${event.type}`);
+  const store =
+    block === null
+      ? runEngage(machine.store, Number(target.getAttribute("data-engage")), { kind: ENGAGE_KINDS[event.type], offset })
+      : runPointerAction(machine.store, Number(block), offset);
+  state.set("machine", { ...machine, store });
 };
 
 /**

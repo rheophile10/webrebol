@@ -7,12 +7,13 @@ import { failMachine, giveValue, makeLogic, makeWord } from "../machine/machine.
 
 
 /**
- * @uses isList (src/store/store.mjs), isText (src/store/store.mjs), makeDatum (src/data/datum.mjs)
+ * @uses isList (src/store/store.mjs), makeDatum (src/data/datum.mjs), isText (src/store/store.mjs)
  * @usedby pickItem
  */
 const makeItem = (series, raw) => {
   // An item of a text is a char. An item of a binary is an integer.
   if (isList(series)) return raw;
+  if (series.type === "image") return makeDatum("tuple", raw);
   return isText(series) ? makeDatum("char", raw.charCodeAt(0)) : makeDatum("integer", raw);
 };
 
