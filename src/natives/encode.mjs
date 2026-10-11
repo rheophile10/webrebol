@@ -81,13 +81,39 @@ const decodeBase = (machine, [value], options) => {
 /**
  * @uses readAll (src/store/store.mjs), readRest (src/store/store.mjs), giveValue (src/machine/machine.mjs),
  *   writeAll (src/store/store.mjs)
- * @usedby ENCODE_NATIVES
+ * @usedby delineText, enlineText, ENCODE_NATIVES
  */
 const changeText = (change) => (machine, [series], options) => {
   // The text of the series changes from its position. The result is the series.
   const head = readAll(machine.store, series).slice(0, series.value.index);
   const text = change(readRest(machine.store, series), options);
   return giveValue({ ...machine, store: writeAll(machine.store, series, head + text) }, series);
+};
+
+/**
+ * @uses changeText, readRest (src/store/store.mjs), makeSeries (src/store/store.mjs), giveNew
+ * @usedby ENCODE_NATIVES
+ */
+const delineText = (machine, [series], options) => {
+  // With /lines, the result is a block with one string for each line. A line end at the tail makes no empty line.
+  if (options.$lines === undefined) return changeText((text) => text.replace(/\r\n?/g, "\n"))(machine, [series], options);
+  const text = readRest(machine.store, series).replace(/\r\n?/g, "\n").replace(/\n$/, "");
+  const addLine = (made, line) => {
+    const next = makeSeries(made.store, "string", line);
+    return { store: next.store, values: [...made.values, next.value] };
+  };
+  const lines = (text === "" ? [] : text.split("\n")).reduce(addLine, { store: machine.store, values: [] });
+  return giveNew({ ...machine, store: lines.store }, "block", lines.values);
+};
+
+/**
+ * @uses changeText, giveNew, readRest (src/store/store.mjs), formValue (src/store/mold.mjs)
+ * @usedby ENCODE_NATIVES
+ */
+const enlineText = (machine, [series], options) => {
+  // A block of lines gives one string, with a line end after each line.
+  if (series.type !== "block") return changeText((text) => text)(machine, [series], options);
+  return giveNew(machine, "string", readRest(machine.store, series).map((line) => `${formValue(machine.store, line)}\n`).join(""));
 };
 
 /**
@@ -191,8 +217,8 @@ const toHex = (machine, [number]) => {
 
 /**
  * The natives that change the form of a text or of bytes. Each entry has the name of REBOL and the function.
- * @uses encodeBase, decodeBase, changeText, removeTabs, addTabs, decodeHex, testCodes, splitPath, findSuffix,
- *   giveFile, readRest (src/store/store.mjs), buildTag, toHex
+ * @uses encodeBase, decodeBase, changeText, removeTabs, addTabs, delineText, enlineText, decodeHex, testCodes,
+ *   splitPath, findSuffix, giveFile, readRest (src/store/store.mjs), buildTag, toHex
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const ENCODE_NATIVES = {
@@ -200,8 +226,8 @@ export const ENCODE_NATIVES = {
   debase: decodeBase,
   detab: changeText(removeTabs),
   entab: changeText(addTabs),
-  deline: changeText((text) => text.replace(/\r\n?/g, "\n")),
-  enline: changeText((text) => text),
+  deline: delineText,
+  enline: enlineText,
   dehex: decodeHex,
   "ascii?": testCodes(128),
   "latin1?": testCodes(256),

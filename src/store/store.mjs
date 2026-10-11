@@ -12,12 +12,12 @@ const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
 export const GLOBAL = 0;
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 23 declarations in call, evaluate, machine, control, files, items, loops, objects, random, text, store, windows
+ * @usedby 24 declarations in call, evaluate, machine, control, files, items, loops, objects, random, text, store, windows
  */
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 56 declarations in call, path, bitsets, control, crypto, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
+ * @usedby 57 declarations in call, path, bitsets, control, crypto, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
  */
 export const NONE = makeDatum("none", null);
 /**
@@ -60,7 +60,7 @@ const hashKey = (key) => [...key].reduce((sum, char) => (Math.imul(sum, 31) + ch
  * @param {Datum} value
  * @returns {boolean}
  * @uses LIST_TYPES
- * @usedby 38 declarations in compare, path, control, convert, crypto, edit, encode, files, items, objects, random, search, series, text, words, mold, store, elements
+ * @usedby 40 declarations in compare, path, control, convert, crypto, edit, encode, files, items, objects, random, search, series, text, words, mold, store, elements
  */
 export const isList = (value) => LIST_TYPES.includes(value.type);
 
@@ -69,7 +69,7 @@ export const isList = (value) => LIST_TYPES.includes(value.type);
  * @param {Datum} value
  * @returns {boolean}
  * @uses TEXT_TYPES
- * @usedby 15 declarations in path, bitsets, compare, convert, faults, parse, series, store, elements
+ * @usedby 16 declarations in path, bitsets, compare, convert, faults, parse, search, series, store, elements
  */
 export const isText = (value) => TEXT_TYPES.includes(value.type);
 
@@ -78,7 +78,7 @@ export const isText = (value) => TEXT_TYPES.includes(value.type);
  * @param {Datum} value
  * @returns {boolean}
  * @uses isList, isText
- * @usedby 9 declarations in edit, items, objects, random, series, text, store
+ * @usedby 12 declarations in path, edit, items, loops, objects, random, series, text, store
  */
 export const isSeries = (value) => isList(value) || isText(value) || value.type === "binary" || value.type === "image";
 
@@ -89,7 +89,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 48 declarations in call, control, convert, crypto, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, elements, layout, windows
+ * @usedby 50 declarations in call, control, convert, crypto, edit, encode, files, flow, items, numbers, objects, parse, search, series, text, words, store, elements, layout, windows
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
@@ -142,7 +142,7 @@ export const allocate = (store, datum) => {
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readAll
- * @usedby 99 declarations in compare, conform, path, bitsets, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout, raster, windows, view
+ * @usedby 109 declarations in compare, conform, path, bitsets, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout, raster, windows, view
  */
 export const readRest = (store, series) => readAll(store, series).slice(series.value.index);
 
@@ -152,7 +152,7 @@ export const readRest = (store, series) => readAll(store, series).slice(series.v
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 26 declarations in path, edit, encode, items, loops, parse, search, series, strings, text, store
+ * @usedby 28 declarations in path, edit, encode, items, loops, parse, search, series, strings, text, store
  */
 export const readAll = (store, series) => {
   // The pixels of an image are in rows. Thus this function is slow for an image, and the image functions read the rows.
@@ -213,7 +213,7 @@ export const writeAll = (store, series, content) => ({
  * @returns {Datum}
  * @standard unset - A word without a value gives the unset value.
  * @uses makeKey, GLOBAL, readEntry, hashKey, UNSET
- * @usedby 19 declarations in call, evaluate, path, control, items, loops, objects, parse, words, layout
+ * @usedby 23 declarations in call, evaluate, path, control, items, loops, objects, parse, words, mold, layout
  */
 export const readWord = (store, word) => {
   // The global words that the session set are in a table by the hash of the key. The base has the words of REBOL.
@@ -228,7 +228,7 @@ export const readWord = (store, word) => {
  * @param {number} context - The number of the context.
  * @returns {Object<string, Datum> | undefined}
  * @uses readEntry
- * @usedby 19 declarations in call, path, objects, series, words, mold, elements, layout, windows
+ * @usedby 20 declarations in call, path, objects, series, words, mold, elements, layout, windows
  */
 export const readContext = (store, context) => readEntry(store.contexts, context);
 
@@ -274,7 +274,9 @@ export const writeContext = (store, context, values) => ({
 const bindWord = (item, context) => {
   // A context without a list of keys accepts all words.
   const accepted = context.keys === null || context.keys.includes(makeKey(String(item.value)));
-  return WORD_TYPES.includes(item.type) && accepted ? { ...item, bind: context.id } : item;
+  // A context with a source binds only the words that the source context has now.
+  const moves = context.from === undefined || item.bind === context.from;
+  return WORD_TYPES.includes(item.type) && accepted && moves ? { ...item, bind: context.id } : item;
 };
 
 /**

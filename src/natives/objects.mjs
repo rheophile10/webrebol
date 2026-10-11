@@ -18,16 +18,18 @@ const SELF = makeKey("self");
 const isFirstUse = (name, place, names) => names.findIndex((other) => makeKey(other) === makeKey(name)) === place;
 
 /**
- * @uses bindCopy (src/store/store.mjs), isSeries (src/store/store.mjs), makeSeries (src/store/store.mjs),
- *   readRest (src/store/store.mjs)
+ * @uses bindCopy (src/store/store.mjs), isList (src/store/store.mjs), isSeries (src/store/store.mjs),
+ *   makeSeries (src/store/store.mjs), readRest (src/store/store.mjs)
  * @usedby copyParent
  */
 const copyValue = (store, value, context) => {
-  // A function of the parent gets a body that uses the new object. A series is copied.
+  // A function of the parent gets a body that uses the new object. Only the words of the parent change their context.
   if (value.type === "function") {
     const bound = bindCopy(store, value.value.body, context);
     return { store: bound.store, value: { ...value, value: { ...value.value, body: bound.value } } };
   }
+  // A block is copied, and its words of the parent use the new object. Other series are copied.
+  if (isList(value)) return bindCopy(store, value, context);
   return isSeries(value) ? makeSeries(store, value.type, readRest(store, value)) : { store, value };
 };
 
@@ -60,7 +62,7 @@ const makeObject = (machine, parent, block) => {
   const object = makeDatum("object", { context: made.id, words });
   const context = { id: made.id, keys: [SELF, ...words.map(makeKey)] };
   // Each word starts as none, or with the value of the parent. `self` is the object.
-  const copied = copyParent(made.store, parent, context);
+  const copied = copyParent(made.store, parent, { ...context, from: parent?.value.context });
   const empty = Object.fromEntries(context.keys.map((key) => [key, NONE]));
   const store = writeContext(copied.store, made.id, { ...empty, ...copied.values, [SELF]: object });
   const bound = bindCopy(store, block, context);
@@ -179,12 +181,13 @@ const findInObject = (machine, [object, word]) => {
  *   NONE (src/store/store.mjs), giveValue (src/machine/machine.mjs), writeContext (src/store/store.mjs)
  * @usedby setWords
  */
-const setFields = (machine, object, value) => {
+const setFields = (machine, [object, value], any) => {
   // An object gets the values of a block for its words, in their sequence.
   const values = value.type === "block" ? readRest(machine.store, value) : null;
   const old = readContext(machine.store, object.value.context);
   const entries = object.value.words.map((word, place) => [makeKey(word), values === null ? value : (values[place] ?? NONE)]);
-  const fields = Object.fromEntries(entries.filter(([, item]) => item.type !== "unset"));
+  // With /any, a word can get the unset value.
+  const fields = Object.fromEntries(entries.filter(([, item]) => any || item.type !== "unset"));
   return giveValue({ ...machine, store: writeContext(machine.store, object.value.context, { ...old, ...fields }) }, value);
 };
 
@@ -192,18 +195,25 @@ const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
 
 /**
  * @uses setFields, readRest (src/store/store.mjs), WORD_TYPES, failMachine (src/machine/machine.mjs),
- *   writeWord (src/store/store.mjs), NONE (src/store/store.mjs), giveValue (src/machine/machine.mjs)
+ *   NONE (src/store/store.mjs), readWord (src/store/store.mjs), giveValue (src/machine/machine.mjs),
+ *   writeWord (src/store/store.mjs)
  * @usedby OBJECT_NATIVES
  */
-const setWords = (machine, [target, value]) => {
-  if (target.type === "object") return setFields(machine, target, value);
+const setWords = (machine, [target, value], options) => {
+  if (target.type === "object") return setFields(machine, [target, value], options.$any !== undefined);
   const targets = target.type === "block" ? readRest(machine.store, target) : [target];
   if (targets.some((item) => !WORD_TYPES.includes(item.type))) return failMachine(machine, "script invalid-arg", [target]);
   // A block of words takes the items of a block of values. Without a block of values, each word gets the value.
   const words = target.type === "block" ? readRest(machine.store, target) : [target];
   const values = target.type === "block" && value.type === "block" ? readRest(machine.store, value) : null;
-  const assign = (store, word, place) => writeWord(store, word, values === null ? value : (values[place] ?? NONE));
-  return giveValue({ ...machine, store: words.reduce(assign, machine.store) }, value);
+  // A get-word in the block of words takes the value of the word that is in the block of values.
+  const isRead = (word, item) => word.type === "get-word" && item.type === "word";
+  const items = words.map((word, place) => (values === null ? value : (values[place] ?? NONE)));
+  const read = items.map((item, place) => (isRead(words[place], item) ? readWord(machine.store, item) : item));
+  // Without /any, a value that is unset is an error, and no word changes.
+  const absent = options.$any === undefined ? read.findIndex((item) => item.type === "unset") : -1;
+  if (absent >= 0 && values !== null) return failMachine(machine, "script no-value", [items[absent]]);
+  return giveValue({ ...machine, store: words.reduce((store, word, place) => writeWord(store, word, read[place]), machine.store) }, value);
 };
 
 /**
@@ -247,13 +257,13 @@ const useWords = (machine, [given, body]) => {
 
 /**
  * @uses readRest (src/store/store.mjs), makeKey (src/store/store.mjs), makeContext (src/store/store.mjs),
- *   NONE (src/store/store.mjs), bindCopy (src/store/store.mjs), startBlock (src/machine/machine.mjs)
+ *   UNSET (src/store/store.mjs), bindCopy (src/store/store.mjs), startBlock (src/machine/machine.mjs)
  * @usedby useWords
  */
 const useBlock = (machine, [words, body]) => {
   // The words are in a new context. The body is a copy that uses this context.
   const keys = readRest(machine.store, words).map((word) => makeKey(word.value));
-  const made = makeContext(machine.store, Object.fromEntries(keys.map((key) => [key, NONE])));
+  const made = makeContext(machine.store, Object.fromEntries(keys.map((key) => [key, UNSET])));
   const bound = bindCopy(made.store, body, { id: made.id, keys });
   return startBlock({ ...machine, store: bound.store }, bound.value);
 };

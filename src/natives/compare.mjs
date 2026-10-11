@@ -4,7 +4,9 @@ import { isList, isText, readRest } from "../store/store.mjs";
 import { failMachine, giveValue, isTrue, makeLogic } from "../machine/machine.mjs";
 import { TYPESETS } from "../machine/spec.mjs";
 
-const TOLERANCE = 2.3e-15;
+const STEPS = 8;
+const MANTISSA_BITS = 52;
+const SMALLEST_NORMAL = 2.2250738585072014e-308;
 const NUMBERS = ["integer", "decimal"];
 const WORDS = ["word", "set-word", "get-word", "lit-word", "refinement"];
 const ORDERED = ["char", "time"];
@@ -38,10 +40,25 @@ const isSeriesValue = (value) => typeof value.value === "object" && value.value 
 const trimTuple = (tuple) => tuple.value.join(".").replace(/(\.0)+$/, "");
 
 /**
- * @uses TOLERANCE
- * @usedby areEqual, areIdentical
+ * @uses readOrder
+ * @usedby areEqual
  */
-const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(Math.abs(left), Math.abs(right));
+const areSameDates = (store, left, right) => {
+  // A date without a time is equal to the same date with a time. Two dates with times are equal at the same moment of the world.
+  if (left.value.time === null || right.value.time === null) return left.value.days === right.value.days;
+  return readOrder(store, left).data === readOrder(store, right).data;
+};
+
+/**
+ * @uses SMALLEST_NORMAL, MANTISSA_BITS, STEPS
+ * @usedby areEqual, compare, areIdentical
+ */
+const isNear = (left, right) => {
+  // REBOL accepts a difference of 8 of the smallest steps of the larger number.
+  const size = Math.max(Math.abs(left), Math.abs(right));
+  const step = size < SMALLEST_NORMAL ? Number.MIN_VALUE : 2 ** (Math.floor(Math.log2(size)) - MANTISSA_BITS);
+  return Math.abs(left - right) <= STEPS * step;
+};
 
 /**
  * @uses NUMBERS, isNear, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS,
@@ -56,7 +73,7 @@ const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(M
  * @returns {boolean}
  * @standard case - Two texts or two words are equal without regard to the case of the letters.
  * @uses isSeriesValue, NUMBERS, isNear, WORDS, isText (src/store/store.mjs), readRest (src/store/store.mjs),
- *   isList (src/store/store.mjs), areSameLists, RECORDS, FUNCTIONS, trimTuple
+ *   isList (src/store/store.mjs), areSameLists, areSameDates, RECORDS, FUNCTIONS, trimTuple
  * @usedby areSame, areSameLists, COMPARE_NATIVES, switchValue, matchesItem, makeSearch, makeUnique, combine
  */
 export const areEqual = (store, left, right) => {
@@ -75,8 +92,7 @@ export const areEqual = (store, left, right) => {
   if (isText(left)) return readRest(store, left).toLowerCase() === readRest(store, right).toLowerCase();
   if (WORDS.includes(left.type)) return left.value.toLowerCase() === right.value.toLowerCase();
   if (isList(left)) return areSameLists(store, readRest(store, left), readRest(store, right));
-  // A date without a time is equal to the same date with a time.
-  if (left.type === "date" && (left.value.time === null || right.value.time === null)) return left.value.days === right.value.days;
+  if (left.type === "date") return areSameDates(store, left, right);
   if (RECORDS.includes(left.type)) return JSON.stringify(left.value) === JSON.stringify(right.value);
   if (left.type === "object") return left.value.context === right.value.context;
   // Two functions are equal only if they are the same function. A tuple ignores the zeros at its end.
@@ -131,7 +147,7 @@ const areSameLists = (store, left, right) =>
  * @returns {{ group: string, data: number | string } | null}
  * @standard none - A type without an order gives null.
  * @uses NUMBERS, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS, DAY, ORDERED
- * @usedby compare, choose, findExtreme, compareItems
+ * @usedby areSameDates, compare, choose, findExtreme, compareItems
  */
 export const readOrder = (store, value) => {
   // Give the data that the order uses, or null for a type without an order.
@@ -147,7 +163,7 @@ export const readOrder = (store, value) => {
 };
 
 /**
- * @uses readOrder, failMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs),
+ * @uses readOrder, failMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs), isNear,
  *   giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs)
  * @usedby COMPARE_NATIVES
  */
@@ -158,7 +174,9 @@ const compare = (test) => (machine, [left, right]) => {
   if (first === null || second === null || first.group !== second.group) {
     return failMachine(machine, "script expect-set", [left, right].map((value) => makeDatum("datatype", value.type)));
   }
-  return giveValue(machine, makeLogic(test(first.data, second.data)));
+  // Two numbers that are almost equal are equal for the order, as they are for `=`.
+  const near = first.group === "number" && isNear(first.data, second.data);
+  return giveValue(machine, makeLogic(near ? test(0, 0) : test(first.data, second.data)));
 };
 
 /**
@@ -256,5 +274,6 @@ export const COMPARE_NATIVES = {
   "lesser-or-equal?": compare((left, right) => left <= right),
   "greater-or-equal?": compare((left, right) => left >= right),
   not: (machine, [value]) => giveValue(machine, makeLogic(!isTrue(value))),
-  "type?": (machine, [value]) => giveValue(machine, makeDatum("datatype", value.type)),
+  // With /word, the result is the name of the type as a word.
+  "type?": (machine, [value], options) => giveValue(machine, options.$word === undefined ? makeDatum("datatype", value.type) : makeDatum("word", `${value.type}!`)),
 };

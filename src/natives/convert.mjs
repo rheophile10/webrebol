@@ -10,6 +10,9 @@ import { failSyntax } from "./control.mjs";
 
 const NUMBERS = ["integer", "decimal"];
 const NANOSECONDS = 1e9;
+const INTEGER_MAX = 2147483647;
+const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
+const INTEGER_MIN = -2147483648;
 
 /**
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
@@ -67,11 +70,12 @@ const toList = (type) => (machine, [value]) =>
   giveSeries(machine, type, isList(value) ? readRest(machine.store, value) : [value]);
 
 /**
- * @uses giveValue (src/machine/machine.mjs), readText, GLOBAL (src/store/store.mjs)
+ * @uses giveValue (src/machine/machine.mjs), WORD_TYPES, readText, GLOBAL (src/store/store.mjs)
  * @usedby CONVERT_NATIVES
  */
 const toWordType = (type) => (machine, [value]) =>
-  giveValue(machine, { type, value: readText(machine.store, value), bind: value.bind ?? GLOBAL });
+  // A word of a different word type gives its spelling, without the marks of its type.
+  giveValue(machine, { type, value: WORD_TYPES.includes(value.type) ? value.value : readText(machine.store, value), bind: value.bind ?? GLOBAL });
 
 /**
  * @uses giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
@@ -101,14 +105,37 @@ const readNumber = (store, value) => {
 const readWhole = (store, binary) => readRest(store, binary).slice(-4).reduce((sum, byte) => (sum << 8) | byte, 0);
 
 /**
- * @uses readWhole, readNumber, failMachine (src/machine/machine.mjs), giveValue (src/machine/machine.mjs),
- *   makeDatum (src/data/datum.mjs)
+ * @uses readRest (src/store/store.mjs), NUMBERS
+ * @usedby toNumber
+ */
+const readPower = (store, block) => {
+  // A block of two numbers gives the first number times ten to the power of the second number.
+  const items = readRest(store, block);
+  const valid = items.length === 2 && items.every((item) => NUMBERS.includes(item.type));
+  return valid ? items[0].value * 10 ** items[1].value : null;
+};
+
+/**
+ * @uses giveNumber, readPower, readWhole, readNumber
  * @usedby CONVERT_NATIVES
  */
 const toNumber = (type, change) => (machine, [value]) => {
   // A binary gives an integer of 32 bits, with the high byte first. It does not give a decimal.
+  if (value.type === "block" && type === "decimal") return giveNumber(machine, [type, value], readPower(machine.store, value));
   const number = value.type === "binary" && type === "integer" ? readWhole(machine.store, value) : readNumber(machine.store, value);
-  return number === null ? failMachine(machine, "script invalid-arg", [value]) : giveValue(machine, makeDatum(type, change(number)));
+  return giveNumber(machine, [type, value], number === null ? null : change(number));
+};
+
+/**
+ * @uses failMachine (src/machine/machine.mjs), INTEGER_MAX, INTEGER_MIN, giveValue (src/machine/machine.mjs),
+ *   makeDatum (src/data/datum.mjs)
+ * @usedby toNumber
+ */
+const giveNumber = (machine, [type, value], number) => {
+  // A number that is too large for an integer of 32 bits is an error.
+  if (number === null) return failMachine(machine, "script invalid-arg", [value]);
+  const outside = type === "integer" && (number > INTEGER_MAX || number < INTEGER_MIN);
+  return outside ? failMachine(machine, "math overflow") : giveValue(machine, makeDatum(type, number));
 };
 
 /**

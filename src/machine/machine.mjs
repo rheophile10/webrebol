@@ -11,7 +11,7 @@ const FUNCTION_TYPES = ["native", "action", "op", "function"];
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 24 declarations in call, bitsets, compare, crypto, encode, files, flow, items, numbers, objects, parse, random, search, series, words, globals, layout
+ * @usedby 26 declarations in call, bitsets, compare, crypto, encode, files, flow, items, numbers, objects, parse, random, search, series, words, globals, layout
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -48,7 +48,7 @@ export const pushFrame = (machine, frame) => ({
  * Removes the top frame of the stack.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby 28 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
+ * @usedby 29 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below });
 
@@ -68,7 +68,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { ...machin
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 138 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, raster, windows
+ * @usedby 142 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, raster, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -78,7 +78,7 @@ export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" 
  * @param {string} kind - "error", "return" or "break".
  * @param {Datum} value
  * @returns {Machine}
- * @usedby failMachine, throwUnused, CONTROL_NATIVES (src/natives/control.mjs), FLOW_NATIVES (src/natives/flow.mjs),
+ * @usedby failMachine, throwUnused, CONTROL_NATIVES (src/natives/control.mjs), throwNamed (src/natives/flow.mjs),
  *   LOOP_NATIVES (src/natives/loops.mjs), stopMachine (src/natives/words.mjs)
  */
 export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw", thrown: { kind, value } });
@@ -90,7 +90,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 49 declarations in call, evaluate, path, run, bitsets, compare, control, convert, crypto, digest, edit, encode, files, items, math, numbers, objects, random, series, words
+ * @usedby 52 declarations in call, evaluate, path, run, bitsets, compare, control, convert, crypto, digest, edit, encode, files, items, math, numbers, objects, random, search, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -125,7 +125,8 @@ export const stopThrown = (kind) => (machine, frame) => {
  * @returns {Machine}
  * @standard wait - The mode of the machine is "wait".
  * @usedby readClock (src/natives/clock.mjs), askCrypto (src/natives/crypto.mjs), askDigest (src/natives/digest.mjs),
- *   openWindow (src/view/windows.mjs), readImage (src/view/windows.mjs), downloadImage (src/view/windows.mjs)
+ *   waitForTime (src/natives/words.mjs), openWindow (src/view/windows.mjs), readImage (src/view/windows.mjs),
+ *   downloadImage (src/view/windows.mjs)
  */
 export const askEdge = (machine, request) => ({ ...machine, mode: "wait", request });
 

@@ -16,7 +16,7 @@ const countUp = (size) => Array.from({ length: Math.max(size, 0) });
  * @param {number} code - The code of the character.
  * @returns {boolean}
  * @standard limit - A code that is larger than the count of the bits is not in a bitset.
- * @usedby findInBitset, matchInText
+ * @usedby findInBitset, matchInText, makeBitSearch
  */
 export const hasBit = (bitset, code) => code >= 0 && code < bitset.value.length * 8 && ((bitset.value[code >> 3] >> (code & 7)) & 1) === 1;
 

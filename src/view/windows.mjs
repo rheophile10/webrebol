@@ -75,7 +75,7 @@ const showFace = (machine, [face]) =>
  * @keypoint The elements are made by the REBOL function face-to-element. A script can replace it, or change the object theme.
  * @uses makeSeries (src/store/store.mjs), GLOBAL (src/store/store.mjs), runMachine (src/machine/run.mjs),
  *   makeMachine (src/machine/machine.mjs), RENDER_BUDGET, exportElement, SCREEN
- * @usedby paint (src/edge/page.mjs)
+ * @usedby paint (src/edge/page.mjs), listSounds (test/music.test.mjs)
  */
 export const renderWindows = (store) => {
   const renderFace = (face) => {

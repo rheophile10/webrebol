@@ -3,6 +3,15 @@
  * The object `theme` has the parameters of the look. A script can change them.
  */
 export const VIEW_BOOT = `
+system: make object! [
+    version: 2.7.8.4.3
+    build: 23-Jan-2016/18:56:30-5:00
+    product: 'View
+    core: 2.7.8
+    options: make object! [binary-base: 16 home: %/ script: none path: %/ args: none quiet: true]
+    script: make object! [title: none header: none parent: none path: %/ args: none]
+]
+rebol: system
 theme: make object! [
     font-family: "Arial, Helvetica, sans-serif"
     tags: [

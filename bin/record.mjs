@@ -4,6 +4,7 @@ import { execFileSync } from "node:child_process";
 import { mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
+import { MUSIC_CORE } from "../src/music/boot.mjs";
 
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 /**
@@ -58,13 +59,14 @@ const runCase = (source, folder) => {
 
 /**
  * @uses runCase, RESULT, readHex, writeHex
- * @usedby recordDo
+ * @usedby recordCases
  */
-const recordCase = (source) => {
+const recordCase = (prelude) => (source) => {
   // Each evaluation case runs in a new REBOL session. Thus a word of one case cannot change a different case.
   // The case runs in a new empty folder. In the results, the path of this folder becomes the root of the disk.
+  // REBOL evaluates the prelude before the case. The recorded source is only the case.
   const folder = mkdtempSync(`${tmpdir()}/webrebol-`);
-  const match = runCase(source, folder).match(RESULT);
+  const match = runCase(prelude + source, folder).match(RESULT);
   rmSync(folder, { recursive: true });
   if (match === null) throw new Error(`REBOL gave no result for this case: ${source}`);
   const [output, result] = [match[1], readHex(match[2])].map((text) => text.split(folder).join(""));
@@ -73,22 +75,35 @@ const recordCase = (source) => {
 
 /**
  * @uses recordCase
- * @usedby pickRecorder
+ * @usedby recordDo, recordMusic
  */
-const recordDo = (path) =>
+const recordCases = (prelude) => (path) =>
   readFileSync(path, "latin1")
     .split("\n")
     .filter((line) => line !== "")
-    .map(recordCase)
+    .map(recordCase(prelude))
     .join("");
 
-const GROUPS = ["load", "do", "view"];
+/**
+ * @uses recordCases
+ * @usedby pickRecorder
+ */
+const recordDo = recordCases("");
+
+// REBOL has no music words. Thus each music case starts with the music mezzanines of WebRebol.
+/**
+ * @uses recordCases, MUSIC_CORE (src/music/boot.mjs)
+ * @usedby pickRecorder
+ */
+const recordMusic = recordCases(MUSIC_CORE);
+
+const GROUPS = ["load", "do", "defects", "music", "view"];
 
 /**
- * @uses recordLoad, recordDo, recordView
+ * @uses recordLoad, recordDo, recordMusic, recordView
  * @usedby recordFile
  */
-const pickRecorder = (group) => ({ load: recordLoad, "do": recordDo, view: recordView })[group];
+const pickRecorder = (group) => ({ load: recordLoad, "do": recordDo, defects: recordDo, music: recordMusic, view: recordView })[group];
 
 /**
  * @uses pickRecorder, ROOT

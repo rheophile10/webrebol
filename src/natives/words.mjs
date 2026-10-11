@@ -2,11 +2,12 @@ import { makeDatum } from "../data/datum.mjs";
 import { loadSource } from "../data/load.mjs";
 import { allocate, GLOBAL, isList, makeKey, makeRecord, makeSeries, NONE, readContext, readRest, readWord, writeWord } from "../store/store.mjs";
 import { moldValue } from "../store/mold.mjs";
-import { failMachine, giveValue, isTrue, makeLogic, makeWord, popFrame, pushFrame, startBlock, throwValue } from "../machine/machine.mjs";
+import { askEdge, failMachine, giveValue, isTrue, makeLogic, makeWord, popFrame, pushFrame, startBlock, throwValue } from "../machine/machine.mjs";
 import { callFunction } from "../machine/call.mjs";
 import { CONTROL_NATIVES, failSyntax, startReduce } from "./control.mjs";
 import { giveNew } from "./series.mjs";
 
+const NANOSECONDS = 1e9;
 const WORDS = ["word", "set-word", "get-word", "lit-word", "refinement"];
 const LOGIC_WORDS = { true: true, "on": true, yes: true, false: false, off: false, "no": false };
 
@@ -36,10 +37,10 @@ const makeFunct = (machine, [spec, body]) => {
 
 /**
  * @uses isTrue (src/machine/machine.mjs), NONE (src/store/store.mjs), callFunction (src/machine/call.mjs),
- *   startReduce
+ *   startReduce, readRest (src/store/store.mjs)
  * @usedby WORD_NATIVES
  */
-const applyFunction = (machine, [callee, block]) => {
+const applyFunction = (machine, [callee, block], options) => {
   // The block gives the arguments in the sequence of the specification. A refinement takes a logic value.
   const finish = (reduced, values) => {
     const params = callee.value.params;
@@ -53,7 +54,34 @@ const applyFunction = (machine, [callee, block]) => {
     const args = [...params.map((param, place) => values[place] ?? NONE), ...taken.extra];
     return callFunction(reduced, callee, { names: taken.names, args, label: "apply" });
   };
-  return startReduce(machine, block, finish);
+  // With /only, the items of the block are the arguments, without an evaluation.
+  return options.$only === undefined ? startReduce(machine, block, finish) : finish(machine, readRest(machine.store, block));
+};
+
+/**
+ * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), WORDS, giveNew
+ * @usedby WORD_NATIVES
+ */
+const collectWords = (machine, [block], options) => {
+  // The result has each word one time. With /set, only the set-words are collected, and they stay set-words. With /deep, the inner blocks are read also.
+  // REBOL 2.7.8 has a defect here: it gives only the first word. WebRebol does not copy the defect.
+  const ignored = (options.$ignore === undefined || !isList(options.$ignore[0]) ? [] : readRest(machine.store, options.$ignore[0])).map((word) => String(word.value).toLowerCase());
+  const isWanted = (item) => (options.$set === undefined ? WORDS.includes(item.type) : item.type === "set-word");
+  const listWords = (items) => items.flatMap((item) => (item.type === "block" && options.$deep !== undefined ? listWords(readRest(machine.store, item)) : [item]).filter((inner) => isWanted(inner)));
+  const found = listWords(readRest(machine.store, block)).map((word) => (options.$set === undefined ? { ...word, type: "word" } : word));
+  const isFirst = (word, place) => found.findIndex((other) => other.value.toLowerCase() === word.value.toLowerCase()) === place;
+  return giveNew(machine, "block", found.filter(isFirst).filter((word) => !ignored.includes(word.value.toLowerCase())));
+};
+
+/**
+ * @uses NANOSECONDS, askEdge (src/machine/machine.mjs), giveValue (src/machine/machine.mjs),
+ *   NONE (src/store/store.mjs)
+ * @usedby WORD_NATIVES
+ */
+const waitForTime = (machine, [value]) => {
+  // The edge waits for the time. A number is a number of seconds. Other values do not wait.
+  const seconds = { integer: value.value, decimal: value.value, time: value.value / NANOSECONDS }[value.type] ?? 0;
+  return askEdge(machine, { kind: "wait", milliseconds: Math.max(seconds * 1000, 0), resume: (waiting) => giveValue(waiting, NONE) });
 };
 
 /**
@@ -200,13 +228,17 @@ const stopMachine = (machine) => throwValue(machine, "quit", makeDatum("unset", 
 
 /**
  * The natives for functions, words and objects that are not basic. Each entry has the name of REBOL and the function.
- * @uses makeFunct, applyFunction, setDefault, reflectOn, reflectValue, findOwner, constructObject, causeError,
- *   assertBlock, loadText, giveValue (src/machine/machine.mjs), stopMachine
+ * @uses makeFunct, applyFunction, collectWords, waitForTime, failMachine (src/machine/machine.mjs), setDefault,
+ *   reflectOn, reflectValue, findOwner, constructObject, causeError, assertBlock, loadText,
+ *   giveValue (src/machine/machine.mjs), stopMachine
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WORD_NATIVES = {
   funct: makeFunct,
   apply: applyFunction,
+  "collect-words": collectWords,
+  wait: waitForTime,
+  "else": (machine) => failMachine(machine, "script else-gone"),
   default: setDefault,
   "words-of": reflectOn("words"),
   "values-of": reflectOn("values"),

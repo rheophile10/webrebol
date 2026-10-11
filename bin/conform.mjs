@@ -131,7 +131,7 @@ const CACHE = `${ROOT}corpus/tests-reference.json`;
 const cached = process.argv[2] !== "record" && existsSync(CACHE);
 /**
  * @uses cached, CACHE, runReference, tests
- * @usedby bin/conform.mjs, stops, writeReport
+ * @usedby bin/conform.mjs, stops, writeDefects, writeReport
  */
 const reference = cached ? JSON.parse(readFileSync(CACHE, "utf8")) : runReference(tests);
 writeFileSync(CACHE, JSON.stringify(reference));
@@ -141,45 +141,63 @@ writeFileSync(CACHE, JSON.stringify(reference));
  */
 const stops = tests.filter((test) => reference[test.index] === "STOP").map((test) => test.index);
 /**
- * @uses tests, runTest, stops, START_STORE (src/session/globals.mjs)
- * @usedby same, different, lines
+ * @usedby writeDefects, writeReport
  */
+const showSource = (test) => test.source.replace(/\s+/g, " ");
+
+const HEAD = [
+  "# Defects of REBOL 2.7.8",
+  "",
+  "This file lists the defects of REBOL 2.7.8 that the work on WebRebol found. WebRebol does not copy them.",
+  "`node bin/conform.mjs` writes the two lists of tests. Do not change them by hand.",
+  "The tests are from the public REBOL core test suite (rebolsource/rebol-test, Apache-2.0). Each test must give true.",
+  "REBOL is REBOL/View 2.7.8.4.3 in Docker, without a network.",
+];
+
+const OTHERS = [
+  "## Defects that the suite does not show",
+  "",
+  "- `checksum/method data 'md5` and `checksum/key` of REBOL/Core 2.7.8.4.10 (64 bits) give wrong values for data of 8 bytes or more. WebRebol gives the standard values.",
+  "- `collect-words` gives only the first word of the block.",
+  "- The cases of `test/cases/defects/defects.txt` give true in WebRebol and not in REBOL. `npm test` proves this.",
+];
+
 /**
- * @uses tests, reference, stops, ROOT
+ * @uses showSource, reference, ROOT, HEAD, OTHERS
+ * @usedby writeReport
+ */
+const writeDefects = (lists) => {
+  // The file has the tests that stop REBOL, and the tests that REBOL fails and WebRebol passes.
+  const stopLines = lists.stopped.map((test) => `| ${test.index} | ${lists.actual[test.index] ?? "not run"} | \`${showSource(test).replace(/\|/g, "\\|")}\` |`);
+  const failLines = lists.defects.map((test) => `| ${test.index} | ${reference[test.index]} | \`${showSource(test).replace(/\|/g, "\\|")}\` |`);
+  const stopTable = ["## Tests that stop REBOL (a crash, or no end)", "", "| Test | WebRebol | Source |", "|---|---|---|", ...stopLines];
+  const failTable = [`## Tests that REBOL fails and WebRebol passes (${lists.defects.length})`, "", "| Test | REBOL gives | Source |", "|---|---|---|", ...failLines];
+  writeFileSync(`${ROOT}REBOL-DEFECTS.md`, `${[...HEAD, "", ...OTHERS, "", ...stopTable, "", ...failTable].join("\n")}\n`);
+};
+
+/**
+ * @uses tests, reference, showSource, stops, ROOT, writeDefects
  * @usedby bin/conform.mjs
  */
 const writeReport = (actual) => {
   const judged = tests.filter((test) => reference[test.index] !== undefined && reference[test.index] !== "STOP");
-  /**
-   * @uses judged, reference, actual
-   * @usedby summary
-   */
   const same = judged.filter((test) => reference[test.index] === actual[test.index]);
-  /**
-   * @uses judged, reference, actual
-   * @usedby lines, summary
-   */
-  const different = judged.filter((test) => reference[test.index] !== actual[test.index]);
-  /**
-   * @uses different, reference, actual
-   * @usedby bin/conform.mjs
-   */
-  const lines = different.map((test) => `${test.index}: REBOL ${reference[test.index]} | WebRebol ${actual[test.index]} | ${test.source.replace(/\s+/g, " ").slice(0, 110)}`);
-  /**
-   * @uses tests, stops, judged, same, different
-   * @usedby bin/conform.mjs
-   */
+  // A test must give true. A test that REBOL fails and WebRebol passes shows a defect of REBOL.
+  const defects = judged.filter((test) => reference[test.index] !== "true" && actual[test.index] === "true");
+  const different = judged.filter((test) => reference[test.index] !== actual[test.index] && !defects.includes(test));
+  const lines = different.map((test) => `${test.index}: REBOL ${reference[test.index]} | WebRebol ${actual[test.index]} | ${showSource(test).slice(0, 110)}`);
   const summary = [
     `Tests for REBOL 2 in the suite: ${tests.length}`,
     `Tests that stop REBOL 2.7.8 itself: ${stops.length}`,
     `Tests with an outcome from REBOL: ${judged.length}`,
     `Same outcome in WebRebol: ${same.length}`,
+    `REBOL fails and WebRebol passes (a defect of REBOL): ${defects.length}`,
     `Different outcome in WebRebol: ${different.length}`,
   ];
-  
   writeFileSync(`${ROOT}corpus/tests-report.txt`, `${[...summary, "", ...lines].join("\n")}\n`);
+  writeDefects({ stopped: tests.filter((test) => stops.includes(test.index)), defects, actual });
   console.log(summary.join("\n"));
-  console.log("The full report is in corpus/tests-report.txt");
+  console.log("The full report is in corpus/tests-report.txt. The defects of REBOL are in REBOL-DEFECTS.md.");
 };
 
 tests.reduce(runTest(stops), Promise.resolve({ store: START_STORE, outcomes: {} })).then((state) => writeReport(state.outcomes));

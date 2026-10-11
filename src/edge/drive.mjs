@@ -40,16 +40,23 @@ const readClock = async () => {
 };
 
 /**
- * @uses digestBytes, readClock, performCrypto
+ * @usedby HANDLERS
+ */
+const waitFor = (request) =>
+  // STE-JS does not approve `new` for a Promise in this position, thus Reflect.construct makes it.
+  Reflect.construct(Promise, [(resolve) => setTimeout(() => resolve(null), request.milliseconds)]);
+
+/**
+ * @uses digestBytes, readClock, performCrypto, waitFor
  * @usedby performRequest, driveMachine
  */
-const HANDLERS = { digest: digestBytes, clock: readClock, crypto: performCrypto };
+const HANDLERS = { digest: digestBytes, clock: readClock, crypto: performCrypto, wait: waitFor };
 
 /**
  * Does the work of one request of a machine that waits.
  * @param {{ kind: string }} request
  * @returns {Promise<*>}
- * @standard kinds - The kinds are "digest", "clock" and "crypto".
+ * @standard kinds - The kinds are "digest", "clock", "crypto" and "wait".
  * @uses HANDLERS
  * @usedby driveMachine, serveRequest, servePaused
  */

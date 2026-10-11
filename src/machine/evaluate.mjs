@@ -4,6 +4,8 @@ import { advance, atEnd, failMachine, giveValue, isFunction, popFrame, pushFrame
 import { startCall } from "./call.mjs";
 import { evaluatePath, startSetPath } from "./path.mjs";
 
+const DECAYS = { "lit-word": "word", "lit-path": "path" };
+
 /**
  * @uses failMachine, popFrame, writeWord (src/store/store.mjs)
  * @usedby EVALUATORS
@@ -15,25 +17,36 @@ const stepSet = (machine, frame) =>
     : { ...popFrame(machine), store: writeWord(machine.store, frame.word, machine.value) };
 
 /**
- * @uses readWord (src/store/store.mjs), failMachine, isFunction, startCall, giveValue
+ * @uses readWord (src/store/store.mjs), failMachine, isFunction, startCall, giveValue, DECAYS
  * @usedby EVALUATORS
  */
 const evaluateWord = (machine, word) => {
   // A word gives its value. A function value starts a call.
   const value = readWord(machine.store, word);
   if (value.type === "unset") return failMachine(machine, "script no-value", [{ ...word, type: "word" }]);
-  return isFunction(value) ? startCall(machine, value, { names: [], label: word.value }) : giveValue(machine, value);
+  if (isFunction(value)) return startCall(machine, value, { names: [], label: word.value });
+  // In REBOL 2, a word that holds a lit-word gives a word, and a word that holds a lit-path gives a path.
+  return giveValue(machine, DECAYS[value.type] === undefined ? value : { ...value, type: DECAYS[value.type] });
 };
 
 /**
- * @uses evaluateWord, pushFrame, stepSet, giveValue, readWord (src/store/store.mjs), startBlock, evaluatePath,
- *   startSetPath
+ * @uses readWord (src/store/store.mjs), failMachine, giveValue
+ * @usedby EVALUATORS
+ */
+const readGetWord = (machine, word) => {
+  // A get-word gives the value of its word, also a function value. A word without a value is an error.
+  const value = readWord(machine.store, word);
+  return value.type === "unset" ? failMachine(machine, "script no-value", [{ ...word, type: "word" }]) : giveValue(machine, value);
+};
+
+/**
+ * @uses evaluateWord, pushFrame, stepSet, readGetWord, giveValue, startBlock, evaluatePath, startSetPath
  * @usedby evaluateOperand
  */
 const EVALUATORS = {
   word: evaluateWord,
   "set-word": (machine, word) => ({ ...pushFrame(machine, { step: stepSet, word }), mode: "next" }),
-  "get-word": (machine, word) => giveValue(machine, readWord(machine.store, word)),
+  "get-word": readGetWord,
   "lit-word": (machine, word) => giveValue(machine, { ...word, type: "word" }),
   paren: startBlock,
   path: evaluatePath,

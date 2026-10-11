@@ -38,9 +38,11 @@ export const startSource = (source, session = {}) => {
  * @param {number} batches - The budget, in groups of 1000 steps.
  * @returns {Machine}
  * @standard reference - The result is the result that `do` of REBOL 2.7.8 gives.
+ * @standard defects - For a case in which REBOL 2.7.8 has a defect, the result is the correct result.
  * @standard syntax - A source text that is not valid REBOL gives a machine with the error of the loader.
  * @uses runMachine (src/machine/run.mjs), startSource
- * @usedby showRun (test/do.test.mjs), run (test/view.test.mjs)
+ * @usedby showRun (test/do.test.mjs), showRun (test/music.test.mjs), listSounds (test/music.test.mjs),
+ *   run (test/view.test.mjs)
  */
 export const interpretSource = (source, batches) => runMachine(startSource(source), batches);
 
@@ -51,7 +53,7 @@ export const interpretSource = (source, batches) => runMachine(startSource(sourc
  * @standard error - An error shows as "!", its type, its id, and its three molded fields.
  * @uses findError (src/natives/report.mjs), moldValue (src/store/mold.mjs), NONE (src/store/store.mjs)
  * @usedby showEnd (bin/webrebol.mjs), showEnd (src/edge/page.mjs), showRun (test/do.test.mjs),
- *   showRun (test/edge.test.mjs), runWithEdge (test/edge.test.mjs)
+ *   showRun (test/edge.test.mjs), runWithEdge (test/edge.test.mjs), showRun (test/music.test.mjs)
  */
 export const showResult = (machine) => {
   if (machine.mode !== "done") return machine.mode === "wait" ? "! wait" : "! budget";

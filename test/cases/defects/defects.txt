@@ -1,0 +1,26 @@
+2147483647 == to integer! 2147483647.4
+(square-root 10.0) == to decimal! [1.0 0.5]
+odd? 4294967297.0
+odd? 999999999999999.0
+"%a%25b" = mold to file! "a%b"
+"A^@ " = dehex "%41%00%20"
+a: tail copy [1 2 3] clear head a 4 = index? a
+a: 1 all [error? try [set [a] reduce [()]] a = 1]
+unset 'a b: 5 set/any [:b] [a] unset? get/any 'b
+[b a c d] = collect-words [b a b c 1 d]
+[b a] = collect-words/deep [[b] a]
+[b: d:] = collect-words/set [a b: c d: b:]
+-1 = for i 1 10 1 [break/return -1 i]
+unset? for i 1 10 1 [break]
+not error? try [for i 2147483647 2147483647 1 [1]]
+parse "" [""]
+parse "12" ["" to end]
+a: 1 use 'a [a: 2] a = 1
+not head? bind next [1] 'rebol
+1 = catch [make object! [throw 1] 2]
+error? try [abs -2147483648]
+error? try [add -2147483648 -2147483648]
+255.255.255 = add 1.0.0 2147483647
+equal? equal? #"a" 97.0 equal? 97.0 #"a"
+-1:00 == remainder -1:00 -3:00
+(checksum/method "12345678" 'md5) = #{25D55AD283AA400AF464C76D713C07AD}

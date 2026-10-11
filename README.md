@@ -34,7 +34,7 @@ Three comparisons run the same code in REBOL 2.7.8 and in WebRebol:
 |---|---|---|
 | Recorded cases of this project | `npm test` | All 1851 cases agree. |
 | Load of downloaded REBOL scripts | `node bin/compare.mjs` | 529 of 538 scripts agree (143726 lines of code). |
-| The public REBOL core test suite | `node bin/conform.mjs` | 4230 of 4586 tests give the same outcome (92.2%). |
+| The public REBOL core test suite | `node bin/conform.mjs` | 4347 of 4586 tests give the same outcome (94.8%). In 131 more tests, REBOL fails and WebRebol passes: these are defects of REBOL, and they are in `REBOL-DEFECTS.md`. 108 tests are different for other reasons. |
 
 The downloaded scripts and the reports are in `corpus/`, which is not in git. REBOL View runs in Docker without a network.
 
@@ -46,7 +46,29 @@ The downloaded scripts and the reports are in `corpus/`, which is not in git. RE
 | Layout facets | `css`, `rate`, `on-time`, `on-key`, `on-down`, `on-move`, `on-up` |
 | Pictures | `download-image`, the `flood` command of `draw`, the effects `paint` and `reveal` |
 | Animation numbers | `find-threshold`, `hash-cell`, `smooth-noise`, `measure-center`, `make-reveal` (12 reveals; `/text` gives the message of a letter reveal) |
+| Music | `abc-to-score`, `render-score`, `make-wav`, `pitch-to-hertz`, `sound-element`, `play-score`, `play-abc`, the objects `music`, `abc-reader` and `tone-maker` |
 | Web Crypto | `crypto-digest`, `crypto-random`, `crypto-uuid`, `crypto-hmac`, `crypto-derive`, `crypto-expand`, `crypto-encrypt`, `crypto-decrypt`, `crypto-key-pair`, `crypto-sign`, `crypto-verify`, `crypto-agree`, `crypto-wrap`, `crypto-unwrap`, `crypto-export`, `crypto-import` |
+
+## Music
+
+All the music code is REBOL text in `src/music/boot.mjs`. REBOL 2.7.8 gives the same scores and the same sample bytes.
+
+```
+score: abc-to-score {X:1^/T:Scale^/L:1/4^/Q:1/4=120^/K:G^/G A B c | [GBd]4 |}
+select score 'notes                        ; records of start, length, pitch and voice
+window: layout [player: box 10x10 button "Play" [play-score player score]]
+view window
+```
+
+- A score is a block: `[title "Scale" tempo 120 ticks 480 notes [0 480 67 1 ...]]`. A quarter note has 480 ticks. A pitch is a MIDI number.
+- `abc-to-score` reads ABC notation: keys and modes, note lengths, rests, chords, ties, tuplets, dotted pairs, repeats with two endings, voices, and inline fields. It ignores decorations, chord names, grace notes and words.
+- In a REBOL string, write the sharp sign of ABC as `^^`, because `^` starts an escape. The text of an `area` face needs no such change.
+- An instrument is a block of generators: `[sine 1 0.6 square 2 0.2 fade 0.3 gap 0.1]`. A generator has a harmonic number and a level. The generators are `sine`, `square`, `saw` and `triangle`. `fade` is the part of the level that stays at the end of a note. `gap` is the silent part of a note.
+- `render-score score instrument` gives one binary of samples for each layer of notes that sound at the same time. `make-wav` makes a WAV file of 8 bits from a binary.
+- `play-score face score` puts one audio element for each layer in the face. `play-score/with face score instrument` uses a different instrument. The object `music` has the sample rate, the level and the default instrument.
+- Limits: the page starts the layers at the same time, but a browser can start them some milliseconds apart. A note has a small number of level steps, not a smooth envelope. A sound starts only after the user clicks the page.
+
+## Web Crypto
 
 ```
 key: crypto-derive "a passphrase" crypto-random 16 600000
@@ -135,12 +157,12 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`readToken`](src/data/datum.mjs#L327) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L183) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L127) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L214) — Makes a machine that is ready to evaluate a block.
+- [`makeMachine`](src/machine/machine.mjs#L215) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L70) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L52) — Does one step of the evaluation.
-- [`evaluateOperand`](src/machine/evaluate.mjs#L52) — Evaluates the value at the cursor, without a look for an operator after it.
-- [`startCall`](src/machine/call.mjs#L208) — Starts the call of a function.
-- [`interpretSource`](src/session/interpret.mjs#L45) — Evaluates a REBOL source text in a new session, without an edge.
-- [`showResult`](src/session/interpret.mjs#L56) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L253) — Makes the REBOL source text of one value.
+- [`evaluateOperand`](src/machine/evaluate.mjs#L65) — Evaluates the value at the cursor, without a look for an operator after it.
+- [`startCall`](src/machine/call.mjs#L233) — Starts the call of a function.
+- [`interpretSource`](src/session/interpret.mjs#L47) — Evaluates a REBOL source text in a new session, without an edge.
+- [`showResult`](src/session/interpret.mjs#L58) — Makes the text that shows the end of an evaluation: the molded result, or the error.
+- [`moldValue`](src/store/mold.mjs#L274) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

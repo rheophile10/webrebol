@@ -1,6 +1,6 @@
 /** @import { Datum, Store, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, UNSET, bindCopy, makeContext, makeKey, readAll, readRest, readValues, readWord, writeWord } from "../store/store.mjs";
+import { NONE, UNSET, bindCopy, isSeries, makeContext, makeKey, readAll, readRest, readValues, readWord, writeWord } from "../store/store.mjs";
 import { giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue } from "../machine/machine.mjs";
 
 /**
@@ -113,7 +113,7 @@ export const groupValues = (store, series, size) => {
 };
 
 /**
- * @usedby groupValues, loopCount, repeatCount, forEach, forRange, forSkip, forAll
+ * @usedby groupValues, loopCount, repeatCount, forEach, listForValues, forSkip, forAll
  */
 const countUp = (size) => Array.from({ length: Math.max(size, 0) });
 
@@ -150,16 +150,35 @@ const forEach = (machine, [word, series, body]) => {
   return startList(bound.machine, { words: bound.words, body: bound.body, values }, NONE);
 };
 
+const ZERO_BUMP_TURNS = 100000;
+
 /**
- * @uses bindLoop, countUp, makeDatum (src/data/datum.mjs), startList, NONE (src/store/store.mjs)
+ * @uses stopBreak, NONE (src/store/store.mjs)
+ * @usedby forRange
+ */
+/**
+ * @uses isSeries (src/store/store.mjs), ZERO_BUMP_TURNS, makeDatum (src/data/datum.mjs), countUp
+ * @usedby forRange
+ */
+const listForValues = (start, end, bump) => {
+  // Two series give the positions from the first to the second. Two numbers give the numbers.
+  const [first, last] = isSeries(start) ? [start.value.index, end.value.index] : [start.value, end.value];
+  const turns = Math.floor((last - first) / bump.value) + 1;
+  // TODO: REBOL does not stop with a bump of zero. Here, the loop stops after a large number of turns.
+  const endless = first <= last ? ZERO_BUMP_TURNS : 0;
+  const size = bump.value === 0 ? endless : turns;
+  const makeValue = (place) => (isSeries(start) ? { ...start, value: { ...start.value, index: first + place * bump.value } } : makeDatum("integer", first + place * bump.value));
+  return { values: countUp(size).map((item, place) => [makeValue(place)]) };
+};
+
+/**
+ * @uses bindLoop, listForValues, startList, NONE (src/store/store.mjs)
  * @usedby LOOP_NATIVES
  */
 const forRange = (machine, [word, start, end, bump, body]) => {
-  // TODO: REBOL does not stop with a bump of zero. Here, a bump of zero gives no turn of the loop.
-  const size = bump.value === 0 ? 0 : Math.floor((end.value - start.value) / bump.value) + 1;
   const bound = bindLoop(machine, [word], body);
-  const values = countUp(size).map((item, place) => [makeDatum("integer", start.value + place * bump.value)]);
-  return startList(bound.machine, { words: bound.words, body: bound.body, values }, NONE);
+  const listed = listForValues(start, end, bump);
+  return startList(bound.machine, { words: bound.words, body: bound.body, values: listed.values }, NONE);
 };
 
 /**

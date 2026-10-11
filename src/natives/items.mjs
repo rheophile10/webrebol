@@ -232,7 +232,7 @@ export const ITEM_NATIVES = {
   ajoin: joinAll,
   "found?": (machine, [value]) => giveValue(machine, makeLogic(isTrue(value))),
   "true?": (machine, [value]) => giveValue(machine, makeLogic(isTrue(value))),
-  "sign?": (machine, [number]) => giveValue(machine, makeDatum("integer", Math.sign(number.value))),
+  "sign?": (machine, [number]) => giveValue(machine, makeDatum("integer", Math.sign(number.type === "money" ? number.value.amount : number.value))),
   also: (machine, [first]) => giveValue(machine, first),
   quote: (machine, [value]) => giveValue(machine, value),
   comment: (machine) => giveValue(machine, UNSET),

@@ -1,7 +1,7 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
 import { readPixel } from "../store/pictures.mjs";
-import { isList, isText, makeKey, NONE, readAll, readContext, readRest, readWord, writeAll, writeContext, writeWord } from "../store/store.mjs";
+import { isList, isSeries, isText, makeKey, NONE, readAll, readContext, readRest, readWord, writeAll, writeContext, writeWord } from "../store/store.mjs";
 import { readField, writeField } from "../store/parts.mjs";
 import { failMachine, giveValue, isFunction, popFrame, pushFrame } from "./machine.mjs";
 import { startCall } from "./call.mjs";
@@ -19,14 +19,23 @@ const resolvePart = (store, part) => (part.type === "get-word" ? readWord(store,
 const isSameWord = (part) => (item) =>
   typeof item.value === "string" && typeof part.value === "string" && makeKey(item.value) === makeKey(part.value);
 
+const WORD_KEYS = ["word", "set-word", "get-word", "lit-word", "refinement"];
+
 /**
- * @uses NONE (src/store/store.mjs), isSameWord
+ * @uses isSeries (src/store/store.mjs), readRest (src/store/store.mjs)
+ * @usedby selectInList
+ */
+const readKeyText = (store, value) => JSON.stringify([value.type, isSeries(value) ? readRest(store, value) : value.value]);
+
+/**
+ * @uses NONE (src/store/store.mjs), WORD_KEYS, isSameWord, readKeyText
  * @usedby selectPart
  */
-const selectInList = (items, part) => {
-  // A number selects by position. A word selects the value after the same word.
+const selectInList = (store, items, part) => {
+  // A number selects by position. A word selects the value after the same word. A different value selects the value after an equal value.
   if (part.type === "integer") return items[part.value - 1] ?? NONE;
-  const place = items.findIndex(isSameWord(part));
+  const isKey = WORD_KEYS.includes(part.type) ? isSameWord(part) : (item) => readKeyText(store, item) === readKeyText(store, part);
+  const place = items.findIndex(isKey);
   return place < 0 ? null : (items[place + 1] ?? NONE);
 };
 
@@ -48,11 +57,13 @@ const selectInText = (text, part) => {
 const makeByte = (byte) => (byte === undefined ? NONE : makeDatum("integer", byte));
 
 /**
- * @uses makeDatum (src/data/datum.mjs), readPixel (src/store/pictures.mjs), NONE (src/store/store.mjs)
+ * @uses readPixel (src/store/pictures.mjs), NONE (src/store/store.mjs), makeDatum (src/data/datum.mjs)
  * @usedby selectPart
  */
 const selectInImage = (store, image, part) => {
   // An image has its size, and a pixel for each position.
+  // A pair is the column and the row of a pixel, counted from zero.
+  if (part.type === "pair") return readPixel(store, image, part.value[0] < image.value.size[0] ? part.value[0] + part.value[1] * image.value.size[0] : -1) ?? NONE;
   if (part.type !== "integer") return String(part.value).toLowerCase() === "size" ? makeDatum("pair", image.value.size) : null;
   return readPixel(store, image, image.value.index + part.value - 1) ?? NONE;
 };
@@ -66,7 +77,7 @@ const selectInImage = (store, image, part) => {
 const selectPart = (store, value, part) => {
   // Give null if the value has no part with this name.
   if (value.type === "object") return readContext(store, value.value.context)[makeKey(String(part.value))] ?? null;
-  if (isList(value)) return selectInList(readRest(store, value), part);
+  if (isList(value)) return selectInList(store, readRest(store, value), part);
   if (isText(value)) return selectInText(readRest(store, value), part);
   if (value.type === "binary") return part.type === "integer" ? makeByte(readRest(store, value)[part.value - 1]) : null;
   if (value.type === "image") return selectInImage(store, value, part);

@@ -96,14 +96,17 @@ const appendValue = (machine, args, options) => {
 };
 
 /**
- * @uses buildContent, readPart, repeatContent, giveValue (src/machine/machine.mjs), insertContent, moveTo
+ * @uses buildContent, readPart, isSeries (src/store/store.mjs), readAll (src/store/store.mjs), repeatContent,
+ *   giveValue (src/machine/machine.mjs), insertContent, moveTo
  * @usedby EDIT_NATIVES
  */
 const insertValue = (machine, args, options) => {
   // With /part, only the first items of the value go into the series. The result is the position after them.
   const full = buildContent(machine, args, options);
-  const limit = options.$part === undefined ? full.length : Math.max(readPart(args[1], options.$part[0]), 0);
-  const content = repeatContent(full.slice(0, limit), options);
+  const limit = options.$part === undefined ? full.length : readPart(args[1], options.$part[0]);
+  // A negative part gives the items before the position of the value.
+  const before = limit < 0 && isSeries(args[1]) ? readAll(machine.store, args[1]).slice(Math.max(args[1].value.index + limit, 0), args[1].value.index) : [];
+  const content = repeatContent(limit < 0 ? before : full.slice(0, limit), options);
   return giveValue(insertContent(machine, args[0], content), moveTo(args[0], args[0].value.index + content.length));
 };
 

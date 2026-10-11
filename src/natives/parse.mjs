@@ -106,8 +106,10 @@ const stepLoop = (rules, term) => (loop) => {
   if (!loop.open || loop.count >= term.max) return { ...loop, open: false };
   const next = matchTerm(rules, loop.state, term.inner);
   if (!next.ok) return { ...loop, state: { ...loop.state, store: next.store, thrown: next.thrown }, open: false };
+  // A loop without a maximum stops when the position does not move. A loop with a count does all of its count.
   const moved = next.pos !== loop.state.pos;
-  return { state: next, count: moved ? loop.count + 1 : Math.max(loop.count + 1, term.min), open: moved };
+  const counted = Number.isFinite(term.max);
+  return { state: next, count: moved || counted ? loop.count + 1 : Math.max(loop.count + 1, term.min), open: moved || counted };
 };
 
 /**
@@ -194,7 +196,8 @@ const matchInto = (rules, state, term) => {
  * @usedby MATCHERS
  */
 const matchMark = (rules, state, term) => {
-  const position = { ...rules.input, value: { ...rules.input.value, index: state.pos } };
+  // The position in a text has the type of the text. The position in a list is always a block, as in REBOL.
+  const position = { ...rules.input, type: rules.text ? rules.input.type : "block", value: { ...rules.input.value, index: state.pos } };
   return { ...state, store: writeWord(state.store, term.word, position) };
 };
 
@@ -309,6 +312,8 @@ const takeInner = (make) => (store, rest) => {
  * @usedby KEYWORDS
  */
 const takeWithWord = (kind) => (store, rest) => {
+  // A position word between the word and the rule gets the position before the rule.
+  if (rest[1]?.type === "set-word") return { term: { kind: "mark", word: rest[1] }, rest: [{ type: "word", value: kind, bind: 0 }, rest[0], ...rest.slice(2)] };
   const inner = takeTerm(store, rest.slice(1));
   return { term: { kind, word: rest[0], inner: inner.term }, rest: inner.rest };
 };

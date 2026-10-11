@@ -1,5 +1,5 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
-import { makeSeries, NONE, readContext, readWord, UNSET, writeContext, bindCopy, makeContext } from "../store/store.mjs";
+import { GLOBAL, makeSeries, NONE, readContext, readWord, UNSET, writeContext, bindCopy, makeContext } from "../store/store.mjs";
 import { advance, atEnd, failMachine, giveValue, makeLogic, makeWord, popFrame, pushFrame, readItem, replaceTop, throwUnused } from "./machine.mjs";
 import { acceptsType } from "./spec.mjs";
 
@@ -134,7 +134,7 @@ const invokeClosure = (machine, frame) => {
 
 /**
  * @uses acceptsType, failArgument, makeOptions, invokeClosure, invokeBody
- * @usedby requestArgument, callFunction, stepInfix
+ * @usedby requestArgument, stepPrefix, callFunction, stepInfix
  */
 const invoke = (machine, frame, checked) => {
   // An infix call does not examine the types of its arguments.
@@ -193,6 +193,30 @@ const stepArguments = (machine, frame) =>
   requestArgument(replaceTop(machine, { ...frame, args: [...frame.args, machine.value] }));
 
 /**
+ * @uses GLOBAL (src/store/store.mjs)
+ * @usedby isMinus
+ */
+const SUBTRACT = { type: "word", value: "subtract", bind: GLOBAL };
+/**
+ * @uses GLOBAL (src/store/store.mjs)
+ * @usedby startCall
+ */
+const NEGATE = { type: "word", value: "negate", bind: GLOBAL };
+
+/**
+ * @uses invoke, popFrame
+ * @usedby startCall
+ */
+const stepPrefix = (machine, frame) =>
+  invoke(popFrame(machine), { names: [], label: "negate", callee: frame.callee, order: frame.callee.value.params, args: [machine.value] }, false);
+
+/**
+ * @uses readWord (src/store/store.mjs), SUBTRACT
+ * @usedby startCall
+ */
+const isMinus = (store, callee) => callee.type === "op" && callee.value.native === readWord(store, SUBTRACT).value?.native;
+
+/**
  * @usedby startCall
  */
 /**
@@ -202,10 +226,13 @@ const stepArguments = (machine, frame) =>
  * @param {{ names: string[], label: string }} call - The keys of the refinements of the call, and the word that named the function.
  * @returns {Machine}
  * @standard refinements - The arguments of the refinements come after the usual arguments, in the sequence of the call.
- * @uses findParams, failMachine, makeWord, requestArgument, pushFrame, stepArguments
+ * @uses isMinus, pushFrame, stepPrefix, readWord (src/store/store.mjs), NEGATE, findParams, failMachine, makeWord,
+ *   requestArgument, stepArguments
  * @usedby evaluateWord, evaluateOperand, evaluatePath, doValue (src/natives/control.mjs)
  */
 export const startCall = (machine, callee, call) => {
+  // The minus operator before a value, without a value at its left side, is the function negate. It takes only the next value.
+  if (isMinus(machine.store, callee)) return { ...pushFrame(machine, { step: stepPrefix, callee: readWord(machine.store, NEGATE) }), mode: "operand" };
   // A refinement that the function does not have is an error.
   const unknown = call.names.find((name) => findParams(callee, name) === undefined);
   if (unknown !== undefined) {

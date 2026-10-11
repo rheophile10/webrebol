@@ -178,7 +178,7 @@ export const changeScalar = (value, change) => CHANGERS[value.type]?.(value, cha
  * Gets the numbers that a value holds.
  * @param {Datum} value
  * @returns {number[]}
- * @usedby isZero, testNumber
+ * @usedby isZero, testNumber, testParity
  */
 export const readNumbers = (value) => {
   if (Array.isArray(value.value)) return value.value;

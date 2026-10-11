@@ -10,8 +10,8 @@ const NANOSECONDS = 1e9;
 const WORD = "[A-Za-z?!.*&|=_~+\\-^`](?<![+-](?=\\d))[A-Za-z0-9?!.*&|=_~+\\-^`']*";
 const BINARY_BASES = { 2: 8, 16: 2 };
 const BASE_64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
-const SIMPLE_CONSTRUCTS = { true: ["logic", true], false: ["logic", false], none: ["none", null], "unset!": ["unset", null] };
-const SERIES_CONSTRUCTS = ["string", "file", "email", "url", "tag", "issue", "binary", "block", "paren", "path", "set-path", "lit-path"];
+const SIMPLE_CONSTRUCTS = { true: ["logic", true], false: ["logic", false], none: ["none", null], "none!": ["none", null], "unset!": ["unset", null] };
+const SERIES_CONSTRUCTS = ["string", "file", "email", "url", "tag", "issue", "binary", "block", "paren", "path", "set-path", "lit-path", "hash", "list"];
 
 /**
  * Makes a datum from a type and its data.

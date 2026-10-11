@@ -147,3 +147,8 @@ test("interpretWithEdge reference: an algorithm name that is not known gives an 
 test("performCrypto refusal: bytes that are not a wrapped key give null", async () => {
   assert.equal(await performCrypto({ work: "unwrap", data: [1, 2, 3], key: Array.from({ length: 16 }, () => 7) }), null);
 });
+
+test("performRequest kinds: the wait request gives null after its time", async () => {
+  assert.equal(await performRequest({ kind: "wait", milliseconds: 1 }), null);
+  assert.equal(await runWithEdge("wait 0.01"), "none");
+});

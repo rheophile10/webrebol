@@ -122,3 +122,13 @@ test("interpretSource reference: the cases of the properties of random agree wit
 test("interpretSource reference: the layout cases agree with REBOL View 2.7.8", () => {
   assert.deepEqual(findProblems("view/layout.txt"), []);
 });
+
+test("interpretSource reference: the cases from the public REBOL test suite agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/suite.txt"), []);
+});
+
+test("interpretSource defects: each case in which REBOL 2.7.8 has a defect gives true in WebRebol, and not in REBOL", () => {
+  const cases = readGolden("defects/defects.txt");
+  assert.deepEqual(cases.filter((entry) => entry.expected === "true").map((entry) => entry.source), []);
+  assert.deepEqual(cases.filter((entry) => !showRun(entry.source).startsWith("true |")).map((entry) => `${entry.source} gives ${showRun(entry.source)}`), []);
+});

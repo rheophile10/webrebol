@@ -13,7 +13,7 @@ import { readEntry, writeEntry } from "./table.mjs";
  * @returns {Pixel[][]}
  * @standard shared - A row that did not change is the same array as before the change.
  * @uses readEntry
- * @usedby readPixel, writePixel, drawOnImage (src/view/raster.mjs)
+ * @usedby complementImage (src/natives/numbers.mjs), readPixel, writePixel, drawOnImage (src/view/raster.mjs)
  */
 export const readRows = (store, image) => readEntry(store.series, image.value.id);
 
@@ -36,7 +36,7 @@ export const writeRows = (store, image, rows) => ({ ...store, series: writeEntry
  * @returns {Datum | null}
  * @standard outside - A position that is not in the image gives null.
  * @uses readRows, makeDatum (src/data/datum.mjs), unpackPixel (src/data/pixels.mjs)
- * @usedby selectInImage (src/machine/path.mjs), pickItem (src/natives/series.mjs)
+ * @usedby selectInImage (src/machine/path.mjs), pickItem (src/natives/series.mjs), pickIndex (src/natives/series.mjs)
  */
 export const readPixel = (store, image, place) => {
   const rows = readRows(store, image);

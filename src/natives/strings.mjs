@@ -10,6 +10,18 @@ const TRIMMERS = {
 };
 
 /**
+ * @usedby trimText
+ */
+const trimLines = (text) => {
+  // Each line loses the spaces at its two ends. The empty lines at the head and at the tail go, but one line end stays at the tail.
+  const lines = text.split("\n").map((line) => line.replace(/^[ \t]+|[ \t]+$/g, ""));
+  const first = lines.findIndex((line) => line !== "");
+  if (first < 0) return "";
+  const last = lines.length - [...lines].reverse().findIndex((line) => line !== "");
+  return lines.slice(first, last).join("\n") + (last < lines.length ? "\n" : "");
+};
+
+/**
  * @uses readAll (src/store/store.mjs), giveValue (src/machine/machine.mjs), writeAll (src/store/store.mjs)
  * @usedby trimText, changeCase
  */
@@ -20,13 +32,13 @@ const writeRest = (machine, series, text) => {
 };
 
 /**
- * @uses TRIMMERS, writeRest, readRest (src/store/store.mjs)
+ * @uses TRIMMERS, trimLines, writeRest, readRest (src/store/store.mjs)
  * @usedby STRING_NATIVES
  */
 const trimText = (machine, [series], options) => {
-  // Without a refinement, the spaces at the head and at the tail are removed.
+  // Without a refinement, the spaces at the two ends of each line are removed.
   const name = Object.keys(TRIMMERS).find((key) => options[key] !== undefined);
-  const trim = name === undefined ? (text) => text.trim() : TRIMMERS[name];
+  const trim = name === undefined ? trimLines : TRIMMERS[name];
   return writeRest(machine, series, trim(readRest(machine.store, series)));
 };
 

@@ -52,18 +52,24 @@ const switchValue = (machine, [value, cases, fallback]) => {
 const testNext = (machine, frame) => (atEnd(machine) ? finishScan(machine, frame, NONE) : { ...machine, mode: "next" });
 
 /**
- * @uses testAfter, replaceTop (src/machine/machine.mjs), atEnd (src/machine/machine.mjs), finishScan,
- *   NONE (src/store/store.mjs), readItem (src/machine/machine.mjs), isTrue (src/machine/machine.mjs), testNext,
- *   advance (src/machine/machine.mjs), startBlock (src/machine/machine.mjs)
+ * @uses makeLogic (src/machine/machine.mjs), testAfter, replaceTop (src/machine/machine.mjs),
+ *   atEnd (src/machine/machine.mjs), finishScan, NONE (src/store/store.mjs), readItem (src/machine/machine.mjs),
+ *   isTrue (src/machine/machine.mjs), testNext, advance (src/machine/machine.mjs),
+ *   startBlock (src/machine/machine.mjs)
  * @usedby chooseCase
  */
 const stepCase = (machine, frame) => {
   // The value is the result of a block, or it is a condition with its block at the cursor.
   // With /all, the conditions after a true condition are also examined. The result is the result of the last block.
-  if (frame.running && frame.all) return testAfter(replaceTop(machine, { ...frame, running: false, last: machine.value }));
-  if (frame.running || atEnd(machine)) return finishScan(machine, frame, frame.running ? machine.value : (frame.last ?? NONE));
+  // A block without a result gives true, as in REBOL.
+  const result = machine.value.type === "unset" ? makeLogic(true) : machine.value;
+  if (frame.running && frame.all) return testAfter(replaceTop(machine, { ...frame, running: false, last: result }));
+  if (frame.running || atEnd(machine)) return finishScan(machine, frame, frame.running ? result : (frame.last ?? NONE));
   const block = readItem(machine);
   if (!isTrue(machine.value)) return testNext(advance(machine), frame);
+  // A value that is not a block is the result.
+  if (block.type !== "block" && frame.all) return testAfter(replaceTop(advance(machine), { ...frame, last: block }));
+  if (block.type !== "block") return finishScan(advance(machine), frame, block);
   return startBlock(replaceTop(advance(machine), { ...frame, running: true }), block);
 };
 
@@ -86,12 +92,29 @@ const chooseCase = (machine, [block], options) => {
 };
 
 /**
- * @uses startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs),
- *   popFrame (src/machine/machine.mjs), stopThrown (src/machine/machine.mjs)
+ * @uses readRest (src/store/store.mjs), stopThrown (src/machine/machine.mjs), popFrame (src/machine/machine.mjs),
+ *   startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs)
  * @usedby FLOW_NATIVES
  */
-const catchThrow = (machine, [block]) =>
-  startBlock(pushFrame(machine, { step: popFrame, unwind: stopThrown("throw"), cursor: machine.cursor }), block);
+const catchThrow = (machine, [block], options) => {
+  // Without /name, each thrown value stops here. With /name, only a value with one of the names stops here.
+  const given = options.$name?.[0];
+  const words = given?.type === "block" ? readRest(machine.store, given) : [given];
+  const names = given === undefined ? null : words.map((word) => String(word.value).toLowerCase());
+  const unwind = (current, frame) =>
+    names === null || names.includes(current.thrown.name) ? stopThrown("throw")(current, frame) : popFrame(current);
+  return startBlock(pushFrame(machine, { step: popFrame, unwind, cursor: machine.cursor }), block);
+};
+
+/**
+ * @uses throwValue (src/machine/machine.mjs)
+ * @usedby FLOW_NATIVES
+ */
+const throwNamed = (machine, [value], options) => {
+  const thrown = throwValue(machine, "throw", value);
+  const name = options.$name === undefined ? undefined : String(options.$name[0].value).toLowerCase();
+  return { ...thrown, thrown: { ...thrown.thrown, name } };
+};
 
 /**
  * @uses readRest (src/store/store.mjs)
@@ -151,7 +174,7 @@ const composeValue = (machine, [value], options) => {
 
 /**
  * The natives that select what the machine evaluates. Each entry has the name of REBOL and the function.
- * @uses scan, switchValue, chooseCase, catchThrow, throwValue (src/machine/machine.mjs), composeValue
+ * @uses scan, switchValue, chooseCase, catchThrow, throwNamed, composeValue
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const FLOW_NATIVES = {
@@ -160,6 +183,6 @@ export const FLOW_NATIVES = {
   switch: switchValue,
   case: chooseCase,
   catch: catchThrow,
-  throw: (machine, [value]) => throwValue(machine, "throw", value),
+  throw: throwNamed,
   compose: composeValue,
 };

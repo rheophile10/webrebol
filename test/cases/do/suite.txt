@@ -1,0 +1,81 @@
+to integer! 2147483648.0
+to integer! -5.9
+to decimal! [1.5 2]
+to decimal! [1]
+round/half-ceiling/to 0.5 -1.0
+round/floor/to -1.5 -1
+round 2147483648.0
+type? round/to 1.25 $0.1
+$1.2346 == round/even/to $1.23456789 $0.0001
+reduce [sign? $0 sign? -$2 sign? $0.5]
+mod $7 $2
+a: make block! 0 b: at [1 2 3 4 5 6 7 8 9] 5 insert/part a b -1 a
+a: "" insert/part a at "abcdef" 4 -2 a
+reduce [form %a form #0 form a@b form <t> form %"a b"]
+rejoin ["x" %a #i <t>]
+append %x %"a b"
+join %a %b
+reform [%a #b]
+trim " foo ^/ bar ^/"
+trim "^/ a ^/^/b  ^/"
+trim "  a  b  "
+trim "  ^/  "
+deline/lines "a^/b^M^/c"
+deline/lines ""
+enline ["a" "b"]
+sort/skip [3 1 2 9 1 5 1 2] 2
+sort/skip/reverse [3 1 2 9 1 5] 2
+sort/skip/compare [1 b 1 a 0 c] 2 2
+sort/skip/compare [3 1 2 9 1 5] 2 [2 1]
+sort/skip "cbafed" 3
+sort/skip [3 1 2] 2
+reverse/part 1.2.3.4.5 3
+reverse 1x2
+a: charset "ab" remove/part a "a"
+reduce [lesser? 1.0 1.0000000000000002 lesser? 1.0 1.000000000000002 equal? 1.0 1.0000000000000018 equal? 1.0 1.000000000000002]
+a: 0.1 + 0.1 + 0.1 b: 0.3 reduce [lesser? a b equal? a b lesser-or-equal? a b]
+reduce [0.0 < 4.94065645841247E-324 0.0 = 4.94065645841247E-324 0.0 = 5e-323]
+catch [catch/name [throw 1] 'a 2]
+catch/name [catch/name [throw/name 1 'b] 'a 2] 'b
+catch/name [throw/name 1 'a] [b a]
+use [a] [value? 'a]
+case [true []]
+case [false [1] true "text"]
+case/all [true [1] true []]
+reduce [to word! first [a:] to word! first [:a] to word! first [/a] to set-word! first ['a]]
+a: first ['a] reduce [type? a type? :a]
+a: first ['b/c] reduce [type? a type? :a]
+2-Jul-2009/22:20 = 2-Jul-2009/20:20-2:00
+strict-equal? 2-Jul-2009/22:20 2-Jul-2009/20:20-2:00
+a: 1 f: func [] [a] o: make object! [a: 2 g: :f] p: make o [a: 3] reduce [o/g p/g]
+o: make object! [a: 1 b: [a]] p: make o [a: 2] reduce p/b
+o: make object! [a: 1 f: func [] [a]] p: make o [a: 2] reduce [o/f p/f]
+reduce [- 2 - 2 + 5 1 - - 1]
+do reduce [get '- -1]
+unset 'a e: disarm try [:a] e/id
+e: disarm try [else] e/id
+c: 3 set [:b d] [c c] reduce [b d]
+unset 'a error? try [set [:b] [a]]
+x: construct [a: 1 b: 2] set/any x reduce [3 ()] reduce [x/a unset? get/any in x 'b]
+apply/only func [/a] [a] [false]
+apply/only :type? [:print]
+x: 1 apply/only func ['x] [:x] [:x]
+apply/only func [a /r b] [reduce [a r b]] [x y z]
+collect-words []
+out: copy "" for i s: "abc" back tail s 1 [append out i] out
+out: copy [] for i b: [1 2 3] back tail b 1 [append/only out i] out
+parse [x] [set val pos: word!] reduce [val pos]
+parse "foo" [copy val pos: skip] reduce [val pos]
+a: first ['a/b] parse :a [b:] type? :b
+i: 0 parse "" [3 [["a" |] (i: i + 1)]] i
+blk: reduce [:abs 2] blk/:abs
+reduce [none = #[none!] type? #[hash![1]] type? #[list! [1]]]
+system/version/4
+type? system/build
+system/options/binary-base: 2 mold #{00}
+system/options/binary-base: 64 mold #{000000}
+mold/flat make object! [a: 1 c: make object! [d: 1]]
+mold/only [1 [2] "a"]
+type?/word 1
+complement make image! [1x1 #{000000} #{00}]
+i: make image! [2x2 #{010203040506070809101112}] reduce [pick i 1x0 pick i 0x1 pick i 2x2 i/1x1]

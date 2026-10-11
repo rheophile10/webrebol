@@ -1,6 +1,6 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { escapeBraces, escapeControls, escapeInLines } from "../data/escape.mjs";
-import { isList, readContext, readRest } from "./store.mjs";
+import { isList, readContext, readRest, readWord } from "./store.mjs";
 import { MONTHS, readDays } from "../data/dates.mjs";
 import { unpackPixel } from "../data/pixels.mjs";
 
@@ -135,6 +135,22 @@ const moldDate = (date) => {
 };
 
 /**
+ * @uses readWord, readContext
+ * @usedby MOLDERS
+ */
+const readBase = (store) => {
+  // The word system/options/binary-base of the session selects the base of a binary: 2, 16 or 64.
+  const system = readWord(store, { type: "word", value: "system", bind: 0 });
+  const options = system.type === "object" ? readContext(store, system.value.context).$options : undefined;
+  return options?.type === "object" ? readContext(store, options.value.context)["$binary-base"]?.value : undefined;
+};
+
+const BASE_MOLDERS = {
+  2: (bytes) => `2#{${bytes.map((byte) => byte.toString(2).padStart(8, "0")).join("")}}`,
+  64: (bytes) => `64#{${btoa(bytes.map((byte) => String.fromCharCode(byte)).join(""))}}`,
+};
+
+/**
  * @uses BINARY_LINE, moldByte
  * @usedby MOLDERS
  */
@@ -157,7 +173,10 @@ const moldImage = (size, pixels) => {
   const lines = Array.from({ length: Math.ceil(bytes.length / BINARY_LINE) }, (unused, place) =>
     bytes.slice(place * BINARY_LINE, (place + 1) * BINARY_LINE).map(moldByte).join(""),
   );
-  return `make image! [${size.join("x")} #{${bytes.length === 0 ? "" : `\n${lines.join("\n")}\n`}}]`;
+  // The alpha bytes show only when a pixel is not opaque.
+  const alphas = pixels.map((pixel) => unpackPixel(pixel)[3]);
+  const extra = alphas.some((alpha) => alpha !== 0) ? ` #{\n${alphas.map(moldByte).join("")}\n}` : "";
+  return `make image! [${size.join("x")} #{${bytes.length === 0 ? "" : `\n${lines.join("\n")}\n`}}${extra}]`;
 };
 
 /**
@@ -187,14 +206,16 @@ const moldRaw = (store, text) => readRest(store, text);
 const moldObject = (store, object, depth) => {
   // Each word is on its own line. An inner object has a larger indent.
   const values = readContext(store, object.value.context);
+  // A store with the flat mark gives the text of mold/flat: the lines have no indent.
+  const indent = store.flat === true ? "" : INDENT;
   const moldField = (name) =>
-    `${INDENT.repeat(depth + 1)}${name}: ${moldValue(store, values[`$${name.toLowerCase()}`], depth + 1)}`;
-  return ["make object! [", ...object.value.words.map(moldField), `${INDENT.repeat(depth)}]`].join("\n");
+    `${indent.repeat(depth + 1)}${name}: ${moldValue(store, values[`$${name.toLowerCase()}`], depth + 1)}`;
+  return ["make object! [", ...object.value.words.map(moldField), `${indent.repeat(depth)}]`].join("\n");
 };
 
 /**
  * @uses moldDecimal, moldString, readRest, moldChar, moldName, moldRest, moldPath, encodeHex, moldRaw, moldTime,
- *   moldBinary, moldObject, moldImage, moldMoney, moldDate, moldValue
+ *   BASE_MOLDERS, readBase, moldBinary, moldObject, moldImage, moldMoney, moldDate, moldValue
  * @usedby moldValue
  */
 const MOLDERS = {
@@ -220,7 +241,7 @@ const MOLDERS = {
   tuple: (store, tuple) => tuple.value.join("."),
   pair: (store, pair) => pair.value.join("x"),
   time: (store, time) => moldTime(time.value),
-  binary: (store, binary) => moldBinary(readRest(store, binary)),
+  binary: (store, binary) => (BASE_MOLDERS[readBase(store)] ?? moldBinary)(readRest(store, binary)),
   logic: (store, logic) => String(logic.value),
   none: () => "none",
   unset: () => "unset",
@@ -262,7 +283,8 @@ export const moldValue = (store, value, depth = 0) =>
  * @returns {string}
  * @standard reference - The text is the text that `mold/only` of REBOL 2.7.8 gives.
  * @uses readRest, moldValue
- * @usedby saveValue (src/natives/files.mjs), MOLDERS, moldSource (test/load.test.mjs)
+ * @usedby saveValue (src/natives/files.mjs), moldText (src/natives/text.mjs), MOLDERS,
+ *   moldSource (test/load.test.mjs)
  */
 export const moldRest = (store, block, depth = 0) =>
   readRest(store, block)
@@ -275,6 +297,8 @@ export const moldRest = (store, block, depth = 0) =>
  */
 const FORMERS = {
   string: moldRaw,
+  file: moldRaw,
+  issue: moldRaw,
   char: (store, char) => String.fromCharCode(char.value),
 };
 
@@ -285,7 +309,7 @@ const FORMERS = {
  * @returns {string}
  * @standard reference - The text is the text that `form` of REBOL 2.7.8 gives.
  * @uses isList, readRest, FORMERS, moldValue
- * @usedby 19 declarations in convert, encode, files, items, parse, random, report, search, series, text, elements
+ * @usedby 21 declarations in convert, encode, files, items, parse, random, report, search, series, text, elements
  */
 export const formValue = (store, value) => {
   // The items of a block are formed and joined, without brackets.
