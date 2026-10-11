@@ -7,16 +7,23 @@ import { parseSpec } from "../machine/spec.mjs";
 import { MATH_NATIVES } from "./math.mjs";
 import { COMPARE_NATIVES, TYPES } from "./compare.mjs";
 import { CONTROL_NATIVES } from "./control.mjs";
-import { SERIES_NATIVES } from "./series.mjs";
+import { SERIES_NATIVES, guardSeries } from "./series.mjs";
 import { TEXT_NATIVES } from "./text.mjs";
 import { LOOP_NATIVES } from "./loops.mjs";
 import { FLOW_NATIVES } from "./flow.mjs";
 import { OBJECT_NATIVES } from "./objects.mjs";
 import { CONVERT_NATIVES } from "./convert.mjs";
+import { SPECS } from "./specs.mjs";
+import { EDIT_NATIVES } from "./edit.mjs";
+import { SEARCH_NATIVES } from "./search.mjs";
+import { STRING_NATIVES } from "./strings.mjs";
+import { NUMBER_NATIVES } from "./numbers.mjs";
+import { FAULT_NATIVES } from "./faults.mjs";
 
 /**
  * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
- *   TEXT_NATIVES, CONVERT_NATIVES
+ *   TEXT_NATIVES, CONVERT_NATIVES, guardSeries, EDIT_NATIVES, SEARCH_NATIVES, STRING_NATIVES, NUMBER_NATIVES,
+ *   FAULT_NATIVES
  * @usedby makeFunction, GLOBALS
  */
 const NATIVES = {
@@ -29,6 +36,9 @@ const NATIVES = {
   ...SERIES_NATIVES,
   ...TEXT_NATIVES,
   ...CONVERT_NATIVES,
+  ...guardSeries({ ...EDIT_NATIVES, ...SEARCH_NATIVES, ...STRING_NATIVES }),
+  ...NUMBER_NATIVES,
+  ...FAULT_NATIVES,
 };
 
 const OPERATORS = {
@@ -43,6 +53,14 @@ const OPERATORS = {
   ">": "greater?",
   "<=": "lesser-or-equal?",
   ">=": "greater-or-equal?",
+  "==": "strict-equal?",
+  "!==": "strict-not-equal?",
+  "!=": "not-equal?",
+  "=?": "same?",
+  "**": "power",
+  and: "and~",
+  "or": "or~",
+  xor: "xor~",
 };
 
 /**
@@ -57,14 +75,14 @@ const CONSTANTS = { true: makeLogic(true), false: makeLogic(false), none: NONE }
 const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.value.map((name) => name.value) } : item);
 
 /**
- * @uses NATIVES, makeDatum (src/data/datum.mjs), parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs),
- *   readSpecItem
+ * @uses parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), SPECS, readSpecItem,
+ *   makeDatum (src/data/datum.mjs), NATIVES
  * @usedby GLOBALS
  */
-const makeFunction = (type, name) => {
-  // The specification is REBOL text. The loader reads it.
-  const [spec, native] = NATIVES[name];
-  return makeDatum(type, { ...parseSpec(loadSource(spec).value.map(readSpecItem)), native });
+const makeFunction = (type, name, sign) => {
+  // The parameters come from REBOL, as text. The loader reads them.
+  const spec = parseSpec(loadSource(SPECS[sign][1]).value.map(readSpecItem));
+  return makeDatum(type, { ...spec, native: NATIVES[name] });
 };
 
 /**
@@ -73,8 +91,8 @@ const makeFunction = (type, name) => {
  * @usedby START_STORE
  */
 const GLOBALS = Object.fromEntries([
-  ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction("native", name)]),
-  ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name)]),
+  ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction("native", name, name)]),
+  ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name, sign)]),
   ...Object.entries(CONSTANTS).map(([name, value]) => [makeKey(name), value]),
   ...TYPES.map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
 ]);

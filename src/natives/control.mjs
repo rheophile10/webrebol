@@ -5,8 +5,6 @@ import { NONE, UNSET, allocate, bindCopy, isList, makeContext, makeSeries, readR
 import { atEnd, failMachine, giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue } from "../machine/machine.mjs";
 import { parseSpec } from "../machine/spec.mjs";
 
-const BODY = "body [block!]";
-
 /**
  * @uses startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs),
  *   popFrame (src/machine/machine.mjs), stopThrown (src/machine/machine.mjs)
@@ -76,10 +74,33 @@ const makeDoes = (machine, [body]) => {
  *   allocate (src/store/store.mjs), startBlock (src/machine/machine.mjs)
  * @usedby doValue
  */
+/**
+ * Starts the error that the loader found. The texts of the error go into the store.
+ * @param {Machine} machine
+ * @param {Datum} fault - The error datum of the loader.
+ * @returns {Machine}
+ * @standard fields - The texts of the loader are the fields arg1 and arg2 of the error.
+ * @uses makeSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs)
+ * @usedby doText, toBlock, interpretSource
+ */
+export const failSyntax = (machine, fault) => {
+  const addText = (made, text) => {
+    const next = makeSeries(made.store, "string", text);
+    return { store: next.store, values: [...made.values, next.value] };
+  };
+  const made = (fault.args ?? []).reduce(addText, { store: machine.store, values: [] });
+  return failMachine({ ...machine, store: made.store }, fault.value, made.values);
+};
+
+/**
+ * @uses loadSource (src/data/load.mjs), readRest (src/store/store.mjs), failSyntax, allocate (src/store/store.mjs),
+ *   startBlock (src/machine/machine.mjs)
+ * @usedby doValue
+ */
 const doText = (machine, text) => {
   // Load the text. A text that is not valid REBOL gives the error of the loader.
   const loaded = loadSource(readRest(machine.store, text));
-  if (loaded.type === "error") return failMachine(machine, loaded.value);
+  if (loaded.type === "error") return failSyntax(machine, loaded);
   const made = allocate(machine.store, loaded);
   return startBlock({ ...machine, store: made.store }, made.value);
 };
@@ -151,26 +172,23 @@ const chooseBlock = (wanted) => (machine, [condition, block]) =>
   isTrue(condition) === wanted ? startBlock(machine, block) : giveValue(machine, NONE);
 
 /**
- * The natives for control of the evaluation. Each entry has the specification and the function.
+ * The natives for control of the evaluation. Each entry has the name of REBOL and the function.
  * @uses chooseBlock, startBlock (src/machine/machine.mjs), isTrue (src/machine/machine.mjs),
- *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), BODY, makeFunction, makeDoes, makeHas,
+ *   throwValue (src/machine/machine.mjs), UNSET (src/store/store.mjs), makeFunction, makeDoes, makeHas,
  *   makeWithLocals, doValue, reduceValue, tryBlock
  * @usedby NATIVES
  */
 export const CONTROL_NATIVES = {
-  "if": ["condition then-block [block!]", chooseBlock(true)],
-  unless: ["condition block [block!]", chooseBlock(false)],
-  either: [
-    "condition true-block [block!] false-block [block!]",
-    (machine, [condition, yes, other]) => startBlock(machine, isTrue(condition) ? yes : other),
-  ],
-  return: ["value [any-type!]", (machine, [value]) => throwValue(machine, "return", value)],
-  exit: ["", (machine) => throwValue(machine, "return", UNSET)],
-  func: [`spec [block!] ${BODY}`, makeFunction],
-  does: [BODY, makeDoes],
-  has: [`locals [block!] ${BODY}`, makeHas],
-  function: [`spec [block!] vars [block!] ${BODY}`, makeWithLocals],
-  "do": ["value", doValue],
-  reduce: ["value", reduceValue],
-  try: ["block [block!]", tryBlock],
+  "if": chooseBlock(true),
+  unless: chooseBlock(false),
+  either: (machine, [condition, yes, other]) => startBlock(machine, isTrue(condition) ? yes : other),
+  return: (machine, [value]) => throwValue(machine, "return", value),
+  exit: (machine) => throwValue(machine, "return", UNSET),
+  func: makeFunction,
+  does: makeDoes,
+  has: makeHas,
+  function: makeWithLocals,
+  "do": doValue,
+  reduce: reduceValue,
+  try: tryBlock,
 };

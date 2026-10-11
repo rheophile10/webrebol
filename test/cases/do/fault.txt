@@ -1,0 +1,25 @@
+e: disarm try [1 / 0] e/type
+e: disarm try [1 / 0] e/id
+e: disarm try [1 / 0] e/code
+e: disarm try [zzz] e/code
+e: disarm try [zzz] e/arg1
+e: disarm try [zzz] e/where
+e: disarm try [add 1 "a"] e/code
+e: disarm try [first []] e/code
+e: disarm try [do "[1"] e/code
+make error! "boom"
+e: disarm try [make error! "boom"] reduce [e/type e/id e/arg1 e/code]
+e: disarm try [make error! [script no-value abc]] reduce [e/type e/id e/arg1]
+e: try [1 / 0] type? e
+error? make error! "x"
+f: func [] [make error! "inner"] f
+e: try [make error! "x"] e2: disarm e e2/arg1
+attempt [1 / 0]
+attempt [5]
+e: disarm try [first []] e/id
+e: disarm try [1 + "a"] reduce [e/arg1 e/arg2]
+o: make object! [a: 1 b: 2] first o
+o: make object! [a: 1 b: 2] next second o
+error? try [make error! "x"]
+attempt [make error! "x"]
+e: disarm try [make error! [script no-value abc]] e/code

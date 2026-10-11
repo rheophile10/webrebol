@@ -1,0 +1,36 @@
+copy/part [1 2 3 4] 2
+copy/part "hello" 3
+copy/part [1 2 3] 10
+copy/part next [1 2 3 4] 2
+copy/part [1 2 3 4] -1
+copy/part tail [1 2 3] -2
+a: [1 2 3 4] copy/part a next next a
+copy/part [1 2 3] 0
+a: [1 [2]] b: copy a append b/2 3 a
+a: [1 [2]] b: copy/deep a append b/2 3 a
+copy/deep [1 [2 [3]] "a"]
+a: ["x"] b: copy/deep a append b/1 "y" a
+insert/dup [1] 0 3
+head insert/dup [1] 0 3
+head insert/dup "a" "xy" 2
+head insert/part [9] [1 2 3] 2
+head insert/dup [1] 0 0
+append/dup [1] 0 2
+append/part [1] [2 3 4] 2
+head change/part [1 2 3 4] [9] 2
+head change/dup [1 2 3 4] 9 2
+head change/only [1 2 3] [8 9]
+head change/part "abcdef" "X" 3
+remove/part [1 2 3 4] 2
+head remove/part next [1 2 3 4] 2
+a: [1 2 3 4] remove/part a next next a a
+remove/part "hello" 10
+copy/part "hello" -2
+copy/deep/part [1 [2] 3] 2
+head insert/only/dup [1] [0] 2
+head change/part [1 2 3] [7 8 9] 1
+reverse []
+head reverse/part "abcdef" 3
+copy 5
+append 5 1
+find 5 1

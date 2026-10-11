@@ -3,6 +3,7 @@ import { makeDatum } from "../data/datum.mjs";
 import { GLOBAL, allocate, isList, isText, makeSeries, readRest } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
 import { failMachine, giveValue } from "../machine/machine.mjs";
+import { failSyntax } from "./control.mjs";
 
 const NUMBERS = ["integer", "decimal"];
 
@@ -43,12 +44,12 @@ const readNumber = (store, value) => {
  */
 const toNumber = (type, change) => (machine, [value]) => {
   const number = readNumber(machine.store, value);
-  return number === null ? failMachine(machine, "script invalid-arg") : giveValue(machine, makeDatum(type, change(number)));
+  return number === null ? failMachine(machine, "script invalid-arg", [value]) : giveValue(machine, makeDatum(type, change(number)));
 };
 
 /**
  * @uses isList (src/store/store.mjs), giveSeries, readRest (src/store/store.mjs), loadSource (src/data/load.mjs),
- *   failMachine (src/machine/machine.mjs), allocate (src/store/store.mjs), giveValue (src/machine/machine.mjs)
+ *   failSyntax, allocate (src/store/store.mjs), giveValue (src/machine/machine.mjs)
  * @usedby CONVERT_NATIVES
  */
 const toBlock = (machine, [value]) => {
@@ -56,7 +57,7 @@ const toBlock = (machine, [value]) => {
   if (isList(value)) return giveSeries(machine, "block", readRest(machine.store, value));
   if (value.type !== "string") return giveSeries(machine, "block", [value]);
   const loaded = loadSource(readRest(machine.store, value));
-  if (loaded.type === "error") return failMachine(machine, loaded.value);
+  if (loaded.type === "error") return failSyntax(machine, loaded);
   const made = allocate(machine.store, loaded);
   return giveValue({ ...machine, store: made.store }, made.value);
 };
@@ -72,14 +73,14 @@ const toWord = (machine, [value]) => {
 };
 
 /**
- * The natives that make a value of a different type. Each entry has the specification and the function.
+ * The natives that make a value of a different type. Each entry has the name of REBOL and the function.
  * @uses toString, toNumber, toBlock, toWord
  * @usedby NATIVES, MAKERS, makeValue
  */
 export const CONVERT_NATIVES = {
-  "to-string": ["value", toString],
-  "to-integer": ["value", toNumber("integer", Math.trunc)],
-  "to-decimal": ["value", toNumber("decimal", (number) => number)],
-  "to-block": ["value", toBlock],
-  "to-word": ["value", toWord],
+  "to-string": toString,
+  "to-integer": toNumber("integer", Math.trunc),
+  "to-decimal": toNumber("decimal", (number) => number),
+  "to-block": toBlock,
+  "to-word": toWord,
 };

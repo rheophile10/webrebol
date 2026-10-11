@@ -10,7 +10,7 @@ const FUNCTION_TYPES = ["native", "op", "function"];
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 9 declarations in call, compare, flow, globals, objects, series
+ * @usedby 13 declarations in call, compare, flow, globals, numbers, objects, search, series
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -38,7 +38,7 @@ export const isFunction = (value) => FUNCTION_TYPES.includes(value.type);
  * @param {Machine} machine
  * @param {Frame} frame
  * @returns {Machine}
- * @usedby 18 declarations in call, evaluate, machine, path, run, control, flow, loops, objects
+ * @usedby 19 declarations in call, evaluate, machine, path, run, control, faults, flow, loops, objects
  */
 export const pushFrame = (machine, frame) => ({ ...machine, frames: { top: frame, below: machine.frames } });
 
@@ -46,7 +46,7 @@ export const pushFrame = (machine, frame) => ({ ...machine, frames: { top: frame
  * Removes the top frame of the stack.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby 19 declarations in call, evaluate, machine, path, run, control, flow, loops, objects
+ * @usedby 21 declarations in call, evaluate, machine, path, run, control, faults, flow, loops, objects
  */
 export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below });
 
@@ -65,7 +65,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 51 declarations in call, evaluate, machine, path, compare, control, convert, flow, loops, math, objects, series, text
+ * @usedby 71 declarations in call, evaluate, machine, path, compare, control, convert, edit, faults, flow, loops, math, numbers, objects, search, series, strings, text
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -84,11 +84,23 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * Starts a REBOL error on its way up the stack.
  * @param {Machine} machine
  * @param {string} text - The type and the id of the error, for example "math overflow".
+ * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 16 declarations in call, evaluate, path, compare, control, convert, interpret, math, objects, series
+ * @usedby 20 declarations in call, evaluate, path, compare, control, convert, edit, math, numbers, objects, series
  */
-export const failMachine = (machine, text) => throwValue(machine, "error", makeDatum("error", text));
+export const failMachine = (machine, text, args = []) =>
+  throwValue(machine, "error", { ...makeDatum("error", text), args });
+
+/**
+ * Makes a word value that is not in a block. An error uses it to name a function or a parameter.
+ * @param {string} name
+ * @returns {Datum}
+ * @uses makeDatum (src/data/datum.mjs)
+ * @usedby failArgument, startCall, disarmError (src/natives/faults.mjs), calculate (src/natives/math.mjs),
+ *   takeFromObject (src/natives/series.mjs)
+ */
+export const makeWord = (name) => makeDatum("word", name);
 
 /**
  * Makes the unwind function of a frame that stops one kind of thrown value. The thrown value becomes the result.
@@ -155,7 +167,7 @@ const stepBlock = (machine, frame) => {
  * @returns {Machine}
  * @standard empty - An empty block gives the unset value.
  * @uses pushFrame, stepBlock, UNSET (src/store/store.mjs)
- * @usedby 20 declarations in evaluate, machine, control, flow, loops, objects
+ * @usedby 21 declarations in evaluate, machine, control, faults, flow, loops, objects
  */
 export const startBlock = (machine, block) => ({
   ...pushFrame(machine, { step: stepBlock, cursor: machine.cursor }),

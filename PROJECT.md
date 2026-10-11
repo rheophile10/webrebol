@@ -17,7 +17,9 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 ## Decisions
 
 - The reference is REBOL 2.7.8. `reference/rebol-core.sh` and `reference/rebol-view.sh` start it.
-- A test compares the molded result and the printed text of WebRebol with the results that REBOL recorded in `test/golden/`.
+- A test compares the molded result and the printed text of WebRebol with the results that REBOL recorded in `test/golden/`. For an error, it compares the type, the id and the three fields.
+- Each evaluation case runs in a new REBOL session.
+- `bin/record.mjs` also writes `src/natives/specs.mjs` (the parameters of each function) and `src/natives/errorids.mjs` (the error ids) from REBOL. They have no help texts and no message texts.
 - The code has four stages: `src/data/` (loader), `src/store/` (series, contexts, `mold`), `src/machine/` (evaluation), `src/natives/` (the functions of REBOL).
 - A frame of the machine and a native value hold a JavaScript function. Thus the machine folder does not import the natives.
 - The interpreter is a machine with an explicit stack, because a browser cannot block for `view` and `wait`.
@@ -30,18 +32,20 @@ WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaSc
 
 ## Sessions
 
-- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine. Added objects, paths, binding and 136 Core functions, with 503 evaluation cases.
+- 2026-10-11 · ac9730f2 · Got REBOL 2.7.8 Core and View, wrote the function lists, and made the loader and `mold` with 191 reference cases. Made the git repository and published it (MIT). Made the evaluator machine. Added objects, paths, binding, error fields, series refinements and 193 Core functions, with 767 evaluation cases.
 
 ## Todos
 
 - Loader: `date!`, `money!`, base-64 binary, a path that has a paren, `/a/b` as two refinements.
 - Loader: keep the line ends of a block, because `mold` shows them. Remove the limit of 16 levels for nested braces.
-- Errors: real error objects (`disarm`, `make error!`, the `arg1`, `near` and `where` fields) and the REBOL error messages.
-- Evaluator: get-arguments (`:x`), `catch/name`, `case/all`, `first` and `second` of an object, a `for` with a bump of zero.
-- Series: the refinements of the series functions (`copy/part`, `copy/deep`, `find/tail`, `insert/dup`), `sort`, `reverse`, `parse`.
-- Types: arithmetic and comparison for `time!`, `pair!`, `tuple!`, `char!`. The `to-` functions for all types.
+- Loader: the fields of a "syntax invalid" error (the type name and the text).
+- Errors: the `near` and `where` fields, and the REBOL message texts. Ian must decide if WebRebol can copy the message texts of REBOL.
+- Evaluator: get-arguments (`:x`), `catch/name`, `case/all`, a `for` with a bump of zero.
+- Series: `find/any`, `select/skip`, `sort/skip`, `sort/compare`, `parse`. The sequence of mixed types in `sort`.
+- Natives: many REBOL functions accept more types than WebRebol does (for example `first` of a pair). Such a call can stop JavaScript with an exception. Each native must give a REBOL error.
+- Types: arithmetic and comparison for `time!`, `pair!`, `tuple!`, `char!`. The `to-` functions for all types. `random`.
+- Types of functions: REBOL has `native!`, `action!` and `function!`. WebRebol gives `native!` for all its own functions.
 - Store: a faster structure. At this time, each change copies the table of all series or of one context.
 - Symbols: REBOL molds a word with the spelling of its first use. WebRebol keeps the spelling of each use.
-- Cases: REBOL runs all the cases of one file in one session. Run each case in a new session, so that a word of one case cannot change a later case.
-- One group of recorded cases for each function of `reference/functions-core.txt`. 136 of 444 Core functions have a first version.
+- One group of recorded cases for each function. 193 of 443 Core functions have a first version.
 - View: faces, `draw`, the frame loop, VID, `effect`.

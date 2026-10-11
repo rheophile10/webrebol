@@ -20,8 +20,8 @@ const stepSet = (machine, frame) => ({
 const evaluateWord = (machine, word) => {
   // A word gives its value. A function value starts a call.
   const value = readWord(machine.store, word);
-  if (value.type === "unset") return failMachine(machine, "script no-value");
-  return isFunction(value) ? startCall(machine, value, []) : giveValue(machine, value);
+  if (value.type === "unset") return failMachine(machine, "script no-value", [{ ...word, type: "word" }]);
+  return isFunction(value) ? startCall(machine, value, { names: [], label: word.value }) : giveValue(machine, value);
 };
 
 /**

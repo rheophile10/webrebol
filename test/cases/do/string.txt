@@ -1,0 +1,15 @@
+trim "  ab  c  "
+trim/all " a b "
+trim/head "  a  "
+trim/tail "  a  "
+trim/lines "a  b^/  c"
+uppercase "aBc"
+lowercase "ABC"
+a: "abc" uppercase a a
+uppercase/part "abc" 1
+trim ""
+trim "abc"
+lowercase "MiXeD 123"
+a: "  x " trim a a
+uppercase next "abc"
+head uppercase next "abc"

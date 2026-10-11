@@ -119,19 +119,19 @@ const remoldValue = (machine, [value]) => {
 };
 
 /**
- * The natives that make text. Each entry has the specification and the function.
+ * The natives that make text. Each entry has the name of REBOL and the function.
  * @uses printValue, probeValue, giveText, moldValue (src/store/mold.mjs), formValue (src/store/mold.mjs), joinValues,
  *   rejoinValues, reformValue, remoldValue
  * @usedby NATIVES
  */
 export const TEXT_NATIVES = {
-  print: ["value", printValue("\n")],
-  prin: ["value", printValue("")],
-  probe: ["value", probeValue],
-  mold: ["value", giveText(moldValue)],
-  form: ["value", giveText(formValue)],
-  join: ["value rest", joinValues],
-  rejoin: ["block [block!]", rejoinValues],
-  reform: ["value", reformValue],
-  remold: ["value", remoldValue],
+  print: printValue("\n"),
+  prin: printValue(""),
+  probe: probeValue,
+  mold: giveText(moldValue),
+  form: giveText(formValue),
+  join: joinValues,
+  rejoin: rejoinValues,
+  reform: reformValue,
+  remold: remoldValue,
 };

@@ -133,22 +133,22 @@ const startCompose = (machine, block, options) => {
  * @uses startCompose, giveValue (src/machine/machine.mjs)
  * @usedby FLOW_NATIVES
  */
-const composeValue = (machine, [value], names) => {
-  const options = { deep: names.includes("$deep"), only: names.includes("$only") };
-  return value.type === "block" ? startCompose(machine, value, options) : giveValue(machine, value);
+const composeValue = (machine, [value], options) => {
+  const flags = { deep: options.$deep !== undefined, only: options.$only !== undefined };
+  return value.type === "block" ? startCompose(machine, value, flags) : giveValue(machine, value);
 };
 
 /**
- * The natives that select what the machine evaluates. Each entry has the specification and the function.
+ * The natives that select what the machine evaluates. Each entry has the name of REBOL and the function.
  * @uses scan, switchValue, chooseCase, catchThrow, throwValue (src/machine/machine.mjs), composeValue
  * @usedby NATIVES
  */
 export const FLOW_NATIVES = {
-  any: ["block [block!]", scan(true)],
-  all: ["block [block!]", scan(false)],
-  switch: ["value cases [block!] /default case", switchValue],
-  case: ["block [block!]", chooseCase],
-  catch: ["block [block!]", catchThrow],
-  throw: ["value [any-type!]", (machine, [value]) => throwValue(machine, "throw", value)],
-  compose: ["value /deep /only", composeValue],
+  any: scan(true),
+  all: scan(false),
+  switch: switchValue,
+  case: chooseCase,
+  catch: catchThrow,
+  throw: (machine, [value]) => throwValue(machine, "throw", value),
+  compose: composeValue,
 };

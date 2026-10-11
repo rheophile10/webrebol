@@ -55,10 +55,10 @@ const selectPart = (store, value, part) => {
  */
 const walkPart = (store) => (state, part) => {
   // After a function, the other parts are the refinements of its call.
-  if (state === null) return null;
+  if (state.value === null) return state;
   if (state.names !== null) return { ...state, names: [...state.names, makeKey(String(part.value))] };
   const found = selectPart(store, state.value, resolvePart(store, part));
-  return found === null ? null : { value: found, names: isFunction(found) ? [] : null };
+  return { value: found, names: found !== null && isFunction(found) ? [] : null, label: String(part.value), part };
 };
 
 /**
@@ -67,17 +67,18 @@ const walkPart = (store) => (state, part) => {
  * @param {Datum} path
  * @returns {Machine}
  * @standard invalid - A part that the value does not have gives the error "script invalid-path".
- * @uses readRest (src/store/store.mjs), readWord (src/store/store.mjs), failMachine, walkPart, isFunction, giveValue,
+ * @uses readRest (src/store/store.mjs), readWord (src/store/store.mjs), failMachine, isFunction, walkPart, giveValue,
  *   startCall
  * @usedby EVALUATORS
  */
 export const evaluatePath = (machine, path) => {
   const [head, ...parts] = readRest(machine.store, path);
   const value = readWord(machine.store, head);
-  if (value.type === "unset") return failMachine(machine, "script no-value");
-  const walked = parts.reduce(walkPart(machine.store), { value, names: isFunction(value) ? [] : null });
-  if (walked === null) return failMachine(machine, "script invalid-path");
-  return walked.names === null ? giveValue(machine, walked.value) : startCall(machine, walked.value, walked.names);
+  if (value.type === "unset") return failMachine(machine, "script no-value", [{ ...head, type: "word" }]);
+  const start = { value, names: isFunction(value) ? [] : null, label: String(head.value) };
+  const walked = parts.reduce(walkPart(machine.store), start);
+  if (walked.value === null) return failMachine(machine, "script invalid-path", [walked.part]);
+  return walked.names === null ? giveValue(machine, walked.value) : startCall(machine, walked.value, { names: walked.names, label: walked.label });
 };
 
 /**
@@ -92,7 +93,7 @@ const replaceAt = (all, place, item) => all.slice(0, place).concat(item, all.sli
 const assignInObject = (store, object, change) => {
   const values = store.contexts[object.value.context];
   const key = makeKey(String(change.part.value));
-  if (values[key] === undefined) return { error: "script invalid-path" };
+  if (values[key] === undefined) return { error: "script invalid-path", args: [change.part] };
   return { store: writeContext(store, object.value.context, { ...values, [key]: change.value }) };
 };
 
@@ -116,8 +117,8 @@ const assignInSeries = (store, series, change) => {
   // A word that is not in the series is an invalid path. A number after the end is out of range.
   const all = readAll(store, series);
   const place = findPlace(store, series, change.part);
-  if (place < 0 && change.part.type !== "integer") return { error: "script invalid-path" };
-  if (place < 0 || place >= all.length) return { error: "script out-of-range" };
+  if (place < 0 && change.part.type !== "integer") return { error: "script invalid-path", args: [change.part] };
+  if (place < 0 || place >= all.length) return { error: "script out-of-range", args: [change.part] };
   const item = isList(series) ? [change.value] : String.fromCharCode(change.value.value);
   return { store: writeAll(store, series, replaceAt(all, place, item)) };
 };
@@ -146,7 +147,8 @@ const stepSetPath = (machine, frame) => {
   // The last part gets the value. The value is also the result.
   const change = { part: resolvePart(machine.store, parts[parts.length - 1]), value: machine.value };
   const made = assignPart(machine.store, container, change);
-  return made.error === undefined ? { ...popFrame(machine), store: made.store } : failMachine(popFrame(machine), made.error);
+  if (made.error !== undefined) return failMachine(popFrame(machine), made.error, made.args);
+  return { ...popFrame(machine), store: made.store };
 };
 
 /**

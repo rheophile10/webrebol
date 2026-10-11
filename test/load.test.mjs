@@ -52,7 +52,7 @@ test("loadSource reference: the error cases agree with REBOL 2.7.8", () => {
 });
 
 test("loadSource missing: a block without its end gives the error", () => {
-  assert.deepEqual(loadSource("[a"), { type: "error", value: "syntax missing" });
+  assert.deepEqual(loadSource("[a"), { type: "error", value: "syntax missing", args: ["end-of-script", "]"] });
 });
 
 test("readToken invalid: a number with a letter gives the error", () => {

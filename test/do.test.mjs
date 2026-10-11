@@ -74,3 +74,23 @@ test("interpretSource reference: the find, select, change and remove cases agree
 test("interpretSource reference: the join, reform and conversion cases agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/join.txt"), []);
 });
+
+test("interpretSource reference: the error object cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/fault.txt"), []);
+});
+
+test("interpretSource reference: the cases of copy, insert, change and remove with refinements agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/part.txt"), []);
+});
+
+test("interpretSource reference: the find, sort, set and replace cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/search.txt"), []);
+});
+
+test("interpretSource reference: the trim and case cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/string.txt"), []);
+});
+
+test("interpretSource reference: the cases of the other number functions agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/number.txt"), []);
+});

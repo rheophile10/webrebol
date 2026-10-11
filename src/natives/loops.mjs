@@ -2,7 +2,6 @@ import { makeDatum } from "../data/datum.mjs";
 import { NONE, UNSET, bindCopy, makeContext, makeKey, readAll, readRest, readValues, readWord, writeWord } from "../store/store.mjs";
 import { giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue } from "../machine/machine.mjs";
 
-const BODY = "body [block!]";
 /**
  * @uses stopThrown (src/machine/machine.mjs)
  * @usedby startList, loopWhile, loopUntil, loopForever
@@ -172,19 +171,19 @@ const loopForever = (machine, [body]) =>
   startBlock(pushFrame(machine, { step: stepForever, unwind: stopBreak, body, cursor: machine.cursor }), body);
 
 /**
- * The natives for loops. Each entry has the specification and the function.
- * @uses BODY, loopCount, repeatCount, forEach, forRange, forAll, loopWhile, loopUntil, loopForever,
+ * The natives for loops. Each entry has the name of REBOL and the function.
+ * @uses loopCount, repeatCount, forEach, forRange, forAll, loopWhile, loopUntil, loopForever,
  *   UNSET (src/store/store.mjs), throwValue (src/machine/machine.mjs)
  * @usedby NATIVES
  */
 export const LOOP_NATIVES = {
-  loop: [`count [integer!] ${BODY}`, loopCount],
-  repeat: [`'word [word!] value [integer!] ${BODY}`, repeatCount],
-  foreach: [`'word [word! block!] data [series!] ${BODY}`, forEach],
-  for: [`'word [word!] start [integer!] end [integer!] bump [integer!] ${BODY}`, forRange],
-  forall: [`'word [word!] ${BODY}`, forAll],
-  while: ["cond-block [block!] body-block [block!]", loopWhile],
-  until: ["block [block!]", loopUntil],
-  forever: [BODY, loopForever],
-  break: ["/return value [any-type!]", (machine, [value = UNSET]) => throwValue(machine, "break", value)],
+  loop: loopCount,
+  repeat: repeatCount,
+  foreach: forEach,
+  for: forRange,
+  forall: forAll,
+  while: loopWhile,
+  until: loopUntil,
+  forever: loopForever,
+  break: (machine, [value = UNSET]) => throwValue(machine, "break", value),
 };

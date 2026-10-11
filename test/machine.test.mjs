@@ -1,12 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadSource } from "../src/data/load.mjs";
-import { EMPTY_STORE, UNSET, allocate, bindCopy, bindInPlace, readRest, readWord } from "../src/store/store.mjs";
+import { EMPTY_STORE, UNSET, allocate, bindCopy, bindInPlace, makeRecord, readRest, readWord } from "../src/store/store.mjs";
 import { formValue } from "../src/store/mold.mjs";
 import { makeMachine, startBlock, stopThrown, throwUnused, throwValue } from "../src/machine/machine.mjs";
 import { evaluatePath, startSetPath } from "../src/machine/path.mjs";
-import { areEqual } from "../src/natives/compare.mjs";
-import { makeContent } from "../src/natives/series.mjs";
+import { areEqual, areSame, readOrder } from "../src/natives/compare.mjs";
+import { guardSeries, makeContent, pickItem } from "../src/natives/series.mjs";
+import { readPart } from "../src/natives/edit.mjs";
+import { failSyntax } from "../src/natives/control.mjs";
 import { acceptsType, parseSpec } from "../src/machine/spec.mjs";
 import { startCall, stepLook } from "../src/machine/call.mjs";
 import { evaluateOperand } from "../src/machine/evaluate.mjs";
@@ -73,7 +75,7 @@ test("acceptsType unset: a parameter without types does not accept the unset val
 });
 
 test("startCall refinements: the argument of a refinement comes after the usual arguments", () => {
-  const machine = startCall(makeReady("1 2"), readGlobal("break"), ["$return"]);
+  const machine = startCall(makeReady("1 2"), readGlobal("break"), { names: ["$return"], label: "break" });
   assert.deepEqual(machine.frames.top.order.map((param) => param.key), ["$value"]);
 });
 
@@ -103,11 +105,11 @@ test("startReduce sequence: the results are in the sequence of the expressions",
 });
 
 test("interpretSource syntax: a block without its end gives the error of the loader", () => {
-  assert.equal(showResult(interpretSource("[1", BATCHES)), "! syntax missing");
+  assert.equal(showResult(interpretSource("[1", BATCHES)), '! syntax missing "end-of-script" "]" none');
 });
 
 test("showResult error: a division by zero shows the type and the id", () => {
-  assert.equal(showResult(interpretSource("1 / 0", BATCHES)), "! math zero-divide");
+  assert.equal(showResult(interpretSource("1 / 0", BATCHES)), "! math zero-divide none none none");
 });
 
 test("bindInPlace same: the block keeps its series number and its words get the context", () => {
@@ -134,7 +136,7 @@ test("evaluatePath invalid: a word that the block does not have gives the error"
 });
 
 test("startSetPath range: a number after the end of the block gives the error", () => {
-  assert.equal(showResult(interpretSource("items: [1 2] items/5: 9", BATCHES)), "! script out-of-range");
+  assert.equal(showResult(interpretSource("items: [1 2] items/5: 9", BATCHES)), "! script out-of-range 5 none none");
   assert.equal(startSetPath(makeReady("1"), UNSET).mode, "next");
 });
 
@@ -148,4 +150,45 @@ test("makeContent splice: a block gives its items, and with only it is one item"
   const pair = readRest(made.store, made.value);
   assert.equal(makeContent(made.store, pair, false).length, 2);
   assert.equal(makeContent(made.store, pair, true).length, 1);
+});
+
+test("makeRecord self: the word self of the object gives the object", () => {
+  const made = makeRecord(EMPTY_STORE, ["abc"], [UNSET]);
+  assert.deepEqual(made.store.contexts[made.value.value.context].$self, made.value);
+});
+
+test("areSame strict: two texts with different case are not the same", () => {
+  const made = allocate(EMPTY_STORE, loadSource('"abc" "ABC"'));
+  const [left, right] = readRest(made.store, made.value);
+  assert.equal(areSame(made.store, left, right), false);
+  assert.equal(areEqual(made.store, left, right), true);
+});
+
+test("readOrder none: a block has no order", () => {
+  const made = allocate(EMPTY_STORE, loadSource("[1]"));
+  assert.equal(readOrder(made.store, readRest(made.store, made.value)[0]), null);
+});
+
+test("failSyntax fields: the texts of the loader are the first two fields of the error", () => {
+  const machine = failSyntax(makeReady("1"), loadSource("[1"));
+  assert.equal(machine.thrown.value.args.length, 2);
+  assert.equal(readRest(machine.store, machine.thrown.value.args[1]), "]");
+});
+
+test("readPart position: a position gives the distance from the series", () => {
+  const series = { type: "block", value: { id: 1, index: 1 } };
+  assert.equal(readPart(series, { type: "block", value: { id: 1, index: 4 } }), 3);
+  assert.equal(readPart(series, { type: "integer", value: 2 }), 2);
+});
+
+test("pickItem outside: an offset after the end gives null", () => {
+  const made = allocate(EMPTY_STORE, loadSource("1 2"));
+  assert.equal(pickItem(made.store, made.value, 5), null);
+  assert.equal(pickItem(made.store, made.value, 1).value, 2);
+});
+
+test("guardSeries guard: a first argument that is not a series gives the error", () => {
+  const guarded = guardSeries({ sample: (machine) => machine });
+  const machine = guarded.sample(makeReady("1"), [UNSET], {});
+  assert.equal(machine.thrown.value.value, "script expect-arg");
 });

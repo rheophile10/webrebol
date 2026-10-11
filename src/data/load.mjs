@@ -4,6 +4,7 @@ import { makeDatum, readToken } from "./datum.mjs";
 
 const OPEN_TYPES = { "[": "block", "(": "paren" };
 const CLOSE_TYPES = { "]": "block", ")": "paren" };
+const CLOSERS = { block: "]", paren: ")" };
 /**
  * @uses makeDatum
  * @usedby closeFrame, loadSource
@@ -76,7 +77,7 @@ const stepLoad = (state, token) => (state.error === null ? (STEPS[token.kind] ??
  * @standard missing - A bracket without its partner gives an error datum with the text "syntax missing".
  * @todo Read date, money, base-64 binary, and a path that has a paren.
  * @todo Keep the line ends of the source, because `mold` shows them.
- * @uses scanTokens, stepLoad, START, MISSING
+ * @uses scanTokens, stepLoad, START, MISSING, CLOSERS
  * @usedby doText (src/natives/control.mjs), toBlock (src/natives/convert.mjs),
  *   makeFunction (src/natives/globals.mjs), interpretSource (src/natives/interpret.mjs),
  *   moldSource (test/load.test.mjs), makeReady (test/machine.test.mjs)
@@ -85,6 +86,7 @@ export const loadSource = (source) => {
   // Put each token into the frame that is open.
   const state = scanTokens(source).reduce(stepLoad, START);
   if (state.error !== null) return state.error;
-  // Only the root frame can stay open at the end.
-  return state.frames.length === 1 ? state.frames[0] : MISSING;
+  // Only the root frame can stay open at the end. The error names the bracket that is not there.
+  if (state.frames.length === 1) return state.frames[0];
+  return { ...MISSING, args: ["end-of-script", CLOSERS[state.frames[state.frames.length - 1].type]] };
 };

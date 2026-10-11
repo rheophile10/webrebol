@@ -1,6 +1,7 @@
 import { makeDatum } from "../data/datum.mjs";
 import { GLOBAL, NONE, UNSET, bindCopy, bindInPlace, isList, isSeries, makeContext, makeKey, makeSeries, readRest, readWord, writeContext, writeWord } from "../store/store.mjs";
 import { CONVERT_NATIVES } from "./convert.mjs";
+import { makeError } from "./faults.mjs";
 import { failMachine, giveValue, makeLogic, popFrame, pushFrame, startBlock } from "../machine/machine.mjs";
 
 /**
@@ -79,15 +80,16 @@ const giveSeries = (type, empty) => (machine, spec) => {
 };
 
 /**
- * @uses makeObject, giveSeries, CONVERT_NATIVES
+ * @uses makeObject, giveSeries, makeError, CONVERT_NATIVES
  * @usedby makeValue
  */
 const MAKERS = {
   object: (machine, spec) => makeObject(machine, null, spec),
   block: giveSeries("block", []),
   string: giveSeries("string", ""),
-  integer: (machine, spec) => CONVERT_NATIVES["to-integer"][1](machine, [spec]),
-  decimal: (machine, spec) => CONVERT_NATIVES["to-decimal"][1](machine, [spec]),
+  error: makeError,
+  integer: (machine, spec) => CONVERT_NATIVES["to-integer"](machine, [spec]),
+  decimal: (machine, spec) => CONVERT_NATIVES["to-decimal"](machine, [spec]),
 };
 
 /**
@@ -96,7 +98,7 @@ const MAKERS = {
  */
 const makeValue = (machine, [type, spec]) => {
   if (type.type === "object") return makeObject(machine, type, spec);
-  if (type.value === "block" && spec.type === "string") return CONVERT_NATIVES["to-block"][1](machine, [spec]);
+  if (type.value === "block" && spec.type === "string") return CONVERT_NATIVES["to-block"](machine, [spec]);
   const maker = type.type === "datatype" ? MAKERS[type.value] : undefined;
   return maker === undefined ? failMachine(machine, "script bad-make-arg") : maker(machine, spec);
 };
@@ -138,9 +140,9 @@ const findContext = (store, target) => {
  *   bindCopy (src/store/store.mjs)
  * @usedby OBJECT_NATIVES
  */
-const bindBlock = (machine, [block, target], names) => {
+const bindBlock = (machine, [block, target], options) => {
   const context = findContext(machine.store, target);
-  if (!names.includes("$copy")) return giveValue({ ...machine, store: bindInPlace(machine.store, block, context) }, block);
+  if (options.$copy === undefined) return giveValue({ ...machine, store: bindInPlace(machine.store, block, context) }, block);
   const bound = bindCopy(machine.store, block, context);
   return giveValue({ ...machine, store: bound.store }, bound.value);
 };
@@ -159,26 +161,20 @@ const useWords = (machine, [words, body]) => {
 };
 
 /**
- * The natives for objects, words and contexts. Each entry has the specification and the function.
+ * The natives for objects, words and contexts. Each entry has the name of REBOL and the function.
  * @uses makeValue, makeObject, findInObject, giveValue (src/machine/machine.mjs), readWord (src/store/store.mjs),
  *   setWords, makeLogic (src/machine/machine.mjs), writeWord (src/store/store.mjs), UNSET (src/store/store.mjs),
  *   bindBlock, useWords
  * @usedby NATIVES
  */
 export const OBJECT_NATIVES = {
-  make: ["type spec", makeValue],
-  context: ["blk [block!]", (machine, [block]) => makeObject(machine, null, block)],
-  "in": ["object [object!] word [any-word!]", findInObject],
-  get: ["word [any-word!]", (machine, [word]) => giveValue(machine, readWord(machine.store, word))],
-  set: ["word [any-word! block!] value [any-type!]", setWords],
-  "value?": [
-    "value [any-word!]",
-    (machine, [word]) => giveValue(machine, makeLogic(readWord(machine.store, word).type !== "unset")),
-  ],
-  unset: [
-    "word [any-word!]",
-    (machine, [word]) => giveValue({ ...machine, store: writeWord(machine.store, word, UNSET) }, UNSET),
-  ],
-  bind: ["words [block!] known-word [any-word! object!] /copy", bindBlock],
-  use: ["words [block!] body [block!]", useWords],
+  make: makeValue,
+  context: (machine, [block]) => makeObject(machine, null, block),
+  "in": findInObject,
+  get: (machine, [word]) => giveValue(machine, readWord(machine.store, word)),
+  set: setWords,
+  "value?": (machine, [word]) => giveValue(machine, makeLogic(readWord(machine.store, word).type !== "unset")),
+  unset: (machine, [word]) => giveValue({ ...machine, store: writeWord(machine.store, word, UNSET) }, UNSET),
+  bind: bindBlock,
+  use: useWords,
 };

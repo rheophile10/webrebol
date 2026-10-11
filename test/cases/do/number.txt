@@ -1,0 +1,105 @@
+to-string 'a
+length? form 12345
+min 1 2
+max 1 2
+max 1.5 1
+min "a" "b"
+maximum 3 4
+minimum 3 4
+zero? 0
+zero? 0.0
+zero? 1
+positive? 1
+negative? -1
+positive? 0
+even? 2
+odd? 2
+even? 3
+power 2 3
+power 2 0.5
+2 ** 3
+square-root 16
+square-root 2
+exp 0
+log-e 1
+log-10 100
+log-2 8
+sine 90
+cosine 0
+tangent 45
+arcsine 1
+arccosine 1
+arctangent 1
+sine/radians 0
+round 2.5
+round 2.4
+round -2.5
+round/down 2.7
+round/up 2.1
+round/floor -2.1
+round/ceiling 2.1
+round/even 2.5
+round/to 2.567 0.01
+round/to 17 5
+round 3
+to-integer 2.5
+1 and 3
+1 or 2
+1 xor 3
+true and false
+true or false
+true xor true
+complement 5
+not true
+3 and 5
+and~ 3 5
+or~ 1 2
+xor~ 1 3
+shift 8 1
+shift/left 1 3
+10 // 3
+mod 10 3
+mod -7 3
+modulo -7 3
+-7 // 3
+remainder -7 3
+1 + 2.0
+5 / 2.0
+2 * 2147483647
+1e308 * 10
+7 / 2 * 2
+integer? 6 / 3
+min 2 1
+max "a" "b"
+min 1 "a"
+even? 0
+odd? -3
+power 0 0
+2 ** 0.5
+square-root 0
+round -2.4
+round 0.5
+round -0.5
+round/even 3.5
+round/even -2.5
+round/to 1234 100
+round/down -2.7
+round/floor 2.9
+round/ceiling -2.9
+true and true
+1 and true
+complement true
+shift 1 1
+shift/left 3 2
+mod 7 -3
+mod 7 0
+mod 7.5 2
+1e308 + 1e308
+sine 30
+cosine 60
+arcsine 0.5
+log-10 1000
+exp 1
+strict-equal? [1 "a"] [1 "A"]
+[1] == [1]
+same? [] []

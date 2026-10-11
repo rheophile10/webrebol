@@ -1,7 +1,12 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
-import { NONE, UNSET, readWord, writeContext } from "../store/store.mjs";
-import { advance, atEnd, failMachine, giveValue, makeLogic, popFrame, pushFrame, readItem, replaceTop, throwUnused } from "./machine.mjs";
+import { NONE, UNSET, makeSeries, readWord, writeContext } from "../store/store.mjs";
+import { advance, atEnd, failMachine, giveValue, makeLogic, makeWord, popFrame, pushFrame, readItem, replaceTop, throwUnused } from "./machine.mjs";
 import { acceptsType } from "./spec.mjs";
+
+/**
+ * @usedby makeOptions, startCall
+ */
+const findParams = (callee, name) => callee.value.refinements.find((refinement) => refinement.key === name)?.params;
 
 /**
  * @uses writeContext (src/store/store.mjs)
@@ -65,16 +70,44 @@ const invokeBody = (machine, frame) => {
 };
 
 /**
- * @uses acceptsType, failMachine, invokeBody
+ * @uses findParams
+ * @usedby invoke
+ */
+const makeOptions = (frame) => {
+  // Each used refinement gets the list of its arguments. They come after the usual arguments.
+  const takeOption = (made, name) => {
+    const size = findParams(frame.callee, name).length;
+    const taken = frame.args.slice(made.offset, made.offset + size);
+    return { offset: made.offset + size, options: { ...made.options, [name]: taken } };
+  };
+  return frame.names.reduce(takeOption, { offset: frame.callee.value.params.length, options: {} }).options;
+};
+
+/**
+ * @uses makeWord, failMachine, makeSeries (src/store/store.mjs)
+ * @usedby invoke
+ */
+const failArgument = (machine, frame, param) => {
+  // A function with a body that gets no value for a parameter has a different error.
+  const names = [makeWord(frame.label), makeWord(param.name)];
+  const absent = frame.callee.value.native === undefined && frame.args.some((value) => value.type === "unset");
+  if (absent) return failMachine(machine, "script no-arg", names);
+  // The third field of the error is the block of the types that the parameter accepts.
+  const made = makeSeries(machine.store, "block", (param.types ?? []).map(makeWord));
+  return failMachine({ ...machine, store: made.store }, "script expect-arg", [...names, made.value]);
+};
+
+/**
+ * @uses acceptsType, failArgument, invokeBody, makeOptions
  * @usedby requestArgument, stepInfix
  */
 const invoke = (machine, frame, checked) => {
   // An infix call does not examine the types of its arguments.
-  const accepts = (param, place) => acceptsType(param.types, frame.args[place]);
+  const refuses = (param, place) => !acceptsType(param.types, frame.args[place]);
+  const refused = checked ? frame.order.find(refuses) : undefined;
+  if (refused !== undefined) return failArgument(machine, frame, refused);
   const native = frame.callee.value.native;
-  const absent = native === undefined && frame.args.some((value) => value.type === "unset");
-  if (checked && !frame.order.every(accepts)) return failMachine(machine, absent ? "script no-arg" : "script expect-arg");
-  return native === undefined ? invokeBody(machine, frame) : native(machine, frame.args, frame.names);
+  return native === undefined ? invokeBody(machine, frame) : native(machine, frame.args, makeOptions(frame));
 };
 
 /**
@@ -115,23 +148,24 @@ const stepArguments = (machine, frame) =>
 /**
  * @usedby startCall
  */
-const findParams = (callee, name) => callee.value.refinements.find((refinement) => refinement.key === name)?.params;
-
 /**
  * Starts the call of a function. The machine first collects the arguments from the block at the cursor.
  * @param {Machine} machine
  * @param {Datum} callee - The function value.
- * @param {string[]} names - The keys of the refinements of the call.
+ * @param {{ names: string[], label: string }} call - The keys of the refinements of the call, and the word that named the function.
  * @returns {Machine}
  * @standard refinements - The arguments of the refinements come after the usual arguments, in the sequence of the call.
- * @uses findParams, failMachine, requestArgument, pushFrame, stepArguments
+ * @uses findParams, failMachine, makeWord, requestArgument, pushFrame, stepArguments
  * @usedby evaluateWord, evaluatePath
  */
-export const startCall = (machine, callee, names) => {
+export const startCall = (machine, callee, call) => {
   // A refinement that the function does not have is an error.
-  if (names.some((name) => findParams(callee, name) === undefined)) return failMachine(machine, "script no-refine");
-  const order = [...callee.value.params, ...names.flatMap((name) => findParams(callee, name))];
-  return requestArgument(pushFrame(machine, { step: stepArguments, callee, names, order, args: [] }));
+  const unknown = call.names.find((name) => findParams(callee, name) === undefined);
+  if (unknown !== undefined) {
+    return failMachine(machine, "script no-refine", [makeWord(call.label), makeWord(unknown.slice(1))]);
+  }
+  const order = [...callee.value.params, ...call.names.flatMap((name) => findParams(callee, name))];
+  return requestArgument(pushFrame(machine, { ...call, step: stepArguments, callee, order, args: [] }));
 };
 
 /**

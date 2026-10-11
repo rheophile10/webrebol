@@ -25,12 +25,12 @@ const addEntry = (entries, item) => {
   // A block after a parameter gives the types that the parameter accepts.
   const last = entries[entries.length - 1];
   if (item.type === "block" && last !== undefined && last.kind !== "refinement") {
-    return [...entries.slice(0, -1), { ...last, types: item.value.map((name) => name.toLowerCase()) }];
+    return [...entries.slice(0, -1), { ...last, types: item.value }];
   }
-  if (item.type === "refinement") return [...entries, { key: makeKey(item.value), kind: "refinement" }];
+  if (item.type === "refinement") return [...entries, { key: makeKey(item.value), kind: "refinement", name: item.value }];
   // Other items (texts, attributes) have no effect on a call.
   const kind = PARAMETER_KINDS[item.type];
-  return kind === undefined ? entries : [...entries, { key: makeKey(item.value), kind, types: null }];
+  return kind === undefined ? entries : [...entries, { key: makeKey(item.value), kind, types: null, name: item.value }];
 };
 
 /**
@@ -71,5 +71,5 @@ export const acceptsType = (types, value) => {
   if (types === null) return value.type !== "unset";
   const accepts = (name) =>
     name === "any-type!" || name === `${value.type}!` || (TYPESETS[name] ?? []).includes(value.type);
-  return types.some(accepts);
+  return types.some((name) => accepts(String(name).toLowerCase()));
 };

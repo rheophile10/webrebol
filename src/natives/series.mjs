@@ -1,12 +1,9 @@
 /** @import { Datum, Store, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, isList, isText, makeSeries, readAll, readRest, writeAll } from "../store/store.mjs";
+import { NONE, isList, isSeries, isText, makeSeries, readAll, readRest, writeAll } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
-import { failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
-import { areEqual } from "./compare.mjs";
+import { failMachine, giveValue, makeLogic, makeWord } from "../machine/machine.mjs";
 
-const SERIES = "series [series!]";
-const INSERT = "series [series!] value /only";
 
 /**
  * @uses isList (src/store/store.mjs), isText (src/store/store.mjs), makeDatum (src/data/datum.mjs)
@@ -22,7 +19,17 @@ const makeItem = (series, raw) => {
  * @uses readAll (src/store/store.mjs), makeItem
  * @usedby takeItem, pickIndex, selectValue
  */
-const pickItem = (store, series, offset) => {
+/**
+ * Gets the item at an offset from the position of a series, as a REBOL value.
+ * @param {Store} store
+ * @param {Datum} series
+ * @param {number} offset - The number of items after the position. It can be negative.
+ * @returns {Datum | null}
+ * @standard outside - An offset that is not in the series gives null.
+ * @uses readAll (src/store/store.mjs), makeItem
+ * @usedby selectValue, takeItem, pickIndex
+ */
+export const pickItem = (store, series, offset) => {
   // Give null if the position is not in the series.
   const all = readAll(store, series);
   const place = series.value.index + offset;
@@ -33,7 +40,44 @@ const pickItem = (store, series, offset) => {
  * @uses pickItem, failMachine (src/machine/machine.mjs), giveValue (src/machine/machine.mjs)
  * @usedby takeLast, SERIES_NATIVES
  */
+/**
+ * Makes a table of natives that give an error if their first argument is not a series.
+ * @param {Object<string, Function>} natives
+ * @returns {Object<string, Function>}
+ * @standard guard - A first argument that is not a series gives the error "script expect-arg".
+ * @uses isSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs)
+ * @usedby NATIVES, SERIES_NATIVES
+ */
+export const guardSeries = (natives) => {
+  // TODO: REBOL accepts more types for some of these functions (pair!, tuple!, time!).
+  const guard = (native) => (machine, args, options) =>
+    isSeries(args[0]) ? native(machine, args, options) : failMachine(machine, "script expect-arg");
+  return Object.fromEntries(Object.entries(natives).map(([name, native]) => [name, guard(native)]));
+};
+
+/**
+ * @uses makeWord (src/machine/machine.mjs), failMachine (src/machine/machine.mjs), makeSeries (src/store/store.mjs),
+ *   giveValue (src/machine/machine.mjs)
+ * @usedby takeItem
+ */
+const takeFromObject = (machine, object, offset) => {
+  // The first part of an object is the block of its words. The second part is the block of their values.
+  const words = ["self", ...object.value.words];
+  const values = machine.store.contexts[object.value.context];
+  const parts = [words.map(makeWord), words.map((word) => values[`$${word.toLowerCase()}`])];
+  if (parts[offset] === undefined) return failMachine(machine, "script expect-arg");
+  const made = makeSeries(machine.store, "block", parts[offset]);
+  return giveValue({ ...machine, store: made.store }, made.value);
+};
+
+/**
+ * @uses takeFromObject, isSeries (src/store/store.mjs), failMachine (src/machine/machine.mjs), pickItem,
+ *   giveValue (src/machine/machine.mjs)
+ * @usedby takeLast, SERIES_NATIVES
+ */
 const takeItem = (offset) => (machine, [series]) => {
+  if (series.type === "object") return takeFromObject(machine, series, offset);
+  if (!isSeries(series)) return failMachine(machine, "script expect-arg");
   const item = pickItem(machine.store, series, offset);
   return item === null ? failMachine(machine, "script past-end") : giveValue(machine, item);
 };
@@ -57,7 +101,7 @@ const pickIndex = (machine, [series, index]) => {
  * @param {Datum} series
  * @param {number} index - The position, counted from zero.
  * @returns {Datum}
- * @usedby move, appendValue, insertValue, jump, pokeItem, changeValue, findValue, appendAll
+ * @usedby 11 declarations in edit, search, series, text
  */
 export const moveTo = (series, index) => ({ ...series, value: { ...series.value, index } });
 
@@ -91,7 +135,7 @@ const measure = (find) => (machine, [series]) =>
  * @returns {string | Datum[]}
  * @standard splice - Without only, a block gives its items to a list.
  * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs)
- * @usedby appendValue, insertValue, changeValue
+ * @usedby buildContent, replaceInList, alterValue
  */
 export const makeContent = (store, [series, value], only) => {
   // A block gives its items to a list, but with /only the block is one item.
@@ -111,7 +155,7 @@ export const makeContent = (store, [series, value], only) => {
  * @param {string | Datum[]} content
  * @returns {Machine}
  * @uses readAll (src/store/store.mjs), writeAll (src/store/store.mjs)
- * @usedby appendValue, insertValue, appendAll
+ * @usedby appendValue, insertValue, alterValue, appendAll
  */
 export const insertContent = (machine, series, content) => {
   // Put the content at the position of the series.
@@ -119,37 +163,6 @@ export const insertContent = (machine, series, content) => {
   const place = series.value.index;
   const joined = all.slice(0, place).concat(content, all.slice(place));
   return { ...machine, store: writeAll(machine.store, series, joined) };
-};
-
-/**
- * @uses makeContent, moveTo, readAll (src/store/store.mjs), giveValue (src/machine/machine.mjs), insertContent
- * @usedby SERIES_NATIVES
- */
-const appendValue = (machine, args, names) => {
-  // The result is the head of the series.
-  const content = makeContent(machine.store, args, names.includes("$only"));
-  const tail = moveTo(args[0], readAll(machine.store, args[0]).length);
-  return giveValue(insertContent(machine, tail, content), moveTo(args[0], 0));
-};
-
-/**
- * @uses makeContent, moveTo, giveValue (src/machine/machine.mjs), insertContent
- * @usedby SERIES_NATIVES
- */
-const insertValue = (machine, args, names) => {
-  // The result is the position after the new items.
-  const content = makeContent(machine.store, args, names.includes("$only"));
-  const after = moveTo(args[0], args[0].value.index + content.length);
-  return giveValue(insertContent(machine, args[0], content), after);
-};
-
-/**
- * @uses makeSeries (src/store/store.mjs), readRest (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby SERIES_NATIVES
- */
-const copySeries = (machine, [series]) => {
-  const made = makeSeries(machine.store, series.type, readRest(machine.store, series));
-  return giveValue({ ...machine, store: made.store }, made.value);
 };
 
 /**
@@ -176,127 +189,32 @@ const jump = (find) => (machine, [series, offset]) => {
  * @uses readAll (src/store/store.mjs), writeAll (src/store/store.mjs)
  * @usedby pokeItem, changeValue, removeItem
  */
-const replaceItems = (machine, series, change) => {
-  // Put the content in the position of a number of old items.
-  const all = readAll(machine.store, series);
-  const place = series.value.index;
-  const joined = all.slice(0, place).concat(change.content, all.slice(place + change.size));
-  return { ...machine, store: writeAll(machine.store, series, joined) };
-};
-
 /**
- * @uses readAll (src/store/store.mjs), failMachine (src/machine/machine.mjs), isList (src/store/store.mjs),
- *   giveValue (src/machine/machine.mjs), replaceItems, moveTo
- * @usedby SERIES_NATIVES
- */
-const pokeItem = (machine, [series, index, value]) => {
-  const place = series.value.index + index.value - 1;
-  const inside = index.value > 0 && place < readAll(machine.store, series).length;
-  if (!inside) return failMachine(machine, "script out-of-range");
-  const content = isList(series) ? [value] : String.fromCharCode(value.value);
-  return giveValue(replaceItems(machine, moveTo(series, place), { content, size: 1 }), value);
-};
-
-/**
- * @uses makeContent, replaceItems, giveValue (src/machine/machine.mjs), moveTo
- * @usedby SERIES_NATIVES
- */
-const changeValue = (machine, args) => {
-  // The new items replace the same number of old items. The result is the position after them.
-  const content = makeContent(machine.store, args, false);
-  const changed = replaceItems(machine, args[0], { content, size: content.length });
-  return giveValue(changed, moveTo(args[0], args[0].value.index + content.length));
-};
-
-/**
- * @uses giveValue (src/machine/machine.mjs), replaceItems
- * @usedby SERIES_NATIVES
- */
-const removeItem = (machine, [series]) => giveValue(replaceItems(machine, series, { content: [], size: 1 }), series);
-
-/**
- * @uses readAll (src/store/store.mjs), giveValue (src/machine/machine.mjs), writeAll (src/store/store.mjs)
- * @usedby SERIES_NATIVES
- */
-const clearRest = (machine, [series]) => {
-  const all = readAll(machine.store, series);
-  return giveValue({ ...machine, store: writeAll(machine.store, series, all.slice(0, series.value.index)) }, series);
-};
-
-/**
- * @uses areEqual
- * @usedby findOffset
- */
-const startsWith = (store, items, wanted) => (item, place) =>
-  wanted.every((value, offset) => items[place + offset] !== undefined && areEqual(store, items[place + offset], value));
-
-/**
- * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs), startsWith
- * @usedby findValue, selectValue
- */
-const findOffset = (store, series, value) => {
-  // In a text, look for the formed value without regard to case.
-  if (!isList(series)) return readRest(store, series).toLowerCase().indexOf(formValue(store, value).toLowerCase());
-  // In a list, a block is a sequence of items to look for. Other values are one item.
-  const items = readRest(store, series);
-  const wanted = value.type === "block" ? readRest(store, value) : [value];
-  return wanted.length === 0 ? -1 : items.findIndex(startsWith(store, items, wanted));
-};
-
-/**
- * @uses findOffset, giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs), moveTo
- * @usedby SERIES_NATIVES
- */
-const findValue = (machine, [series, value]) => {
-  const offset = findOffset(machine.store, series, value);
-  return giveValue(machine, offset < 0 ? NONE : moveTo(series, series.value.index + offset));
-};
-
-/**
- * @uses findOffset, isList (src/store/store.mjs), readRest (src/store/store.mjs), pickItem,
- *   giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs)
- * @usedby SERIES_NATIVES
- */
-const selectValue = (machine, [series, value]) => {
-  // The result is the item after the found value.
-  const offset = findOffset(machine.store, series, value);
-  const size = isList(series) && value.type === "block" ? readRest(machine.store, value).length : 1;
-  const item = offset < 0 ? null : pickItem(machine.store, series, offset + size);
-  return giveValue(machine, item ?? NONE);
-};
-
-/**
- * The natives for series. Each entry has the specification and the function.
- * @uses SERIES, takeItem, pickIndex, move, measure, makeLogic (src/machine/machine.mjs),
- *   makeDatum (src/data/datum.mjs), takeLast, jump, pokeItem, changeValue, removeItem, clearRest, findValue,
- *   selectValue, INSERT, appendValue, insertValue, copySeries
+ * The natives for series. Each entry has the name of REBOL and the function.
+ * @uses takeItem, guardSeries, pickIndex, move, measure, makeLogic (src/machine/machine.mjs),
+ *   makeDatum (src/data/datum.mjs), giveValue (src/machine/machine.mjs), takeLast, jump
  * @usedby NATIVES
  */
 export const SERIES_NATIVES = {
-  first: [SERIES, takeItem(0)],
-  second: [SERIES, takeItem(1)],
-  pick: ["series [series!] index [integer!]", pickIndex],
-  next: [SERIES, move((index) => index + 1)],
-  back: [SERIES, move((index) => index - 1)],
-  head: [SERIES, move(() => 0)],
-  tail: [SERIES, move((index, size) => size)],
-  "tail?": [SERIES, measure((index, size) => makeLogic(index >= size))],
-  "empty?": [SERIES, measure((index, size) => makeLogic(index >= size))],
-  "length?": [SERIES, measure((index, size) => makeDatum("integer", Math.max(size - index, 0)))],
-  "index?": [SERIES, measure((index) => makeDatum("integer", index + 1))],
-  third: [SERIES, takeItem(2)],
-  fourth: [SERIES, takeItem(3)],
-  fifth: [SERIES, takeItem(4)],
-  last: [SERIES, takeLast],
-  "at": ["series [series!] index [integer!]", jump((offset) => (offset > 0 ? offset - 1 : offset))],
-  skip: ["series [series!] offset [integer!]", jump((offset) => offset)],
-  poke: ["series [series!] index [integer!] value", pokeItem],
-  change: ["series [series!] value", changeValue],
-  remove: [SERIES, removeItem],
-  clear: [SERIES, clearRest],
-  find: ["series [series!] value", findValue],
-  select: ["series [series!] value", selectValue],
-  append: [INSERT, appendValue],
-  insert: [INSERT, insertValue],
-  copy: ["value [series!]", copySeries],
+  first: takeItem(0),
+  second: takeItem(1),
+  third: takeItem(2),
+  fourth: takeItem(3),
+  fifth: takeItem(4),
+  ...guardSeries({
+    pick: pickIndex,
+    next: move((index) => index + 1),
+    back: move((index) => index - 1),
+    head: move(() => 0),
+    tail: move((index, size) => size),
+    "tail?": measure((index, size) => makeLogic(index >= size)),
+    "empty?": measure((index, size) => makeLogic(index >= size)),
+    "length?": measure((index, size) => makeDatum("integer", Math.max(size - index, 0))),
+    "index?": measure((index) => makeDatum("integer", index + 1)),
+    "head?": measure((index) => makeLogic(index === 0)),
+    "offset?": (machine, [first, second]) => giveValue(machine, makeDatum("integer", second.value.index - first.value.index)),
+    last: takeLast,
+    "at": jump((offset) => (offset > 0 ? offset - 1 : offset)),
+    skip: jump((offset) => offset),
+  }),
 };
