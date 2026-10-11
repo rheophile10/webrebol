@@ -3,6 +3,7 @@
 /** @import { Datum } from "../types/states.mjs" */
 import { unescapeText } from "./escape.mjs";
 import { countDays, makeDate, readDays } from "./dates.mjs";
+import { packPixel } from "./pixels.mjs";
 
 const INTEGER_LIMIT = 2147483648;
 const NANOSECONDS = 1e9;
@@ -17,7 +18,7 @@ const SERIES_CONSTRUCTS = ["string", "file", "email", "url", "tag", "issue", "bi
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 108 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
+ * @usedby 109 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, pictures, store, grid, layout, windows
  */
 export const makeDatum = (type, value) => ({ type, value });
 
@@ -284,13 +285,13 @@ const TOKEN_READERS = {
  * @param {number[]} colors - Three bytes for each pixel: red, green and blue. Absent bytes are zero.
  * @param {number[]} alphas - One byte for each pixel. Absent bytes are zero.
  * @returns {Datum}
- * @standard pixels - Each pixel is a list of four bytes: red, green, blue and alpha.
- * @uses makeDatum
+ * @standard pixels - Each pixel is one number that holds the three color bytes and the alpha byte.
+ * @uses packPixel, makeDatum
  * @usedby makeConstruct, giveImage (src/natives/objects.mjs)
  */
 export const makeImage = (size, colors, alphas) => {
   const count = Math.max(size[0], 0) * Math.max(size[1], 0);
-  const readPixel = (unused, place) => [colors[place * 3] ?? 0, colors[place * 3 + 1] ?? 0, colors[place * 3 + 2] ?? 0, alphas[place] ?? 0];
+  const readPixel = (unused, place) => packPixel([colors[place * 3], colors[place * 3 + 1], colors[place * 3 + 2], alphas[place]]);
   return { ...makeDatum("image", Array.from({ length: count }, readPixel)), size };
 };
 

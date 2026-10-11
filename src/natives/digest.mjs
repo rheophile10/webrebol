@@ -38,7 +38,7 @@ const CRC_TABLE = countUp(256).map((unused, place) => countUp(8).reduce(shiftBit
  * @param {Datum} value
  * @returns {number[]}
  * @uses readRest (src/store/store.mjs)
- * @usedby readData, checkBytes, makeBytes, combineBytes
+ * @usedby readData, readKey, checkBytes, makeBytes, combineBytes
  */
 export const readBytes = (store, value) =>
   value.type === "binary" ? readRest(store, value) : [...readRest(store, value)].map((char) => char.charCodeAt(0) & 255);

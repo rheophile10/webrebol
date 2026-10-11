@@ -9,8 +9,8 @@
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
  * @madeby makeImage, readToken, loadSource, makeLogic, makeWord, readItem, findError, readContext
- * @changedby 20 declarations in datum, bitsets, loops, scalars, series, parts, store
- * @readby 44 declarations in call, machine, path, spec, bitsets, compare, control, convert, digest, edit, faults, files, loops, report, scalars, series, mold, store, elements, raster
+ * @changedby 21 declarations in datum, bitsets, loops, scalars, series, parts, pictures, store
+ * @readby 48 declarations in call, machine, path, spec, bitsets, compare, control, convert, digest, edit, faults, files, loops, report, scalars, series, mold, pictures, store, elements, raster
  */
 
 /**
@@ -29,8 +29,8 @@
  * @property {Datum[]} windows - The faces that are windows of the session.
  * @property {boolean} dirty - A face changed, and the page did not draw it yet.
  * @madeby BOOT_BUDGET, endAction
- * @changedby 15 declarations in store, windows
- * @readby 19 declarations in machine, compare, digest, loops, report, series, mold, store, elements, windows
+ * @changedby 17 declarations in pictures, store, windows
+ * @readby 22 declarations in machine, compare, digest, loops, report, series, mold, pictures, store, elements, windows
  */
 
 /**

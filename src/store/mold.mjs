@@ -2,6 +2,7 @@
 import { escapeBraces, escapeControls, escapeInLines } from "../data/escape.mjs";
 import { isList, readContext, readRest } from "./store.mjs";
 import { MONTHS, readDays } from "../data/dates.mjs";
+import { unpackPixel } from "../data/pixels.mjs";
 
 const DIGITS = 15;
 const QUOTE_LIMIT = 50;
@@ -147,12 +148,12 @@ const moldBinary = (bytes) => {
 };
 
 /**
- * @uses BINARY_LINE, moldByte
+ * @uses unpackPixel (src/data/pixels.mjs), BINARY_LINE, moldByte
  * @usedby MOLDERS
  */
 const moldImage = (size, pixels) => {
   // The colors of an image show in lines of 32 bytes, between two line ends.
-  const bytes = pixels.flatMap((pixel) => pixel.slice(0, 3));
+  const bytes = pixels.flatMap((pixel) => unpackPixel(pixel).slice(0, 3));
   const lines = Array.from({ length: Math.ceil(bytes.length / BINARY_LINE) }, (unused, place) =>
     bytes.slice(place * BINARY_LINE, (place + 1) * BINARY_LINE).map(moldByte).join(""),
   );

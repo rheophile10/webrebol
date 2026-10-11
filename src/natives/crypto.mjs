@@ -2,7 +2,12 @@ import { NONE, isList, makeSeries, readRest } from "../store/store.mjs";
 import { askEdge, failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
 import { readBytes } from "./digest.mjs";
 
-const METHODS = { sha1: "SHA-1", sha256: "SHA-256", sha384: "SHA-384", sha512: "SHA-512" };
+const HASHES = { sha1: "SHA-1", sha256: "SHA-256", sha384: "SHA-384", sha512: "SHA-512" };
+const CIPHERS = { "aes-gcm": "AES-GCM", "aes-cbc": "AES-CBC", "aes-ctr": "AES-CTR" };
+const PAIRS = ["ecdsa", "ecdh", "ed25519", "x25519", "rsa-pss", "rsa-oaep", "rsassa"];
+const FORMATS = ["spki", "pkcs8", "raw"];
+const KEY_BITS = 256;
+const RANDOM_LIMIT = 65536;
 
 /**
  * @uses giveValue (src/machine/machine.mjs), NONE (src/store/store.mjs), makeLogic (src/machine/machine.mjs),
@@ -33,87 +38,158 @@ const giveTexts = (machine, texts) => {
 
 /**
  * @uses askEdge (src/machine/machine.mjs), giveTexts, giveAnswer
- * @usedby digestData, signWithKey, deriveKey, useKey, useText, verifyData, CRYPTO_NATIVES
+ * @usedby askWithHash, useCipher, makeKeyPair, agreeOnKey, useWrapper, exportKey, importKey, CRYPTO_NATIVES
  */
 const askCrypto = (machine, work) =>
   // Web Crypto gives its answer later. Thus the machine waits for the edge.
   askEdge(machine, { ...work, kind: "crypto", resume: (waiting, answer) => (Array.isArray(answer) && typeof answer[0] === "string" ? giveTexts(waiting, answer) : giveAnswer(waiting, answer)) });
 
 /**
- * @uses METHODS
- * @usedby digestData, signWithKey
- */
-const readMethod = (machine, word) => METHODS[String(word?.value ?? "sha256").toLowerCase().replace("-", "")];
-
-/**
  * @uses isList (src/store/store.mjs), readBytes
- * @usedby digestData, signWithKey, deriveKey, useKey, useText, verifyData
+ * @usedby deriveKey, expandKey, useCipher, signData, verifyData, useWrapper, importKey, CRYPTO_NATIVES
  */
 const readData = (machine, value) => (isList(value) ? [] : readBytes(machine.store, value));
 
+// A key of bytes is a binary value. A key pair has its keys as texts in the JWK form.
 /**
- * @uses readMethod, failMachine (src/machine/machine.mjs), askCrypto, readData
- * @usedby CRYPTO_NATIVES
+ * @uses readBytes, readRest (src/store/store.mjs)
+ * @usedby useCipher, signData, verifyData
  */
-const digestData = (machine, [data, word]) => {
-  const method = readMethod(machine, word);
-  return method === undefined ? failMachine(machine, "script invalid-arg", [word]) : askCrypto(machine, { work: "digest", method, data: readData(machine, data) });
+const readKey = (machine, key) => (key.type === "binary" ? readBytes(machine.store, key) : readRest(machine.store, key));
+
+/**
+ * @uses readRest (src/store/store.mjs)
+ * @usedby makeKeyPair, importKey
+ */
+const readNames = (machine, spec) =>
+  (spec.type === "block" ? readRest(machine.store, spec) : [spec]).map((item) => String(item.value).toLowerCase());
+
+/**
+ * @uses HASHES, failMachine (src/machine/machine.mjs), askCrypto
+ * @usedby deriveKey, expandKey, signData, verifyData, CRYPTO_NATIVES
+ */
+const askWithHash = (machine, options, work) => {
+  // The refinement /hash selects the hash. Without it, the hash is SHA-256.
+  const method = HASHES[String(options.$hash?.[0].value ?? "sha256").toLowerCase().replace("-", "")];
+  return method === undefined ? failMachine(machine, "script invalid-arg", [options.$hash[0]]) : askCrypto(machine, { ...work, method });
 };
 
 /**
- * @uses readMethod, failMachine (src/machine/machine.mjs), askCrypto, readData
+ * @uses KEY_BITS
+ * @usedby deriveKey, expandKey
+ */
+const readSize = (options) => options.$size?.[0].value ?? KEY_BITS;
+
+/**
+ * @uses askWithHash, readData, readSize
  * @usedby CRYPTO_NATIVES
  */
-const signWithKey = (machine, [data, key], options) => {
-  // An HMAC with SHA-256, or with the method of the refinement.
-  const method = readMethod(machine, options.$method?.[0]);
+const deriveKey = (machine, [passphrase, salt, rounds], options) =>
+  askWithHash(machine, options, { work: "derive", data: readData(machine, passphrase), salt: readData(machine, salt), rounds: rounds.value, size: readSize(options) });
+
+/**
+ * @uses askWithHash, readData, readSize
+ * @usedby CRYPTO_NATIVES
+ */
+const expandKey = (machine, [key, salt, info], options) =>
+  askWithHash(machine, options, { work: "expand", data: readData(machine, key), salt: readData(machine, salt), info: readData(machine, info), size: readSize(options) });
+
+/**
+ * @uses CIPHERS, failMachine (src/machine/machine.mjs), readData, askCrypto, readKey
+ * @usedby CRYPTO_NATIVES
+ */
+const useCipher = (work) => (machine, [data, key], options) => {
+  // The refinement /method selects the AES mode. Without it, the mode is AES-GCM. An RSA key does not use the mode.
+  const method = CIPHERS[String(options.$method?.[0].value ?? "aes-gcm").toLowerCase()];
   if (method === undefined) return failMachine(machine, "script invalid-arg", [options.$method[0]]);
-  return askCrypto(machine, { work: "hmac", method, data: readData(machine, data), key: readData(machine, key) });
+  const extra = options.$extra === undefined ? null : readData(machine, options.$extra[0]);
+  return askCrypto(machine, { work, method, extra, data: readData(machine, data), key: readKey(machine, key) });
 };
 
 /**
- * @uses askCrypto, readData
+ * @uses readNames, PAIRS, askCrypto, failMachine (src/machine/machine.mjs)
  * @usedby CRYPTO_NATIVES
  */
-const deriveKey = (machine, [passphrase, salt, rounds]) =>
-  askCrypto(machine, { work: "derive", data: readData(machine, passphrase), salt: readData(machine, salt), rounds: rounds.value });
+const makeKeyPair = (machine, args, options) => {
+  const spec = options.$method === undefined ? ["ecdsa"] : readNames(machine, options.$method[0]);
+  return PAIRS.includes(spec[0]) ? askCrypto(machine, { work: "keypair", spec }) : failMachine(machine, "script invalid-arg", [options.$method[0]]);
+};
+
+/**
+ * @uses askWithHash, readData, readKey
+ * @usedby CRYPTO_NATIVES
+ */
+const signData = (machine, [data, key], options) =>
+  askWithHash(machine, options, { work: "sign", data: readData(machine, data), key: readKey(machine, key) });
+
+/**
+ * @uses askWithHash, readData, readKey
+ * @usedby CRYPTO_NATIVES
+ */
+const verifyData = (machine, [data, signature, key], options) =>
+  askWithHash(machine, options, { work: "verify", data: readData(machine, data), signature: readData(machine, signature), key: readKey(machine, key) });
+
+/**
+ * @uses askCrypto, readRest (src/store/store.mjs)
+ * @usedby CRYPTO_NATIVES
+ */
+const agreeOnKey = (machine, [key, other], options) =>
+  askCrypto(machine, { work: "agree", key: readRest(machine.store, key), other: readRest(machine.store, other), size: options.$size?.[0].value ?? null });
 
 /**
  * @uses askCrypto, readData
  * @usedby CRYPTO_NATIVES
  */
-const useKey = (work) => (machine, [data, key]) => askCrypto(machine, { work, data: readData(machine, data), key: readData(machine, key) });
+const useWrapper = (work) => (machine, [data, key]) => askCrypto(machine, { work, data: readData(machine, data), key: readData(machine, key) });
 
 /**
- * @uses askCrypto, readData, readRest (src/store/store.mjs)
- * @usedby CRYPTO_NATIVES
+ * @uses FORMATS
+ * @usedby exportKey, importKey
  */
-const useText = (work) => (machine, [data, key]) =>
-  askCrypto(machine, { work, data: readData(machine, data), key: readRest(machine.store, key) });
+const readFormat = (word) => FORMATS.find((format) => format === String(word.value).toLowerCase());
 
 /**
- * @uses askCrypto, readData, readRest (src/store/store.mjs)
+ * @uses readFormat, failMachine (src/machine/machine.mjs), askCrypto, readRest (src/store/store.mjs)
  * @usedby CRYPTO_NATIVES
  */
-const verifyData = (machine, [data, signature, key]) =>
-  askCrypto(machine, { work: "verify", data: readData(machine, data), signature: readData(machine, signature), key: readRest(machine.store, key) });
+const exportKey = (machine, [key, word]) => {
+  const format = readFormat(word);
+  return format === undefined ? failMachine(machine, "script invalid-arg", [word]) : askCrypto(machine, { work: "export", format, key: readRest(machine.store, key) });
+};
+
+/**
+ * @uses readFormat, readNames, PAIRS, failMachine (src/machine/machine.mjs), askCrypto, readData
+ * @usedby CRYPTO_NATIVES
+ */
+const importKey = (machine, [data, word, method]) => {
+  const [format, spec] = [readFormat(word), readNames(machine, method)];
+  if (format === undefined || !PAIRS.includes(spec[0])) return failMachine(machine, "script invalid-arg", [format === undefined ? word : method]);
+  return askCrypto(machine, { work: "import", format, spec, data: readData(machine, data) });
+};
 
 /**
  * The crypto words: the natives that use Web Crypto through the edge. These words are not in REBOL 2.
- * @uses digestData, askCrypto, signWithKey, deriveKey, useKey, useText, verifyData
+ * @uses askWithHash, readData, askCrypto, RANDOM_LIMIT, signData, deriveKey, expandKey, useCipher, makeKeyPair,
+ *   verifyData, agreeOnKey, useWrapper, exportKey, importKey
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const CRYPTO_NATIVES = {
-  "crypto-digest": digestData,
-  "crypto-random": (machine, [size]) => askCrypto(machine, { work: "random", size: Math.max(0, Math.min(size.value, 65536)) }),
-  "crypto-hmac": signWithKey,
-  "crypto-derive": deriveKey,
-  "crypto-encrypt": useKey("encrypt"),
-  "crypto-decrypt": useKey("decrypt"),
-  "crypto-key-pair": (machine) => askCrypto(machine, { work: "keypair" }),
-  "crypto-sign": useText("sign"),
-  "crypto-verify": verifyData,
+  "crypto-digest": (machine, [data, word]) => askWithHash(machine, { $hash: [word] }, { work: "digest", data: readData(machine, data) }),
+  "crypto-random": (machine, [size]) => askCrypto(machine, { work: "random", size: Math.max(0, Math.min(size.value, RANDOM_LIMIT)) }),
   "crypto-uuid": (machine) => askCrypto(machine, { work: "uuid" }),
+  "crypto-hmac": signData,
+  "crypto-derive": deriveKey,
+  "crypto-expand": expandKey,
+  "crypto-encrypt": useCipher("encrypt"),
+  "crypto-decrypt": useCipher("decrypt"),
+  "crypto-key-pair": makeKeyPair,
+  "crypto-sign": signData,
+  "crypto-verify": verifyData,
+  "crypto-agree": agreeOnKey,
+  "crypto-wrap": useWrapper("wrap"),
+  "crypto-unwrap": useWrapper("unwrap"),
+  "crypto-export": exportKey,
+  "crypto-import": importKey,
 };
 
 /**
@@ -122,12 +198,18 @@ export const CRYPTO_NATIVES = {
 export const CRYPTO_SPECS = {
   "crypto-digest": ["native", "data [any-string! binary!] method [word!]"],
   "crypto-random": ["native", "size [integer!]"],
-  "crypto-hmac": ["native", "data [any-string! binary!] key [any-string! binary!] /method name [word!]"],
-  "crypto-derive": ["native", "passphrase [any-string! binary!] salt [any-string! binary!] rounds [integer!]"],
-  "crypto-encrypt": ["native", "data [any-string! binary!] key [binary!]"],
-  "crypto-decrypt": ["native", "data [binary!] key [binary!]"],
-  "crypto-key-pair": ["native", ""],
-  "crypto-sign": ["native", "data [any-string! binary!] private-key [string!]"],
-  "crypto-verify": ["native", "data [any-string! binary!] signature [binary!] public-key [string!]"],
   "crypto-uuid": ["native", ""],
+  "crypto-hmac": ["native", "data [any-string! binary!] key [binary!] /hash name [word!]"],
+  "crypto-derive": ["native", "passphrase [any-string! binary!] salt [any-string! binary!] rounds [integer!] /hash name [word!] /size bits [integer!]"],
+  "crypto-expand": ["native", "key [binary!] salt [any-string! binary!] info [any-string! binary!] /hash name [word!] /size bits [integer!]"],
+  "crypto-encrypt": ["native", "data [any-string! binary!] key [binary! string!] /method name [word!] /extra more [any-string! binary!]"],
+  "crypto-decrypt": ["native", "data [binary!] key [binary! string!] /method name [word!] /extra more [any-string! binary!]"],
+  "crypto-key-pair": ["native", "/method spec [word! block!]"],
+  "crypto-sign": ["native", "data [any-string! binary!] key [string! binary!] /hash name [word!]"],
+  "crypto-verify": ["native", "data [any-string! binary!] signature [binary!] key [string! binary!] /hash name [word!]"],
+  "crypto-agree": ["native", "private-key [string!] public-key [string!] /size bits [integer!]"],
+  "crypto-wrap": ["native", "key [binary!] wrapping-key [binary!]"],
+  "crypto-unwrap": ["native", "data [binary!] wrapping-key [binary!]"],
+  "crypto-export": ["native", "key [string!] format [word!]"],
+  "crypto-import": ["native", "data [binary!] format [word!] method [word! block!]"],
 };

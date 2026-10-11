@@ -3,6 +3,7 @@ import { answerRequest } from "../machine/machine.mjs";
 import { runMachine } from "../machine/run.mjs";
 import { startSource } from "../session/interpret.mjs";
 import { EMPTY_DISK } from "../store/disk.mjs";
+import { performCrypto } from "./crypto.mjs";
 
 const SHA_1 = "SHA-1";
 /**
@@ -13,7 +14,7 @@ const HMAC = { name: "HMAC", hash: SHA_1 };
 
 // Web Crypto gives an ArrayBuffer. Only a typed array can read it, and STE-JS does not approve `new` for that type.
 /**
- * @usedby digestBytes, encryptBytes, decryptBytes, deriveBytes, signHmac, signData, CRYPTO_WORK
+ * @usedby digestBytes
  */
 const readBuffer = (buffer) => [...Reflect.construct(Uint8Array, [buffer])];
 
@@ -39,115 +40,10 @@ const readClock = async () => {
 };
 
 /**
- * @usedby 9 declarations in drive
- */
-const subtle = () => globalThis.crypto.subtle;
-
-const ECDSA = { name: "ECDSA", namedCurve: "P-256" };
-const ECDSA_SIGN = { name: "ECDSA", hash: "SHA-256" };
-const IV_SIZE = 12;
-
-/**
- * @uses subtle
- * @usedby encryptBytes, decryptBytes
- */
-const importAes = (key) => subtle().importKey("raw", Uint8Array.from(key), "AES-GCM", false, ["encrypt", "decrypt"]);
-
-/**
- * @uses IV_SIZE, subtle, importAes, readBuffer
- * @usedby CRYPTO_WORK
- */
-const encryptBytes = async (request) => {
-  // AES-GCM with a new random start value of 12 bytes. The result is the start value and then the encrypted bytes.
-  const start = globalThis.crypto.getRandomValues(Reflect.construct(Uint8Array, [IV_SIZE]));
-  const sealed = await subtle().encrypt({ name: "AES-GCM", "iv": start }, await importAes(request.key), Uint8Array.from(request.data));
-  return [...start, ...readBuffer(sealed)];
-};
-
-/**
- * @uses IV_SIZE, readBuffer, subtle, importAes
- * @usedby CRYPTO_WORK
- */
-const decryptBytes = async (request) => {
-  // A wrong key or changed bytes give null.
-  try {
-    const start = Uint8Array.from(request.data.slice(0, IV_SIZE));
-    return readBuffer(await subtle().decrypt({ name: "AES-GCM", "iv": start }, await importAes(request.key), Uint8Array.from(request.data.slice(IV_SIZE))));
-  } catch {
-    return null;
-  }
-};
-
-/**
- * @uses subtle, readBuffer
- * @usedby CRYPTO_WORK
- */
-const deriveBytes = async (request) => {
-  // PBKDF2 with SHA-256 gives a key of 256 bits from a passphrase.
-  const base = await subtle().importKey("raw", Uint8Array.from(request.data), "PBKDF2", false, ["deriveBits"]);
-  const facts = { name: "PBKDF2", salt: Uint8Array.from(request.salt), iterations: request.rounds, hash: "SHA-256" };
-  return readBuffer(await subtle().deriveBits(facts, base, 256));
-};
-
-/**
- * @uses subtle, readBuffer
- * @usedby CRYPTO_WORK
- */
-const signHmac = async (request) => {
-  const key = await subtle().importKey("raw", Uint8Array.from(request.key), { name: "HMAC", hash: request.method }, false, ["sign"]);
-  return readBuffer(await subtle().sign("HMAC", key, Uint8Array.from(request.data)));
-};
-
-/**
- * @uses subtle, ECDSA
- * @usedby CRYPTO_WORK
- */
-const makeKeyPair = async () => {
-  // The two keys are JSON texts in the JWK form: the public key and then the private key.
-  const pair = await subtle().generateKey(ECDSA, true, ["sign", "verify"]);
-  return [JSON.stringify(await subtle().exportKey("jwk", pair.publicKey)), JSON.stringify(await subtle().exportKey("jwk", pair.privateKey))];
-};
-
-/**
- * @uses subtle, ECDSA, readBuffer, ECDSA_SIGN
- * @usedby CRYPTO_WORK
- */
-const signData = async (request) => {
-  const key = await subtle().importKey("jwk", JSON.parse(request.key), ECDSA, false, ["sign"]);
-  return readBuffer(await subtle().sign(ECDSA_SIGN, key, Uint8Array.from(request.data)));
-};
-
-/**
- * @uses subtle, ECDSA, ECDSA_SIGN
- * @usedby CRYPTO_WORK
- */
-const verifyData = async (request) => {
-  const key = await subtle().importKey("jwk", JSON.parse(request.key), ECDSA, false, ["verify"]);
-  return subtle().verify(ECDSA_SIGN, key, Uint8Array.from(request.signature), Uint8Array.from(request.data));
-};
-
-/**
- * @uses readBuffer, subtle, signHmac, deriveBytes, encryptBytes, decryptBytes, makeKeyPair, signData, verifyData
- * @usedby HANDLERS
- */
-const CRYPTO_WORK = {
-  digest: async (request) => readBuffer(await subtle().digest(request.method, Uint8Array.from(request.data))),
-  random: async (request) => [...globalThis.crypto.getRandomValues(Reflect.construct(Uint8Array, [request.size]))],
-  uuid: async () => globalThis.crypto.randomUUID(),
-  hmac: signHmac,
-  derive: deriveBytes,
-  encrypt: encryptBytes,
-  decrypt: decryptBytes,
-  keypair: makeKeyPair,
-  sign: signData,
-  verify: verifyData,
-};
-
-/**
- * @uses digestBytes, readClock, CRYPTO_WORK
+ * @uses digestBytes, readClock, performCrypto
  * @usedby performRequest, driveMachine
  */
-const HANDLERS = { digest: digestBytes, clock: readClock, crypto: (request) => CRYPTO_WORK[request.work](request) };
+const HANDLERS = { digest: digestBytes, clock: readClock, crypto: performCrypto };
 
 /**
  * Does the work of one request of a machine that waits.

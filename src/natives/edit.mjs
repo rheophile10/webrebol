@@ -1,6 +1,7 @@
 /** @import { Datum, Store, Machine } from "../types/states.mjs" */
-import { isList, isSeries, makeSeries, readAll, readRest, writeAll } from "../store/store.mjs";
+import { countItems, isList, isSeries, makeSeries, readAll, readRest, splitRows, writeAll } from "../store/store.mjs";
 import { failMachine, giveValue } from "../machine/machine.mjs";
+import { writePixel } from "../store/pictures.mjs";
 import { insertContent, makeContent, moveTo } from "./series.mjs";
 
 /**
@@ -51,17 +52,18 @@ const copyDeep = (store, series, depth) => {
 };
 
 /**
- * @uses readPart, makeSpan, readAll (src/store/store.mjs), makeSeries (src/store/store.mjs), copyDeep,
- *   giveValue (src/machine/machine.mjs)
+ * @uses readPart, makeSpan, readAll (src/store/store.mjs), splitRows (src/store/store.mjs),
+ *   makeSeries (src/store/store.mjs), copyDeep, giveValue (src/machine/machine.mjs)
  * @usedby EDIT_NATIVES
  */
 const copySeries = (machine, [series], options) => {
   const size = options.$part === undefined ? Infinity : readPart(series, options.$part[0]);
   const span = makeSpan(machine.store, series, size);
   const content = readAll(machine.store, series).slice(span.from, span.upto);
-  const made = options.$deep === undefined ? makeSeries(machine.store, series.type, content) : copyDeep(machine.store, { type: series.type, content }, 0);
   // A copy of an image keeps the size. A part of an image is one row of pixels.
   const extent = options.$part === undefined ? series.value.size : [content.length, Math.min(content.length, 1)];
+  const items = series.type === "image" ? splitRows(content, extent[0]) : content;
+  const made = options.$deep === undefined ? makeSeries(machine.store, series.type, items) : copyDeep(machine.store, { type: series.type, content: items }, 0);
   const value = series.type === "image" ? { ...made.value, value: { ...made.value.value, size: extent } } : made.value;
   return giveValue({ ...machine, store: made.store }, value);
 };
@@ -152,18 +154,17 @@ const clearRest = (machine, [series]) => {
 };
 
 /**
- * @uses readAll (src/store/store.mjs), failMachine (src/machine/machine.mjs), isList (src/store/store.mjs),
- *   giveValue (src/machine/machine.mjs), replaceItems, moveTo
+ * @uses countItems (src/store/store.mjs), failMachine (src/machine/machine.mjs), giveValue (src/machine/machine.mjs),
+ *   writePixel (src/store/pictures.mjs), isList (src/store/store.mjs), replaceItems, moveTo
  * @usedby EDIT_NATIVES
  */
 const pokeItem = (machine, [series, index, value]) => {
   const place = series.value.index + index.value - 1;
-  const inside = index.value > 0 && place < readAll(machine.store, series).length;
+  const inside = index.value > 0 && place < countItems(machine.store, series);
   if (!inside) return failMachine(machine, "script out-of-range", [index]);
-  // A pixel of an image is a tuple. A color without an alpha part gets the alpha 0, which is not transparent in REBOL.
-  const pixel = [value.value?.[0] ?? 0, value.value?.[1] ?? 0, value.value?.[2] ?? 0, value.value?.[3] ?? 0];
-  const item = series.type === "image" ? [pixel] : [value];
-  const content = isList(series) || series.type === "image" ? item : String.fromCharCode(value.value);
+  // A pixel of an image is a tuple. Only the row of the pixel changes.
+  if (series.type === "image") return giveValue({ ...machine, store: writePixel(machine.store, series, { place, color: value.value ?? [] }) }, value);
+  const content = isList(series) ? [value] : String.fromCharCode(value.value);
   return giveValue(replaceItems(machine, moveTo(series, place), { content, size: 1 }), value);
 };
 

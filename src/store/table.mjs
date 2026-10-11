@@ -33,8 +33,7 @@ const readNode = (node, shift, key) => {
  * @returns {*}
  * @standard absent - A key without a value gives undefined.
  * @uses BITS, readNode
- * @usedby paintImage (src/edge/paint.mjs), atEnd (src/machine/machine.mjs), readItem (src/machine/machine.mjs),
- *   readRest, readAll, readWord, readContext, writeWord
+ * @usedby 9 declarations in paint, machine, pictures, store
  */
 export const readEntry = (table, key) => (key >> (table.shift + BITS) > 0 ? undefined : readNode(table.root, table.shift, key));
 
@@ -57,7 +56,7 @@ const writeNode = (node, shift, entry) => {
  * @returns {{ shift: number, root: Array }}
  * @standard shared - The old table does not change.
  * @uses BITS, EMPTY_NODE, writeNode
- * @usedby EMPTY_STORE, makeSeries, writeAll, writeWord, writeContext
+ * @usedby writeRows, EMPTY_STORE, makeSeries, writeAll, writeWord, writeContext
  */
 export const writeEntry = (table, key, value) => {
   // A key that is too large for the table adds a level above the root.

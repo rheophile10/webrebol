@@ -68,7 +68,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { ...machin
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 137 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, raster, windows
+ * @usedby 138 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, raster, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -90,7 +90,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 46 declarations in call, evaluate, path, run, bitsets, compare, control, convert, crypto, digest, edit, encode, files, items, math, numbers, objects, random, series, words
+ * @usedby 49 declarations in call, evaluate, path, run, bitsets, compare, control, convert, crypto, digest, edit, encode, files, items, math, numbers, objects, random, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });

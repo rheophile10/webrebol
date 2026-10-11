@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import { interpretSource, showResult } from "../src/session/interpret.mjs";
 import { exportElement, writeMarkup } from "../src/view/elements.mjs";
 import { drawCommands } from "../src/view/raster.mjs";
+import { packPixel, unpackPixel } from "../src/data/pixels.mjs";
 import { answerRequest } from "../src/machine/machine.mjs";
 import { diff } from "../src/view/diff.mjs";
 import { changeText, continueAction, endAction, listKeyBlocks, listTimers, renderWindows, runAction, runEngage, runKeyAction, runPointerAction } from "../src/view/windows.mjs";
 import { findThreshold, hashCell, measureCenter, smoothNoise } from "../src/view/grid.mjs";
-import { readContext, readRest, readWord } from "../src/store/store.mjs";
+import { countItems, readContext, readRest, readWord, splitRows } from "../src/store/store.mjs";
+import { readPixel, readRows, writePixel } from "../src/store/pictures.mjs";
 
 const BATCHES = 2000;
 const WINDOW = 'lay: layout [name: field "abc" button "Push" [print "pushed"] button "Close" [unview]] view/new lay';
@@ -187,12 +189,16 @@ test("writeMarkup namespace: only the top svg element gets the attribute xmlns",
   assert.equal(writeMarkup(node), '<svg xmlns="http://www.w3.org/2000/svg" width="10"><svg/></svg>');
 });
 
-const WHITE = [255, 255, 255, 0];
+/**
+ * @uses packPixel (src/data/pixels.mjs)
+ * @usedby makePicture
+ */
+const WHITE = packPixel([255, 255, 255, 0]);
 
 /**
  * @uses WHITE
  */
-const makePicture = (width, height) => ({ size: [width, height], pixels: Array.from({ length: width * height }, () => WHITE) });
+const makePicture = (width, height) => ({ size: [width, height], rows: Array.from({ length: height }, () => Array.from({ length: width }, () => WHITE)) });
 
 /**
  * @uses run, readRest (src/store/store.mjs)
@@ -204,19 +210,62 @@ const readCommands = (source) => {
 
 test("drawCommands line: a line changes the pixels of its row and not the other rows", () => {
   const drawn = drawCommands(makePicture(6, 3), readCommands("[pen 255.0.0 line 0x1 5x1]"));
-  assert.deepEqual(drawn.pixels[6], [255, 0, 0, 0]);
-  assert.deepEqual(drawn.pixels[11], [255, 0, 0, 0]);
-  assert.equal(drawn.pixels[0], WHITE);
-  assert.equal(drawn.pixels[17], WHITE);
+  assert.equal(drawn.rows[1][0], packPixel([255, 0, 0, 0]));
+  assert.equal(drawn.rows[1][5], packPixel([255, 0, 0, 0]));
+  assert.equal(drawn.rows[0][0], WHITE);
+  assert.equal(drawn.rows[2][5], WHITE);
+});
+
+test("drawCommands shared: a row that a line does not touch is the same array as before", () => {
+  const picture = makePicture(6, 3);
+  const drawn = drawCommands(picture, readCommands("[pen 255.0.0 line 0x1 5x1]"));
+  assert.equal(drawn.rows[0], picture.rows[0]);
+  assert.equal(drawn.rows[2], picture.rows[2]);
+  assert.notEqual(drawn.rows[1], picture.rows[1]);
 });
 
 test("drawCommands flood: a flood fills one side of a line and not the other side", () => {
   const lined = drawCommands(makePicture(6, 5), readCommands("[pen 0.0.0 line 0x2 5x2]"));
   const filled = drawCommands(lined, readCommands("[pen 0.255.0 flood 3x0]"));
-  assert.deepEqual(filled.pixels[0], [0, 255, 0, 0]);
-  assert.deepEqual(filled.pixels[11], [0, 255, 0, 0]);
-  assert.deepEqual(filled.pixels[12], [0, 0, 0, 0]);
-  assert.equal(filled.pixels[29], WHITE);
+  assert.equal(filled.rows[0][0], packPixel([0, 255, 0, 0]));
+  assert.equal(filled.rows[1][5], packPixel([0, 255, 0, 0]));
+  assert.equal(filled.rows[2][0], packPixel([0, 0, 0, 0]));
+  assert.equal(filled.rows[4][5], WHITE);
+  assert.equal(filled.rows[4], lined.rows[4]);
+});
+
+/**
+ * @uses run, readRows (src/store/pictures.mjs)
+ */
+test("readRows shared: after a poke, a row without the pixel is the same array as before", () => {
+  const machine = run("make image! [4x3 255.255.255]");
+  const before = readRows(machine.store, machine.value);
+  const after = readRows(writePixel(machine.store, machine.value, { place: 5, color: [1, 2, 3] }), machine.value);
+  assert.equal(after[0], before[0]);
+  assert.equal(after[2], before[2]);
+});
+
+test("writePixel row: a change at position 5 of a 4x3 image changes the second pixel of the second row", () => {
+  const machine = run("make image! [4x3 255.255.255]");
+  const rows = readRows(writePixel(machine.store, machine.value, { place: 5, color: [1, 2, 3] }), machine.value);
+  assert.equal(rows[1][1], packPixel([1, 2, 3, 0]));
+  assert.equal(rows[1][0], WHITE);
+  assert.equal(rows.length, 3);
+});
+
+test("readPixel outside: a position after the last pixel gives null", () => {
+  const machine = run("make image! [2x2 9.8.7]");
+  assert.equal(readPixel(machine.store, machine.value, 4), null);
+  assert.deepEqual(readPixel(machine.store, machine.value, 3).value, [9, 8, 7, 0]);
+});
+
+test("splitRows rows: five pixels with the width 2 give two full rows and one short row", () => {
+  assert.deepEqual(splitRows([1, 2, 3, 4, 5], 2), [[1, 2], [3, 4], [5]]);
+});
+
+test("countItems image: an image of 4x3 has 12 items", () => {
+  const machine = run("make image! [4x3 255.255.255]");
+  assert.equal(countItems(machine.store, machine.value), 12);
 });
 
 test("endAction paused: an action that waits for the page gives a store that holds the waiting machine", () => {
@@ -235,4 +284,18 @@ test("continueAction resume: the action continues to its end after the answer of
   assert.equal(done.output, "saved\n");
   assert.equal(done.paused, null);
   assert.equal(typeof answerRequest, "function");
+});
+
+test("packPixel alpha: the REBOL alpha 0 gives the alpha byte 255 of a canvas", () => {
+  assert.equal(packPixel([255, 255, 255, 0]), -1);
+  assert.equal(packPixel([1, 0, 0, 255]), 1);
+});
+
+test("unpackPixel inverse: the bytes of a packed color are the same bytes", () => {
+  assert.deepEqual(unpackPixel(packPixel([10, 200, 30, 40])), [10, 200, 30, 40]);
+  assert.deepEqual(unpackPixel(packPixel([255, 255, 255])), [255, 255, 255, 0]);
+});
+
+test("countItems image: foreach on an image of 3x2 gives one tuple for each pixel", () => {
+  assert.equal(showResult(run("p: make image! [3x2 255.0.0] poke p 2 0.9.0 n: 0 foreach x p [if x/1 > 200 [n: n + 1]] n")), "5");
 });

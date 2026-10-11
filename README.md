@@ -46,7 +46,7 @@ The downloaded scripts and the reports are in `corpus/`, which is not in git. RE
 | Layout facets | `css`, `rate`, `on-time`, `on-key`, `on-down`, `on-move`, `on-up` |
 | Pictures | `download-image`, the `flood` command of `draw`, the effects `paint` and `reveal` |
 | Animation numbers | `find-threshold`, `hash-cell`, `smooth-noise`, `measure-center`, `make-reveal` |
-| Web Crypto | `crypto-digest`, `crypto-random`, `crypto-uuid`, `crypto-hmac`, `crypto-derive`, `crypto-encrypt`, `crypto-decrypt`, `crypto-key-pair`, `crypto-sign`, `crypto-verify` |
+| Web Crypto | `crypto-digest`, `crypto-random`, `crypto-uuid`, `crypto-hmac`, `crypto-derive`, `crypto-expand`, `crypto-encrypt`, `crypto-decrypt`, `crypto-key-pair`, `crypto-sign`, `crypto-verify`, `crypto-agree`, `crypto-wrap`, `crypto-unwrap`, `crypto-export`, `crypto-import` |
 
 ```
 key: crypto-derive "a passphrase" crypto-random 16 600000
@@ -54,6 +54,32 @@ sealed: crypto-encrypt "a secret text" key
 to-string crypto-decrypt sealed key        ; "a secret text"
 crypto-digest "abc" 'sha256
 ```
+
+The crypto words have all the algorithms of Web Crypto:
+
+| Work | Words | Algorithms |
+|---|---|---|
+| Digest | `crypto-digest data 'sha256` | SHA-1, SHA-256, SHA-384, SHA-512 |
+| Random | `crypto-random size`, `crypto-uuid` | The random source of the engine |
+| Encrypt with a key of bytes | `crypto-encrypt`, `crypto-decrypt`, with `/method` and `/extra` | AES-GCM (default), AES-CBC, AES-CTR. The key has 16, 24 or 32 bytes. |
+| Encrypt with a key pair | `crypto-encrypt data public-key`, `crypto-decrypt data private-key` | RSA-OAEP |
+| Sign | `crypto-sign`, `crypto-verify`, `crypto-hmac`, with `/hash` | HMAC (a key of bytes), ECDSA, Ed25519, RSA-PSS, RSASSA-PKCS1-v1_5 |
+| Make a key pair | `crypto-key-pair/method spec` | `ecdsa`, `ecdh`, `ed25519`, `x25519`, `rsa-pss`, `rsa-oaep`, `rsassa`. A block adds a curve, a size or a hash: `[ecdsa p-384]`, `[rsa-pss 4096 sha512]`. |
+| Make a key from a passphrase | `crypto-derive passphrase salt rounds`, with `/hash` and `/size` | PBKDF2 |
+| Make a key from a key | `crypto-expand key salt info`, with `/hash` and `/size` | HKDF |
+| Agree on a secret | `crypto-agree private-key public-key`, with `/size` | ECDH, X25519 |
+| Wrap a key | `crypto-wrap key wrapping-key`, `crypto-unwrap` | AES-KW |
+| Change the form of a key | `crypto-export key 'spki`, `crypto-import data 'spki 'ecdsa` | The forms `spki`, `pkcs8` and `raw`. A key of a pair is a text in the JWK form. |
+
+```
+mine: crypto-key-pair/method 'x25519
+yours: crypto-key-pair/method 'x25519
+secret: crypto-agree second mine first yours     ; the same bytes as: crypto-agree second yours first mine
+key: crypto-expand secret "a salt" "chat key"
+sealed: crypto-encrypt "hello" key
+```
+
+Work that Web Crypto refuses gives `none`: a wrong key, changed bytes, or an algorithm that the engine does not have. A script can read its keys, because a key is a REBOL value. Web Crypto can also keep a key that a script cannot read. WebRebol does not have this.
 
 ## The look of View
 
@@ -83,7 +109,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | `random` | The numbers are random, but the same seed does not give the same numbers as REBOL 2. REBOL does not publish its algorithm. |
 | `call` | Not available. A browser page cannot start a program. |
 | `library!`, `routine!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
-| `image!`, `event!` | Available. `draw` on an image has the commands `pen`, `fill-pen`, `line-width`, `line`, `box`, `circle` and `flood`. |
+| `image!`, `event!` | Available. `draw` on an image has the commands `pen`, `fill-pen`, `line-width`, `line`, `box`, `circle` and `flood`. The store keeps an image in rows, thus a change copies only the rows that change. |
 | `struct!` | Not available at this time. This type is possible, and it is planned. |
 | View | `layout` gives a face tree with the same positions and sizes as REBOL View 2.7.8. `view` shows each face as a DOM element with CSS. A face can have an action, a timer, keyboard events and pointer events. `effect [draw [...]]` gives SVG shapes for `line`, `box` and `circle`. The other draw commands and the other effects are not available at this time. The pixels are not equal to REBOL 2, because a browser draws the elements and the fonts. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
@@ -106,7 +132,7 @@ WebRebol has the MIT licence. See `LICENSE`.
 
 <!-- ste-doc -->
 - [`scanTokens`](src/data/tokens.mjs#L88) — Divides a source text into its lexical parts, without the spaces and the comments.
-- [`readToken`](src/data/datum.mjs#L326) — Reads the REBOL value that one token shows.
+- [`readToken`](src/data/datum.mjs#L327) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L183) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L126) — Moves a loaded value into a store.
 - [`makeMachine`](src/machine/machine.mjs#L214) — Makes a machine that is ready to evaluate a block.
@@ -116,5 +142,5 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`startCall`](src/machine/call.mjs#L208) — Starts the call of a function.
 - [`interpretSource`](src/session/interpret.mjs#L45) — Evaluates a REBOL source text in a new session, without an edge.
 - [`showResult`](src/session/interpret.mjs#L56) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L252) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L253) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

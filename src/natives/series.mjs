@@ -1,19 +1,19 @@
 /** @import { Datum, Store, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
-import { isList, isSeries, isText, makeSeries, NONE, readAll, readContext, readRest, writeAll } from "../store/store.mjs";
+import { readPixel } from "../store/pictures.mjs";
+import { countItems, isList, isSeries, isText, makeSeries, NONE, readAll, readContext, readRest, writeAll } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
 import { readField } from "../store/parts.mjs";
 import { failMachine, giveValue, makeLogic, makeWord } from "../machine/machine.mjs";
 
 
 /**
- * @uses isList (src/store/store.mjs), makeDatum (src/data/datum.mjs), isText (src/store/store.mjs)
+ * @uses isList (src/store/store.mjs), isText (src/store/store.mjs), makeDatum (src/data/datum.mjs)
  * @usedby pickItem
  */
 const makeItem = (series, raw) => {
   // An item of a text is a char. An item of a binary is an integer.
   if (isList(series)) return raw;
-  if (series.type === "image") return makeDatum("tuple", raw);
   return isText(series) ? makeDatum("char", raw.charCodeAt(0)) : makeDatum("integer", raw);
 };
 
@@ -28,11 +28,12 @@ const makeItem = (series, raw) => {
  * @param {number} offset - The number of items after the position. It can be negative.
  * @returns {Datum | null}
  * @standard outside - An offset that is not in the series gives null.
- * @uses readAll (src/store/store.mjs), makeItem
+ * @uses readPixel (src/store/pictures.mjs), readAll (src/store/store.mjs), makeItem
  * @usedby takeItems, takeFirst, pickSeries, selectValue, takeItem, pickIndex
  */
 export const pickItem = (store, series, offset) => {
-  // Give null if the position is not in the series.
+  // Give null if the position is not in the series. An image gives its pixel without a copy of all the pixels.
+  if (series.type === "image") return readPixel(store, series, series.value.index + offset);
   const all = readAll(store, series);
   const place = series.value.index + offset;
   return place < 0 || place >= all.length ? null : makeItem(series, all[place]);
@@ -169,22 +170,22 @@ const pickIndex = (machine, [series, index]) => {
 export const moveTo = (series, index) => ({ ...series, value: { ...series.value, index } });
 
 /**
- * @uses readAll (src/store/store.mjs), giveValue (src/machine/machine.mjs), moveTo
+ * @uses countItems (src/store/store.mjs), giveValue (src/machine/machine.mjs), moveTo
  * @usedby SERIES_NATIVES
  */
 const move = (find) => (machine, [series]) => {
   // The position stays between the head and the tail.
-  const size = readAll(machine.store, series).length;
+  const size = countItems(machine.store, series);
   const index = Math.min(Math.max(find(series.value.index, size), 0), size);
   return giveValue(machine, moveTo(series, index));
 };
 
 /**
- * @uses giveValue (src/machine/machine.mjs), readAll (src/store/store.mjs)
+ * @uses giveValue (src/machine/machine.mjs), countItems (src/store/store.mjs)
  * @usedby SERIES_NATIVES
  */
 const measure = (find) => (machine, [series]) =>
-  giveValue(machine, find(series.value.index, readAll(machine.store, series).length));
+  giveValue(machine, find(series.value.index, countItems(machine.store, series)));
 
 /**
  * @uses isList (src/store/store.mjs), readRest (src/store/store.mjs), formValue (src/store/mold.mjs)
@@ -229,21 +230,21 @@ export const insertContent = (machine, series, content) => {
 };
 
 /**
- * @uses readAll (src/store/store.mjs), takeItem
+ * @uses countItems (src/store/store.mjs), takeItem
  * @usedby SERIES_NATIVES
  */
 const takeLast = (machine, [series]) => {
-  const size = readAll(machine.store, series).length;
+  const size = countItems(machine.store, series);
   return takeItem(size - series.value.index - 1)(machine, [series]);
 };
 
 /**
- * @uses readAll (src/store/store.mjs), giveValue (src/machine/machine.mjs), moveTo
+ * @uses countItems (src/store/store.mjs), giveValue (src/machine/machine.mjs), moveTo
  * @usedby SERIES_NATIVES
  */
 const jump = (find) => (machine, [series, offset]) => {
   // The position stays between the head and the tail.
-  const size = readAll(machine.store, series).length;
+  const size = countItems(machine.store, series);
   const index = Math.min(Math.max(series.value.index + find(offset.value), 0), size);
   return giveValue(machine, moveTo(series, index));
 };

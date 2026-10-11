@@ -38,21 +38,14 @@ const closeWindow = (machine, args, options) => {
 };
 
 /**
- * @usedby readImage
- */
-const makePixels = (bytes) =>
-  Array.from({ length: Math.floor(bytes.length / 4) }, (unused, place) => bytes.slice(place * 4, place * 4 + 4));
-
-/**
- * @uses giveValue (src/machine/machine.mjs), allocate (src/store/store.mjs), makePixels,
- *   askEdge (src/machine/machine.mjs)
+ * @uses giveValue (src/machine/machine.mjs), allocate (src/store/store.mjs), askEdge (src/machine/machine.mjs)
  * @usedby WINDOW_NATIVES
  */
 const readImage = (machine, [value]) => {
   // An image gives itself. A face gives a picture of its element. The page makes the picture, thus the machine waits.
   if (value.type !== "object") return giveValue(machine, value);
   const resume = (waiting, answer) => {
-    const made = allocate(waiting.store, { type: "image", value: makePixels(answer.bytes), size: answer.size });
+    const made = allocate(waiting.store, { type: "image", value: answer.pixels, size: answer.size });
     return giveValue({ ...waiting, store: made.store }, made.value);
   };
   return askEdge(machine, { kind: "to-image", face: value.value.context, resume });

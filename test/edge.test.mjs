@@ -5,6 +5,7 @@ import { runMachine } from "../src/machine/run.mjs";
 import { showResult, startSource } from "../src/session/interpret.mjs";
 import { countCrc, hashMd5 } from "../src/natives/digest.mjs";
 import { driveMachine, interpretWithEdge, performRequest } from "../src/edge/drive.mjs";
+import { performCrypto } from "../src/edge/crypto.mjs";
 import { readGolden } from "./golden.edge.mjs";
 
 const BATCHES = 100;
@@ -88,4 +89,61 @@ test("interpretWithEdge reference: encrypted bytes give the first text again wit
 test("interpretWithEdge reference: a signature agrees with its message and not with a different message", async () => {
   const source = 'keys: crypto-key-pair mark: crypto-sign "message" second keys reduce [crypto-verify "message" mark first keys crypto-verify "other" mark first keys]';
   assert.equal(await runWithEdge(source), "[true false]");
+});
+
+test("interpretWithEdge reference: the HMAC with SHA-256 of the RFC 4231 test is the standard value", async () => {
+  const source = 'crypto-hmac "what do ya want for nothing?" to-binary "Jefe"';
+  assert.match(await runWithEdge(source), /5BDCC146BF60754E6A042426089575C75A003F089D2739839DEC58B964EC3843/);
+});
+
+test("interpretWithEdge reference: PBKDF2 with one round gives the standard key", async () => {
+  assert.match(await runWithEdge('crypto-derive "password" "salt" 1'), /120FB6CFFCF8B32C43E7225256C4F837A86548C92CCC35480805987CB70BE17B/);
+});
+
+test("interpretWithEdge reference: HKDF gives the key of the first test of RFC 5869", async () => {
+  const source = "crypto-expand/size #{0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B0B} #{000102030405060708090A0B0C} #{F0F1F2F3F4F5F6F7F8F9} 336";
+  assert.match((await runWithEdge(source)).replace(/\s/g, ""), /3CB25F25FAACD57A90434F64D0362F2A2D2D0A90CF1A5A4C5DB02D56ECC4C5BF34007208D5B887185865/);
+});
+
+test("interpretWithEdge reference: AES-KW gives the wrapped key of RFC 3394, and the first key again", async () => {
+  const source = "kek: #{000102030405060708090A0B0C0D0E0F} key: #{00112233445566778899AABBCCDDEEFF} wrapped: crypto-wrap key kek reduce [wrapped equal? key crypto-unwrap wrapped kek]";
+  assert.equal(await runWithEdge(source), "[#{1FA68B0A8112B447AEF34BD8FB5A7B829D3E862371D2CFE5} true]");
+});
+
+test("interpretWithEdge reference: each AES mode gives the first text again", async () => {
+  const source = 'key: crypto-random 32 collect [foreach mode [aes-gcm aes-cbc aes-ctr] [keep to-string crypto-decrypt/method crypto-encrypt/method "secret" key mode key mode]]';
+  assert.equal(await runWithEdge(source), '["secret" "secret" "secret"]');
+});
+
+test("interpretWithEdge reference: additional data that changed gives none", async () => {
+  const source = 'key: crypto-random 32 sealed: crypto-encrypt/extra "text" key "head" reduce [to-string crypto-decrypt/extra sealed key "head" crypto-decrypt/extra sealed key "tail"]';
+  assert.equal(await runWithEdge(source), '["text" none]');
+});
+
+test("interpretWithEdge reference: each signature algorithm agrees with its message and not with a different message", async () => {
+  const source = 'collect [foreach spec [[ecdsa p-384] ed25519 rsa-pss [rsassa 2048 sha384]] [pair: crypto-key-pair/method spec mark: crypto-sign "message" second pair keep crypto-verify "message" mark first pair keep crypto-verify "other" mark first pair]]';
+  assert.equal(await runWithEdge(source), "[true false true false true false true false]");
+});
+
+test("interpretWithEdge reference: RSA-OAEP decrypts with the private key and not with the public key", async () => {
+  const source = 'pair: crypto-key-pair/method \'rsa-oaep sealed: crypto-encrypt "for you" first pair reduce [to-string crypto-decrypt sealed second pair crypto-decrypt sealed first pair]';
+  assert.equal(await runWithEdge(source), '["for you" none]');
+});
+
+test("interpretWithEdge reference: two persons get the same secret bytes from ECDH and from X25519", async () => {
+  const source = "collect [foreach spec [ecdh x25519] [mine: crypto-key-pair/method spec yours: crypto-key-pair/method spec keep equal? crypto-agree second mine first yours crypto-agree second yours first mine]]";
+  assert.equal(await runWithEdge(source), "[true true]");
+});
+
+test("interpretWithEdge reference: a key that goes out as spki and pkcs8 and comes in again does the same work", async () => {
+  const source = "pair: crypto-key-pair mark: crypto-sign \"text\" crypto-import crypto-export second pair 'pkcs8 'pkcs8 'ecdsa crypto-verify \"text\" mark crypto-import crypto-export first pair 'spki 'spki 'ecdsa";
+  assert.equal(await runWithEdge(source), "true");
+});
+
+test("interpretWithEdge reference: an algorithm name that is not known gives an error", async () => {
+  assert.match(await runWithEdge("crypto-key-pair/method 'dsa"), /script invalid-arg/);
+});
+
+test("performCrypto refusal: bytes that are not a wrapped key give null", async () => {
+  assert.equal(await performCrypto({ work: "unwrap", data: [1, 2, 3], key: Array.from({ length: 16 }, () => 7) }), null);
 });

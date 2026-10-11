@@ -91,7 +91,7 @@ const paintCanvas = (canvas) => {
  */
 export const paintCanvases = (root) => root.querySelectorAll("canvas[data-paint]").forEach(paintCanvas);
 
-/** The pixel list that each image canvas showed last. */
+/** The rows of pixels that each image canvas showed last. */
 const shown = new WeakMap();
 
 /**
@@ -99,12 +99,19 @@ const shown = new WeakMap();
  * @usedby paintImages
  */
 const paintImage = (store) => (canvas) => {
-  // The store makes a new pixel list for each change. Thus an equal list needs no work.
-  const pixels = readEntry(store.series, Number(canvas.getAttribute("data-image")));
-  if (pixels === undefined || shown.get(canvas) === pixels) return;
-  shown.set(canvas, pixels);
-  const bytes = Uint8ClampedArray.from(pixels.flatMap((pixel) => [pixel[0], pixel[1], pixel[2], 255]));
-  canvas.getContext("2d").putImageData(Reflect.construct(ImageData, [bytes, canvas.width, canvas.height]), 0, 0);
+  // The store makes a new array only for a row that changed. Thus the painter draws only the rows that are new arrays.
+  const rows = readEntry(store.series, Number(canvas.getAttribute("data-image")));
+  const before = shown.get(canvas) ?? [];
+  if (rows === undefined || rows === before) return;
+  shown.set(canvas, rows);
+  const context = canvas.getContext("2d");
+  const paintRow = (row, line) => {
+    if (row === before[line] || row.length === 0) return;
+    // A pixel of the store has the bytes of the picture data of a canvas. Thus the numbers go to the canvas without a calculation.
+    const bytes = Reflect.construct(Uint8ClampedArray, [Int32Array.from(row).buffer]);
+    context.putImageData(Reflect.construct(ImageData, [bytes, row.length, 1]), 0, line);
+  };
+  rows.forEach(paintRow);
 };
 
 /**
@@ -156,16 +163,16 @@ const findCanvas = (root, face) => {
  * Reads the pixels of a face of the page, for the function to-image.
  * @param {Element} root - The container of the view.
  * @param {number} face - The context number of the face.
- * @returns {Promise<{ bytes: number[], size: number[] }>}
+ * @returns {Promise<{ pixels: number[], size: number[] }>}
  * @uses findCanvas
  * @usedby serveRequest, servePaused
  */
 export const readFacePixels = async (root, face) => {
   const canvas = await findCanvas(root, face);
-  if (canvas === null) return { bytes: [], size: [0, 0] };
+  if (canvas === null) return { pixels: [], size: [0, 0] };
   const data = canvas.getContext("2d").getImageData(0, 0, canvas.width, canvas.height).data;
-  // REBOL uses the alpha value 0 for a pixel that is not transparent.
-  return { bytes: Array.from(data, (byte, place) => (place % 4 === 3 ? 255 - byte : byte)), size: [canvas.width, canvas.height] };
+  // The four bytes of each point become one number, as the store keeps a pixel.
+  return { pixels: Array.from(Reflect.construct(Int32Array, [data.buffer])), size: [canvas.width, canvas.height] };
 };
 
 /**

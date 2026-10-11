@@ -1,5 +1,6 @@
 /** @import { Datum, Store } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
+import { unpackPixel } from "../data/pixels.mjs";
 import { EMPTY_CHUNKS, joinChunks, pushItem } from "../data/chunks.mjs";
 import { EMPTY_DISK } from "./disk.mjs";
 import { EMPTY_TABLE, readEntry, writeEntry } from "./table.mjs";
@@ -88,7 +89,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 47 declarations in call, control, convert, crypto, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, elements, layout, windows
+ * @usedby 48 declarations in call, control, convert, crypto, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, elements, layout, windows
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
@@ -120,7 +121,7 @@ const allocateItem = (made, item) => {
  * @param {Datum} datum - A value from the loader.
  * @returns {{ store: Store, value: Datum }}
  * @uses LIST_TYPES, allocateItem, EMPTY_CHUNKS (src/data/chunks.mjs), placeSeries, makeSeries,
- *   joinChunks (src/data/chunks.mjs), isSeries, WORD_TYPES, GLOBAL
+ *   joinChunks (src/data/chunks.mjs), splitRows, isSeries, WORD_TYPES, GLOBAL
  * @usedby 16 declarations in compare, conform, control, convert, files, objects, words, globals, interpret, store, layout, windows, load, machine
  */
 export const allocate = (store, datum) => {
@@ -129,7 +130,9 @@ export const allocate = (store, datum) => {
     const made = datum.value.reduce(allocateItem, { store, values: EMPTY_CHUNKS });
     return placeSeries(makeSeries(made.store, datum.type, joinChunks(made.values)), datum);
   }
-  if (isSeries(datum)) return placeSeries(makeSeries(store, datum.type, datum.value), datum);
+  // An image from the loader has one list of pixels. The store keeps it in rows.
+  const content = datum.type === "image" ? splitRows(datum.value, datum.size[0]) : datum.value;
+  if (isSeries(datum)) return placeSeries(makeSeries(store, datum.type, content), datum);
   return { store, value: WORD_TYPES.includes(datum.type) ? { ...datum, bind: GLOBAL } : datum };
 };
 
@@ -138,10 +141,10 @@ export const allocate = (store, datum) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @uses readEntry
- * @usedby 98 declarations in compare, conform, path, bitsets, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout, raster, windows, view
+ * @uses readAll
+ * @usedby 99 declarations in compare, conform, path, bitsets, control, convert, crypto, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout, raster, windows, view
  */
-export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
+export const readRest = (store, series) => readAll(store, series).slice(series.value.index);
 
 /**
  * Gets all the items of a series, also the items before its position.
@@ -149,9 +152,43 @@ export const readRest = (store, series) => readEntry(store.series, series.value.
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 31 declarations in path, edit, encode, items, loops, parse, search, series, strings, text, store, raster
+ * @usedby 26 declarations in path, edit, encode, items, loops, parse, search, series, strings, text, store
  */
-export const readAll = (store, series) => readEntry(store.series, series.value.id);
+export const readAll = (store, series) => {
+  // The pixels of an image are in rows. Thus this function is slow for an image, and the image functions read the rows.
+  const content = readEntry(store.series, series.value.id);
+  return series.type === "image" ? content.flat() : content;
+};
+
+/**
+ * Splits the pixels of an image into its rows.
+ * @param {number[]} pixels
+ * @param {number} width - The number of pixels in one row.
+ * @returns {number[][]}
+ * @standard rows - Each row has the width of the image. Only the last row can be shorter.
+ * @usedby copySeries (src/natives/edit.mjs), allocate, writeAll
+ */
+export const splitRows = (pixels, width) => {
+  const span = Math.max(width, 1);
+  return Array.from({ length: Math.ceil(pixels.length / span) }, (unused, row) => pixels.slice(row * span, (row + 1) * span));
+};
+
+/**
+ * Counts all the items of a series, also the items before its position.
+ * @param {Store} store
+ * @param {Datum} series
+ * @returns {number}
+ * @standard image - An image has one item for each pixel.
+ * @uses readEntry
+ * @usedby pokeItem (src/natives/edit.mjs), move (src/natives/series.mjs), measure (src/natives/series.mjs),
+ *   takeLast (src/natives/series.mjs), jump (src/natives/series.mjs)
+ */
+export const countItems = (store, series) => {
+  const content = readEntry(store.series, series.value.id);
+  if (series.type !== "image") return content.length;
+  // All the rows before the last row have the same length.
+  return content.length === 0 ? 0 : (content.length - 1) * content[0].length + content[content.length - 1].length;
+};
 
 /**
  * Makes a store in which a series has new content.
@@ -159,14 +196,14 @@ export const readAll = (store, series) => readEntry(store.series, series.value.i
  * @param {Datum} series
  * @param {string | number[] | Datum[]} content
  * @returns {Store}
- * @uses writeEntry
+ * @uses writeEntry, splitRows
  * @usedby assignInSeries (src/machine/path.mjs), replaceItems (src/natives/edit.mjs),
  *   clearRest (src/natives/edit.mjs), changeText (src/natives/encode.mjs), insertContent (src/natives/series.mjs),
- *   writeRest (src/natives/strings.mjs), bindInPlace, drawOnImage (src/view/raster.mjs)
+ *   writeRest (src/natives/strings.mjs), bindInPlace
  */
 export const writeAll = (store, series, content) => ({
   ...store,
-  series: writeEntry(store.series, series.value.id, content),
+  series: writeEntry(store.series, series.value.id, series.type === "image" ? splitRows(content, series.value.size[0]) : content),
 });
 
 /**
@@ -317,7 +354,7 @@ export const makeRecord = (store, words, values) => {
 };
 
 /**
- * Gets the items of a series from its position, each as a REBOL value. A text gives chars.
+ * Gets the items of a series from its position, each as a REBOL value. A text gives chars, and an image gives tuples.
  * @param {Store} store
  * @param {Datum} series
  * @returns {Datum[]}
@@ -328,5 +365,6 @@ export const makeRecord = (store, words, values) => {
 export const readValues = (store, series) => {
   if (isList(series)) return readRest(store, series);
   if (series.type === "binary") return readRest(store, series).map((byte) => makeDatum("integer", byte));
+  if (series.type === "image") return readRest(store, series).map((pixel) => makeDatum("tuple", unpackPixel(pixel)));
   return [...readRest(store, series)].map((character) => makeDatum("char", character.charCodeAt(0)));
 };

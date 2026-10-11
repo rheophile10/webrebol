@@ -1,5 +1,6 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
+import { readPixel } from "../store/pictures.mjs";
 import { isList, isText, makeKey, NONE, readAll, readContext, readRest, readWord, writeAll, writeContext, writeWord } from "../store/store.mjs";
 import { readField, writeField } from "../store/parts.mjs";
 import { failMachine, giveValue, isFunction, popFrame, pushFrame } from "./machine.mjs";
@@ -47,14 +48,13 @@ const selectInText = (text, part) => {
 const makeByte = (byte) => (byte === undefined ? NONE : makeDatum("integer", byte));
 
 /**
- * @uses makeDatum (src/data/datum.mjs), readRest (src/store/store.mjs), NONE (src/store/store.mjs)
+ * @uses makeDatum (src/data/datum.mjs), readPixel (src/store/pictures.mjs), NONE (src/store/store.mjs)
  * @usedby selectPart
  */
 const selectInImage = (store, image, part) => {
   // An image has its size, and a pixel for each position.
   if (part.type !== "integer") return String(part.value).toLowerCase() === "size" ? makeDatum("pair", image.value.size) : null;
-  const pixel = readRest(store, image)[part.value - 1];
-  return pixel === undefined ? NONE : makeDatum("tuple", pixel);
+  return readPixel(store, image, image.value.index + part.value - 1) ?? NONE;
 };
 
 /**
