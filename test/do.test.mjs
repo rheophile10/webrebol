@@ -94,3 +94,11 @@ test("interpretSource reference: the trim and case cases agree with REBOL 2.7.8"
 test("interpretSource reference: the cases of the other number functions agree with REBOL 2.7.8", () => {
   assert.deepEqual(findProblems("do/number.txt"), []);
 });
+
+test("interpretSource reference: the parse cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/parse.txt"), []);
+});
+
+test("interpretSource reference: the bitset cases agree with REBOL 2.7.8", () => {
+  assert.deepEqual(findProblems("do/bitset.txt"), []);
+});

@@ -65,7 +65,7 @@ export const parseSpec = (items) => {
  * @returns {boolean}
  * @standard unset - A parameter without types accepts all values but not the unset value.
  * @uses TYPESETS
- * @usedby invoke
+ * @usedby invoke, matchesItem (src/natives/parse.mjs)
  */
 export const acceptsType = (types, value) => {
   if (types === null) return value.type !== "unset";

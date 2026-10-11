@@ -1,0 +1,164 @@
+parse "a b c" none
+parse "a,b;c  d" none
+parse "a  b" none
+parse {a "b c" d} none
+parse "" none
+parse " a " none
+parse "a,b c" ","
+parse/all "a,b c" ","
+parse/all "a,,b" ","
+parse/all "a,b," ","
+parse/all ",a" ","
+parse "a-b_c" "-_"
+parse/all "a b" none
+parse "abc" ["abc"]
+parse "abc" ["ab"]
+parse "abc" ["ab" "c"]
+parse "a b c" ["a" "b" "c"]
+parse/all "a b c" ["a" "b" "c"]
+parse/all "a b c" ["a" " " "b" " " "c"]
+parse " abc " ["abc"]
+parse/all " abc" ["abc"]
+parse "ABC" ["abc"]
+parse/case "ABC" ["abc"]
+parse "abc" [#"a" #"b" #"c"]
+parse "abc" ["a" skip "c"]
+parse "abc" [skip skip skip]
+parse "abc" [3 skip]
+parse "abc" [2 skip]
+parse "abc" [4 skip]
+parse "abc" [1 3 skip]
+parse "abc" [1 2 skip]
+parse "abc" [0 5 skip]
+parse "aaa" [some "a"]
+parse "" [some "a"]
+parse "" [any "a"]
+parse "aaab" [any "a" "b"]
+parse "b" [opt "a" "b"]
+parse "ab" [opt "a" "b"]
+parse "abc" ["a" to end]
+parse "abc" [to "c"]
+parse "abc" [to "c" "c"]
+parse "abc" [thru "c"]
+parse "abc" [thru "b" "c"]
+parse "abc" [to "z"]
+parse "abc" [thru "z"]
+parse "abc" ["a" | "b"]
+parse "b" ["a" | "b"]
+parse "c" ["a" | "b"]
+parse "ac" [["a" | "b"] "c"]
+parse "bc" [["a" | "b"] "c"]
+parse "abc" [end]
+parse "" [end]
+parse "abc" ["abc" end]
+parse "abc" [none "abc"]
+parse "abc" [copy x "ab" "c"] x
+parse "abc" [copy x to "c" skip] x
+parse "abc" [copy x thru "b" to end] x
+parse "abc" [skip copy x to end] x
+parse "abc" [copy x 2 skip to end] x
+parse "abc" [copy x none to end] x
+parse "abc" [set x skip to end] x
+parse "abc" [set x "ab" to end] x
+parse "abc" ["a" p: to end] p
+parse "abc" ["a" p: to end] index? p
+parse "abcd" ["a" p: skip skip :p "bcd"]
+n: 0 parse "aaa" [any ["a" (n: n + 1)]] n
+parse "abc" ["a" (x: 5) to end] x
+parse "abc" ["z" (x: 5) | "a" to end]
+r: ["a" | "b"] parse "abab" [some r]
+digit: charset "0123456789" parse "123" [some digit]
+digit: charset "0123456789" parse "12a" [some digit]
+digit: charset [#"0" - #"9"] parse "2024" [4 digit]
+alpha: charset [#"a" - #"z" #"A" - #"Z"] parse "Hello" [some alpha]
+digit: charset "0123456789" parse "a1b2" [some [digit | skip]]
+nd: complement charset "0123456789" parse "abc" [some nd]
+ws: charset " ^-" parse/all "a  b" ["a" some ws "b"]
+find charset "abc" #"b"
+find charset "abc" #"z"
+type? charset "a"
+bitset? charset "a"
+parse [1 2 3] [integer! integer! integer!]
+parse [1 "a" b] [integer! string! word!]
+parse [1 2] [some integer!]
+parse [1 a] [some integer!]
+parse [a b] ['a 'b]
+parse [a b] ['a 'c]
+parse [a 1] [word! integer!]
+parse [1 2 3] [3 skip]
+parse [1 2 3] [to end]
+parse [1 [2 3]] [integer! into [2 integer!]]
+parse [1 [2 3]] [integer! block!]
+parse [1 2] [set x integer! set y integer!] reduce [x y]
+parse [1 2 3] [copy x 2 integer! skip] x
+parse [1 2 3] [copy x to end] x
+parse [a 1 b 2] [some [word! integer!]]
+parse [a 1 b 2] [some [set w word! set n integer! (prin [w n])]]
+parse [1 2] [integer! | string!]
+parse [] []
+parse [1] []
+parse [] [end]
+parse ["a"] ["a"]
+parse ["a"] ["A"]
+parse [1 2 x] [to 'x skip]
+parse [1 2 x] [thru 'x]
+parse [1 2 x] [to word! skip]
+parse [1.5 2] [decimal! integer!]
+parse [1.5 2] [some number!]
+parse [1 2 3] [any integer! end]
+parse [a] [opt integer! word!]
+parse "aXb" ["a" "x" "b"]
+parse "abc" [any skip]
+parse "abc" [some skip]
+parse 5 []
+parse "abcabc" [2 ["a" "b" "c"]]
+parse "abc" [to "b" to "c" to end]
+parse "aab" [some "a" "a" "b"]
+parse "<b>x</b>" [<b> copy t to </b> </b>] t
+parse "abc" [copy x [skip skip] skip] x
+parse "abc" [copy x "z" | copy x "a" to end] x
+parse "a" [copy x opt "b" "a"] x
+parse [1] [copy x opt string! integer!] x
+parse [1] [set x opt string! integer!] x
+parse "ab" ["a" end | "a" "b"]
+parse "a b" ["a" " " "b"]
+parse "a b" ["a b"]
+parse "  " []
+parse "a" [" a"]
+parse/all "  " []
+parse "ab" [some [p: skip (prin index? p)]]
+parse "abc" [to "b" (x: 1) thru "c" (y: 2)] reduce [x y]
+parse "hello world" [copy a to " " skip copy b to end] reduce [a b]
+parse/all "hello world" [copy a to " " skip copy b to end] reduce [a b]
+parse "key=value" [copy k to "=" skip copy v to end] reduce [k v]
+parse "abc" [zzz]
+n: 0 parse "ab" [(n: n + 1) "z" | (n: n + 10) "ab"] n
+parse "abc" [(1 / 0) "abc"]
+x: 0 parse [1 2 3] [some [set v integer! (x: x + v)]] x
+parse "2024-10-11" [copy y 4 skip "-" copy m 2 skip "-" copy d 2 skip] reduce [y m d]
+digit: charset "0123456789" parse "12:34" [some digit ":" some digit]
+digit: charset "0123456789" parse "12.5" [some digit opt ["." some digit]]
+digit: charset "0123456789" n: copy "" parse "a1b22c" [some [copy d some digit (append n d) | skip]] n
+parse [x 1 y 2] [some [set k word! set v integer! (prin [k v " "])]]
+parse [1 [2 [3]]] [integer! into [integer! into [integer!]]]
+parse [a b c] [some ['a | 'b] 'c]
+parse "aaa" [2 "a"]
+parse "aaa" [2 4 "a"]
+parse [1 2 3] [1 2 integer!]
+parse "abc" [copy x to "z" | copy x to end] x
+parse/case "aBc" ["a" "B" "c"]
+parse/all "a b" ["a" " " "b"]
+parse "a,b" none
+parse/all "one;two" ";"
+parse "x=1 y=2" "="
+parse {"a b" c} none
+parse "" ""
+parse "a  b" ["a" skip]
+parse "a b c" [skip skip skip]
+parse " a" [copy x skip] x
+parse "a b" [copy x to end] x
+parse "a  b" ["a" copy x to end] x
+parse "a b" ["a" end]
+parse "a " ["a" end]
+parse "a b" [thru " " "b"]
+parse "a b" [2 skip]

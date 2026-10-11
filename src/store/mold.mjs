@@ -174,6 +174,7 @@ const MOLDERS = {
   datatype: (store, datatype) => `${datatype.value}!`,
   error: (store, error) => `make error! [${error.value}]`,
   object: moldObject,
+  bitset: (store, bitset) => `make bitset! #{\n${bitset.value.map(moldByte).join("")}\n}`,
   function: (store, callee) => `func ${moldValue(store, callee.value.spec)}${moldValue(store, callee.value.body)}`,
 };
 
@@ -221,7 +222,7 @@ const FORMERS = {
  * @returns {string}
  * @standard reference - The text is the text that `form` of REBOL 2.7.8 gives.
  * @uses isList, readRest, FORMERS, moldValue
- * @usedby 10 declarations in convert, report, search, series, text
+ * @usedby 11 declarations in convert, parse, report, search, series, text
  */
 export const formValue = (store, value) => {
   // The items of a block are formed and joined, without brackets.

@@ -8,6 +8,7 @@ import { evaluatePath, startSetPath } from "../src/machine/path.mjs";
 import { areEqual, areSame, readOrder } from "../src/natives/compare.mjs";
 import { guardSeries, makeContent, pickItem } from "../src/natives/series.mjs";
 import { readPart } from "../src/natives/edit.mjs";
+import { hasBit } from "../src/natives/bitsets.mjs";
 import { failSyntax } from "../src/natives/control.mjs";
 import { acceptsType, parseSpec } from "../src/machine/spec.mjs";
 import { startCall, stepLook } from "../src/machine/call.mjs";
@@ -208,4 +209,10 @@ test("formatError identity: an id without a message shows the type, the id and t
 test("findError result: an error value that is the result is the error", () => {
   assert.equal(findError(interpretSource("try [1 / 0]", BATCHES)).value, "math zero-divide");
   assert.equal(findError(interpretSource("1", BATCHES)), null);
+});
+
+test("hasBit limit: a code above 255 is not in a bitset", () => {
+  const full = { type: "bitset", value: Array.from({ length: 32 }).map(() => 255) };
+  assert.equal(hasBit(full, 97), true);
+  assert.equal(hasBit(full, 300), false);
 });

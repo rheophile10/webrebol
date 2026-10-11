@@ -19,12 +19,14 @@ import { SEARCH_NATIVES } from "./search.mjs";
 import { STRING_NATIVES } from "./strings.mjs";
 import { NUMBER_NATIVES } from "./numbers.mjs";
 import { FAULT_NATIVES } from "./faults.mjs";
+import { BITSET_NATIVES, findInBitset } from "./bitsets.mjs";
+import { PARSE_NATIVES } from "./parse.mjs";
 
 /**
  * @uses MATH_NATIVES, COMPARE_NATIVES, CONTROL_NATIVES, LOOP_NATIVES, FLOW_NATIVES, OBJECT_NATIVES, SERIES_NATIVES,
  *   TEXT_NATIVES, CONVERT_NATIVES, guardSeries, EDIT_NATIVES, SEARCH_NATIVES, STRING_NATIVES, NUMBER_NATIVES,
- *   FAULT_NATIVES
- * @usedby makeFunction, GLOBALS
+ *   FAULT_NATIVES, BITSET_NATIVES, PARSE_NATIVES
+ * @usedby findAny, makeFunction, GLOBALS
  */
 const NATIVES = {
   ...MATH_NATIVES,
@@ -39,7 +41,19 @@ const NATIVES = {
   ...guardSeries({ ...EDIT_NATIVES, ...SEARCH_NATIVES, ...STRING_NATIVES }),
   ...NUMBER_NATIVES,
   ...FAULT_NATIVES,
+  ...BITSET_NATIVES,
+  ...PARSE_NATIVES,
 };
+
+const TYPESETS = ["number", "series", "any-block", "any-string", "any-word", "any-function", "any-type"];
+
+/**
+ * @uses findInBitset, NATIVES
+ * @usedby makeFunction
+ */
+const findAny = (machine, args, options) =>
+  // A bitset is not a series, but `find` accepts it.
+  args[0].type === "bitset" ? findInBitset(machine, args) : NATIVES.find(machine, args, options);
 
 const OPERATORS = {
   "+": "add",
@@ -76,17 +90,17 @@ const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.v
 
 /**
  * @uses parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), SPECS, readSpecItem,
- *   makeDatum (src/data/datum.mjs), NATIVES
+ *   makeDatum (src/data/datum.mjs), findAny, NATIVES
  * @usedby GLOBALS
  */
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
   const spec = parseSpec(loadSource(SPECS[sign][1]).value.map(readSpecItem));
-  return makeDatum(type, { ...spec, native: NATIVES[name] });
+  return makeDatum(type, { ...spec, native: name === "find" ? findAny : NATIVES[name] });
 };
 
 /**
- * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS, TYPES,
+ * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS, TYPES, TYPESETS,
  *   makeDatum (src/data/datum.mjs)
  * @usedby START_STORE
  */
@@ -94,7 +108,7 @@ const GLOBALS = Object.fromEntries([
   ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction("native", name, name)]),
   ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name, sign)]),
   ...Object.entries(CONSTANTS).map(([name, value]) => [makeKey(name), value]),
-  ...TYPES.map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
+  ...[...TYPES, ...TYPESETS].map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
 ]);
 
 /**

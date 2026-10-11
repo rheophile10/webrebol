@@ -1,7 +1,7 @@
 # WebRebol
 
 WebRebol is an interpreter for REBOL 2 Core and REBOL 2 View that runs in JavaScript.
-At this time, it evaluates REBOL source text with 193 of the 443 Core functions: arithmetic, comparison, control, loops, functions, objects, paths, binding, errors, series, and text.
+At this time, it evaluates REBOL source text with 195 of the 443 Core functions: arithmetic, comparison, control, loops, functions, objects, paths, binding, errors, series, text, and `parse`.
 
 ## Use
 
@@ -23,6 +23,7 @@ WebRebol runs in a browser page. A browser page cannot open a socket. Thus some 
 | `library!`, `routine!`, `struct!` | Not available. A browser page cannot load a native library. A possible later option is a WebAssembly module as the library. |
 | View | Not available at this time. The pixels will not be equal to REBOL 2, because the fonts of a browser are different. |
 | The body of a system function (`source append`, `second :append`) | Not available. Each function is written in JavaScript. |
+| `parse` with a loop that does not move | REBOL 2 does not end if a `some` or `any` rule matches and does not move the position. WebRebol stops the loop. |
 | Error messages | The type, the id and the fields of an error agree with REBOL 2. The message text does not. WebRebol has its own messages, and each message ends with the REBOL type and id. A script that reads `system/error` does not get the REBOL texts. |
 
 A function that is not available gives a REBOL error. It does not fail silently.
@@ -43,12 +44,12 @@ WebRebol has the MIT licence. See `LICENSE`.
 - [`readToken`](src/data/datum.mjs#L184) — Reads the REBOL value that one token shows.
 - [`loadSource`](src/data/load.mjs#L85) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L96) — Moves a loaded value into a store.
-- [`makeMachine`](src/machine/machine.mjs#L187) — Makes a machine that is ready to evaluate a block.
+- [`makeMachine`](src/machine/machine.mjs#L188) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L56) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L39) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.
 - [`startCall`](src/machine/call.mjs#L164) — Starts the call of a function.
 - [`interpretSource`](src/natives/interpret.mjs#L28) — Evaluates a REBOL source text in a new session.
 - [`showResult`](src/natives/interpret.mjs#L46) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L190) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L191) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

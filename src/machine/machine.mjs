@@ -10,7 +10,7 @@ const FUNCTION_TYPES = ["native", "op", "function"];
  * @param {boolean} truth
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 13 declarations in call, compare, flow, globals, numbers, objects, search, series
+ * @usedby 15 declarations in call, bitsets, compare, flow, globals, numbers, objects, parse, search, series
  */
 export const makeLogic = (truth) => makeDatum("logic", truth);
 
@@ -65,7 +65,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 71 declarations in call, evaluate, machine, path, compare, control, convert, edit, faults, flow, loops, math, numbers, objects, search, series, strings, text
+ * @usedby 75 declarations in call, evaluate, machine, path, bitsets, compare, control, convert, edit, faults, flow, loops, math, numbers, objects, parse, search, series, strings, text
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -98,7 +98,7 @@ export const failMachine = (machine, text, args = []) =>
  * @returns {Datum}
  * @uses makeDatum (src/data/datum.mjs)
  * @usedby failArgument, startCall, disarmError (src/natives/faults.mjs), calculate (src/natives/math.mjs),
- *   takeFromObject (src/natives/series.mjs)
+ *   matchSet (src/natives/parse.mjs), takeFromObject (src/natives/series.mjs)
  */
 export const makeWord = (name) => makeDatum("word", name);
 
@@ -182,7 +182,8 @@ export const startBlock = (machine, block) => ({
  * @param {Datum} block
  * @returns {Machine}
  * @uses startBlock, UNSET (src/store/store.mjs)
- * @usedby interpretSource (src/natives/interpret.mjs), makeReady (test/machine.test.mjs)
+ * @usedby interpretSource (src/natives/interpret.mjs), matchParen (src/natives/parse.mjs),
+ *   makeReady (test/machine.test.mjs)
  */
 export const makeMachine = (store, block) =>
   startBlock({ store, cursor: null, value: UNSET, frames: null, mode: "give", thrown: null }, block);

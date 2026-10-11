@@ -1,5 +1,6 @@
 import { makeDatum } from "../data/datum.mjs";
 import { failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
+import { complementBitset } from "./bitsets.mjs";
 
 const DEGREES = Math.PI / 180;
 
@@ -97,11 +98,14 @@ const combineBits = (logic, bits) => (machine, [left, right]) => {
 };
 
 /**
- * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
+ * @uses giveValue (src/machine/machine.mjs), complementBitset, makeLogic (src/machine/machine.mjs),
+ *   makeDatum (src/data/datum.mjs)
  * @usedby NUMBER_NATIVES
  */
-const complementValue = (machine, [value]) =>
-  giveValue(machine, value.type === "logic" ? makeLogic(!value.value) : makeDatum("integer", ~value.value));
+const complementValue = (machine, [value]) => {
+  if (value.type === "bitset") return giveValue(machine, complementBitset(value));
+  return giveValue(machine, value.type === "logic" ? makeLogic(!value.value) : makeDatum("integer", ~value.value));
+};
 
 /**
  * @uses giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)

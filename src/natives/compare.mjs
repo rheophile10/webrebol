@@ -13,7 +13,7 @@ const ORDERED = ["char", "time"];
 export const TYPES = [
   ...["integer", "decimal", "string", "char", "word", "set-word", "get-word", "lit-word", "refinement", "block"],
   ...["paren", "path", "set-path", "lit-path", "issue", "file", "email", "url", "tag", "tuple", "pair", "time"],
-  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object"],
+  ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset"],
 ];
 
 /**
@@ -36,7 +36,7 @@ const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(M
  * @standard case - Two texts or two words are equal without regard to the case of the letters.
  * @uses NUMBERS, isNear, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS,
  *   isList (src/store/store.mjs), areSameLists
- * @usedby areSame, areSameLists, COMPARE_NATIVES, switchValue, makeSearch, makeUnique, combine
+ * @usedby areSame, areSameLists, COMPARE_NATIVES, switchValue, matchesItem, makeSearch, makeUnique, combine
  */
 export const areEqual = (store, left, right) => {
   // Numbers of the two number types can be equal. REBOL ignores a very small difference.

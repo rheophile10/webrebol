@@ -13,7 +13,7 @@ export const GLOBAL = 0;
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 27 declarations in call, path, control, faults, flow, globals, interpret, loops, objects, report, search, series
+ * @usedby 30 declarations in call, path, bitsets, control, faults, flow, globals, interpret, loops, objects, parse, report, search, series
  */
 export const NONE = makeDatum("none", null);
 /**
@@ -44,7 +44,7 @@ export const isList = (value) => LIST_TYPES.includes(value.type);
  * @param {Datum} value
  * @returns {boolean}
  * @uses TEXT_TYPES
- * @usedby 10 declarations in path, compare, convert, faults, series, store
+ * @usedby 13 declarations in path, bitsets, compare, convert, faults, parse, series, store
  */
 export const isText = (value) => TEXT_TYPES.includes(value.type);
 
@@ -66,7 +66,7 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 19 declarations in call, control, convert, edit, flow, objects, search, series, text, store
+ * @usedby 21 declarations in call, control, convert, edit, flow, objects, parse, search, series, text, store
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: { ...store.series, [store.next]: content }, next: store.next + 1 },
@@ -108,7 +108,7 @@ export const allocate = (store, datum) => {
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @usedby 42 declarations in path, compare, control, convert, edit, faults, flow, loops, objects, search, series, strings, text, mold, store
+ * @usedby 47 declarations in path, bitsets, compare, control, convert, edit, faults, flow, loops, objects, parse, search, series, strings, text, mold, store
  */
 export const readRest = (store, series) => store.series[series.value.id].slice(series.value.index);
 
@@ -117,7 +117,7 @@ export const readRest = (store, series) => store.series[series.value.id].slice(s
  * @param {Store} store
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
- * @usedby 21 declarations in path, edit, loops, search, series, strings, text, store
+ * @usedby 24 declarations in path, edit, loops, parse, search, series, strings, text, store
  */
 export const readAll = (store, series) => store.series[series.value.id];
 
@@ -143,7 +143,7 @@ export const writeAll = (store, series, content) => ({
  * @returns {Datum}
  * @standard unset - A word without a value gives the unset value.
  * @uses makeKey, UNSET
- * @usedby 9 declarations in call, evaluate, path, loops, objects
+ * @usedby 11 declarations in call, evaluate, path, loops, objects, parse
  */
 export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(word.value)] ?? UNSET;
 
@@ -155,7 +155,8 @@ export const readWord = (store, word) => store.contexts[word.bind]?.[makeKey(wor
  * @returns {Store}
  * @uses makeKey
  * @usedby stepSet (src/machine/evaluate.mjs), assignWords (src/natives/loops.mjs),
- *   finishList (src/natives/loops.mjs), setWords (src/natives/objects.mjs), OBJECT_NATIVES (src/natives/objects.mjs)
+ *   finishList (src/natives/loops.mjs), setWords (src/natives/objects.mjs), OBJECT_NATIVES (src/natives/objects.mjs),
+ *   matchCopy (src/natives/parse.mjs), matchSet (src/natives/parse.mjs), matchMark (src/natives/parse.mjs)
  */
 export const writeWord = (store, word, value) => ({
   ...store,

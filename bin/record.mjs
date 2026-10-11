@@ -7,20 +7,20 @@ import { fileURLToPath } from "node:url";
 const ROOT = fileURLToPath(new URL("..", import.meta.url));
 /**
  * @uses ROOT
- * @usedby runRebol
+ * @usedby runRebol, runCase
  */
 const REBOL = `${ROOT}reference/rebol-core.sh`;
 const LIMITS = { encoding: "latin1", timeout: 20000, maxBuffer: 16 * 1024 * 1024 };
 const RESULT = /^([\s\S]*)\n@@RESULT ([0-9A-F]*)\n$/;
 
 /**
- * @usedby recordCase
+ * @usedby runCase, recordCase
  */
 const writeHex = (text) => Buffer.from(text, "latin1").toString("hex").toUpperCase();
 
 /**
  * @uses REBOL, ROOT, LIMITS
- * @usedby recordLoad, recordCase, recordSpecs, recordErrors
+ * @usedby recordLoad, recordSpecs, recordErrors
  */
 const runRebol = (script, argument) => execFileSync(REBOL, ["-qs", `${ROOT}reference/${script}`, argument], LIMITS);
 
@@ -32,12 +32,31 @@ const runRebol = (script, argument) => execFileSync(REBOL, ["-qs", `${ROOT}refer
 const recordLoad = (path) => runRebol("load.r", path);
 
 /**
- * @uses runRebol, writeHex, RESULT
+ * @uses LIMITS
+ * @usedby runCase
+ */
+const LIMITS_FOR_CASE = { ...LIMITS, timeout: 5000 };
+
+/**
+ * @uses REBOL, ROOT, writeHex, LIMITS_FOR_CASE
+ * @usedby recordCase
+ */
+const runCase = (source) => {
+  // A case that does not end in REBOL cannot be a test. Tell the person which case it is.
+  try {
+    return execFileSync(REBOL, ["-qs", `${ROOT}reference/do.r`, writeHex(source)], LIMITS_FOR_CASE);
+  } catch (fault) {
+    throw new Error(`This case did not end in REBOL, or REBOL stopped: ${source} (${fault.code})`);
+  }
+};
+
+/**
+ * @uses runCase, RESULT, writeHex
  * @usedby recordDo
  */
 const recordCase = (source) => {
   // Each evaluation case runs in a new REBOL session. Thus a word of one case cannot change a different case.
-  const [, output, result] = runRebol("do.r", writeHex(source)).match(RESULT);
+  const [, output, result] = runCase(source).match(RESULT);
   return `${writeHex(source)} ${result} ${writeHex(output)}\n`;
 };
 
