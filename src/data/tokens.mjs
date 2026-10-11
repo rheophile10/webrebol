@@ -53,12 +53,41 @@ const makeToken = (match) => {
 };
 
 /**
+ * @usedby scanTokens
+ */
+const splitRun = (token) => {
+  // An issue stops at a slash. A run of refinements without spaces is one token for each refinement.
+  const cut = token.kind === "run" && token.text.startsWith("#") ? token.text.indexOf("/") : -1;
+  if (cut > 0) return [{ ...token, text: token.text.slice(0, cut) }, ...splitRun({ kind: "run", text: token.text.slice(cut), glued: false })];
+  const parts = token.kind === "run" && !token.glued && /^\/[^/]+\/./.test(token.text) ? token.text.match(/\/[^/]*/g) : null;
+  return parts === null ? [token] : parts.map((text) => ({ kind: "run", text, glued: false }));
+};
+
+/**
+ * @uses IGNORED_KINDS
+ * @usedby scanTokens
+ */
+const markGlued = (token, place, all) => ({
+  // A token is glued if no space is between it and the token before it. A path with a paren needs this fact.
+  ...token,
+  glued: place > 0 && !IGNORED_KINDS.includes(all[place - 1].kind),
+});
+
+/**
+ * @uses PATTERN, makeToken, markGlued, IGNORED_KINDS, splitRun
+ * @usedby loadSource
+ */
+/**
  * Divides a source text into its lexical parts, without the spaces and the comments.
  * @param {string} source - The REBOL source text.
  * @returns {Token[]}
  * @keypoint A brace string can hold nested braces to a depth of 16 only.
- * @uses PATTERN, makeToken, IGNORED_KINDS
+ * @uses PATTERN, makeToken, markGlued, IGNORED_KINDS, splitRun
  * @usedby loadSource
  */
 export const scanTokens = (source) =>
-  [...source.matchAll(PATTERN)].map(makeToken).filter((token) => !IGNORED_KINDS.includes(token.kind));
+  [...source.matchAll(PATTERN)]
+    .map(makeToken)
+    .map(markGlued)
+    .filter((token) => !IGNORED_KINDS.includes(token.kind))
+    .flatMap(splitRun);

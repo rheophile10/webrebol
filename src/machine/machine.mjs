@@ -203,7 +203,7 @@ export const startBlock = (machine, block) => ({
  * @param {Datum} block
  * @returns {Machine}
  * @uses startBlock, UNSET (src/store/store.mjs)
- * @usedby matchParen (src/natives/parse.mjs), bootStore (src/session/globals.mjs),
+ * @usedby runTest (bin/conform.mjs), matchParen (src/natives/parse.mjs), bootStore (src/session/globals.mjs),
  *   startSource (src/session/interpret.mjs), renderWindows (src/view/windows.mjs), runAction (src/view/windows.mjs),
  *   makeReady (test/machine.test.mjs)
  */

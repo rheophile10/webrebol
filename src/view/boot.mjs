@@ -51,6 +51,86 @@ face-to-element: func [face /local tag props kids type] [
     if block? face/on-time [append props reduce ['data-ontime face/on-time 'data-rate any [face/rate 10]]]
     if block? face/on-key [append props reduce ['data-onkey face/on-key]]
     if block? face/pane [foreach child face/pane [append kids face-to-element child]]
+    if block? face/effect [if find face/effect 'reveal [append kids reveal-element face]]
     element tag props kids
+]
+
+reveal-element: func [face /local spec] [
+    spec: face/effect
+    element "canvas" reduce [
+        'class "wr-reveal" 'width face/size/x 'height face/size/y
+        'style [position "absolute" left 0 top 0 pointer-events "none"]
+        'data-reveal select spec 'times
+        'data-grid select spec 'grid
+        'data-duration select spec 'duration
+        'data-lights select spec 'lights
+        'data-cover select spec 'cover
+        'data-run select spec 'run
+    ] copy []
+]
+
+atan2: func [y x] [
+    case [
+        x > 0 [arctangent/radians y / x]
+        all [x < 0 y >= 0] [(arctangent/radians y / x) + pi]
+        x < 0 [(arctangent/radians y / x) - pi]
+        y > 0 [pi / 2]
+        y < 0 [pi / -2]
+        true [0]
+    ]
+]
+
+reveal-timers: reduce [
+    'dissolve func [cell grid] [(0.8 * hash-cell cell) + (0.2 * find-threshold cell)]
+    'wipe func [cell grid] [(cell/x / grid/x) + (0.03 * hash-cell cell)]
+    'blinds func [cell grid] [(0.75 * ((cell/y // 10) / 10)) + (0.25 * (cell/x / grid/x))]
+    'ripple func [cell grid /local distance] [
+        distance: measure-center cell grid
+        (0.55 * distance) + (0.45 * ((distance * 6) // 1))
+    ]
+    'melt func [cell grid] [
+        (0.6 * smooth-noise as-pair cell/x 0 4) + (0.08 * hash-cell as-pair cell/x 0) + (0.4 * (cell/y / grid/y))
+    ]
+    'sweep func [cell grid /local angle] [
+        angle: atan2 (cell/y + 0.5 - (grid/y / 2)) (cell/x + 0.5 - (grid/x / 2))
+        (((angle + (2.5 * pi)) // (2 * pi)) / (2 * pi)) + (0.01 * hash-cell cell)
+    ]
+    'glitch func [cell grid /local strip] [
+        strip: to-integer cell/y / 3
+        (0.8 * hash-cell as-pair 7 strip) + (0.2 * hash-cell as-pair to-integer cell/x / 9 strip)
+    ]
+    'burn func [cell grid /local rough] [
+        rough: (0.6 * smooth-noise cell 5) + (0.25 * hash-cell cell) + (0.15 * find-threshold cell)
+        ((measure-center cell grid) * 0.65) + (rough * 0.35)
+    ]
+]
+
+reveal-looks: [
+    dissolve [band 0.12 duration 1400 lights [0 0.12 233.213.255 1 0]]
+    wipe [band 0.1 duration 1300 lights [-0.012 0 255.255.255 2 2 0 0.1 34.211.238 0.9 0]]
+    blinds [band 0.05 duration 1200 lights [0 0.05 250.204.21 1.2 0]]
+    ripple [band 0.1 duration 1700 lights [0 0.015 240.249.255 2 2 0.015 0.1 56.189.248 0.85 0]]
+    melt [band 0.12 duration 1800 lights [0 0.02 217.249.157 2 2 0.02 0.12 34.197.94 0.83 0]]
+    sweep [band 0.07 duration 1500 lights [0 0.008 245.243.255 2 2 0.008 0.07 167.139.250 0.7 0]]
+    glitch [band 0.08 duration 1000 lights [0 0.08 255.0.80 1.3 0]]
+    burn [band 0.2 duration 2200 lights [-0.1 0 219.39.119 0 0.7 0 0.07 255.250.220 2 1 0.07 0.2 249.115.22 1 0]]
+]
+
+make-reveal-field: func [grid timer band /local times low span] [
+    times: copy []
+    repeat row grid/y [repeat column grid/x [append times timer as-pair column - 1 row - 1 grid]]
+    low: first minimum-of times
+    span: (first maximum-of times) - low
+    map-each time times [either span > 0 [((1 - band) * (time - low)) / span] [1 - band]]
+]
+
+make-reveal: func [name grid cover /local look] [
+    look: select reveal-looks name
+    reduce [
+        'reveal name 'grid grid 'cover cover 'run 1
+        'duration select look 'duration
+        'lights select look 'lights
+        'times make-reveal-field grid select reveal-timers name select look 'band
+    ]
 ]
 `;

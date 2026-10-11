@@ -7,6 +7,7 @@ import { changeText, listKeyBlocks, listTimers, renderWindows, runAction, runKey
 import { diff } from "../view/diff.mjs";
 import { applyPatches } from "./dom.mjs";
 import { performRequest } from "./drive.mjs";
+import { paintReveals } from "./reveal.mjs";
 
 const BATCHES = 50;
 const EVENT_TYPES = ["click", "input"];
@@ -117,13 +118,14 @@ const readKey = (event) => {
 };
 
 /**
- * @uses advance, runTimers, paint, state, showEnd, findPart
+ * @uses advance, runTimers, paint, paintReveals, findPart, state, showEnd
  * @usedby boot
  */
 const frame = (now) => {
   advance();
   runTimers(now);
   paint();
+  paintReveals(findPart("screen"), now);
   const machine = state.get("machine");
   const text = machine === undefined ? "" : showEnd(machine);
   if (findPart("output").textContent !== text) findPart("output").replaceChildren(document.createTextNode(text));

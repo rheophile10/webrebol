@@ -18,7 +18,7 @@ const BAYER = [
  * @returns {number}
  * @standard range - Each threshold is more than 0 and less than 1.
  * @uses BAYER
- * @usedby GRID_NATIVES
+ * @usedby paintCell (src/edge/reveal.mjs), GRID_NATIVES
  */
 export const findThreshold = (column, row) => (BAYER[(row % 8) * 8 + (column % 8)] + 0.5) / 64;
 

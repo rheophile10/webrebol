@@ -1,6 +1,9 @@
 REBOL [Title: "Loads each script of the folder /corpus and writes each loaded value with its type"]
-walk: func [block] [
-    foreach value block [
+walk: func [block /local value] [
+    ; A foreach loop is not correct here, because REBOL 2 binds the body again in each inner call.
+    while [not tail? block] [
+        set/any 'value first block
+        if unset? get/any 'value [value: 'unset-value]
         either any-block? :value [
             print [type? :value "["]
             walk :value
@@ -8,6 +11,7 @@ walk: func [block] [
         ] [
             print [type? :value either any-word? :value [lowercase form :value] [mold :value]]
         ]
+        block: next block
     ]
 ]
 foreach file sort read %/corpus/ [

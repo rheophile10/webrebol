@@ -128,10 +128,10 @@ const OPERATORS = {
 };
 
 /**
- * @uses makeLogic (src/machine/machine.mjs), NONE (src/store/store.mjs)
+ * @uses makeLogic (src/machine/machine.mjs), NONE (src/store/store.mjs), makeDatum (src/data/datum.mjs)
  * @usedby GLOBALS
  */
-const CONSTANTS = { true: makeLogic(true), false: makeLogic(false), none: NONE };
+const CONSTANTS = { true: makeLogic(true), false: makeLogic(false), none: NONE, "pi": makeDatum("decimal", Math.PI) };
 
 /**
  * @usedby makeFunction
@@ -169,7 +169,7 @@ const GLOBALS = Object.fromEntries([
  * The store at the start of a session. Its base has the natives, the operators, the constants and the datatypes.
  * @type {Store}
  */
-const BOOT_BUDGET = 1000;
+const BOOT_BUDGET = 5000;
 
 /**
  * @uses allocate (src/store/store.mjs), loadSource (src/data/load.mjs), VIEW_BOOT (src/view/boot.mjs),
@@ -184,6 +184,7 @@ const bootStore = (store) => {
 
 /**
  * @uses bootStore, EMPTY_STORE (src/store/store.mjs), GLOBALS
- * @usedby EMPTY_BLOCK, startSource, makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
+ * @usedby runTest (bin/conform.mjs), actual (bin/conform.mjs), EMPTY_BLOCK, startSource,
+ *   makeReady (test/machine.test.mjs), readGlobal (test/machine.test.mjs)
  */
 export const START_STORE = bootStore({ ...EMPTY_STORE, base: GLOBALS });

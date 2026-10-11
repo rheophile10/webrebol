@@ -24,3 +24,13 @@ true false none
 a ; comment
 ;only a comment
 [a ; comment ]
+a/(b)/c
+a/(1 + 2)
+a/b/(c d)/e
+a/(b): 1
+a/(b)/c: 2
+x a/(b) y
+#!/path/x
+/a/b
+[a/(b)]
+a/(b/(c))

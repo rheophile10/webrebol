@@ -112,7 +112,7 @@ const allocateItem = (made, item) => {
  * @returns {{ store: Store, value: Datum }}
  * @uses LIST_TYPES, allocateItem, EMPTY_CHUNKS (src/data/chunks.mjs), makeSeries, joinChunks (src/data/chunks.mjs),
  *   isSeries, WORD_TYPES, GLOBAL
- * @usedby 13 declarations in compare, control, convert, files, words, globals, interpret, store, layout, load, machine
+ * @usedby 14 declarations in compare, conform, control, convert, files, words, globals, interpret, store, layout, load, machine
  */
 export const allocate = (store, datum) => {
   // A list holds values that also go into the store.
@@ -130,7 +130,7 @@ export const allocate = (store, datum) => {
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 87 declarations in compare, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
+ * @usedby 88 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
  */
 export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
 

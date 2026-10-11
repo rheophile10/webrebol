@@ -26,6 +26,6 @@ export const pushItem = (chunks, item) =>
  * @param {{ full: Array[], last: Array }} chunks
  * @returns {Array}
  * @standard sequence - The items are in the sequence in which they came.
- * @usedby closeFrame, loadSource, allocate (src/store/store.mjs)
+ * @usedby closeFrame, closePathParen, loadSource, allocate (src/store/store.mjs)
  */
 export const joinChunks = (chunks) => [...chunks.full.flat(), ...chunks.last];

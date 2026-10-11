@@ -5,8 +5,8 @@ import { MONTHS, readDays } from "../data/dates.mjs";
 
 const DIGITS = 15;
 const QUOTE_LIMIT = 50;
-const LINE_LIMIT = 3;
-const ESCAPE_LIMIT = 4;
+const ESCAPE_LIMIT = 3;
+const BINARY_LINE = 32;
 const NANOSECONDS = 1e9;
 const QUOTE_CODE = 34;
 
@@ -44,14 +44,12 @@ const moldDecimal = (number) => {
 const countMatches = (text, pattern) => (text.match(pattern) ?? []).length;
 
 /**
- * @uses QUOTE_LIMIT, countMatches, LINE_LIMIT, ESCAPE_LIMIT
+ * @uses QUOTE_LIMIT, countMatches, ESCAPE_LIMIT
  * @usedby moldString
  */
 const needsBraces = (text) =>
-  text.includes('"') ||
-  text.length > QUOTE_LIMIT ||
-  countMatches(text, /\n(?!$)/g) >= LINE_LIMIT ||
-  countMatches(text, /[\x00-\x1F\x7F^]/g) >= ESCAPE_LIMIT;
+  // REBOL counts the characters that need an escape, but it does not count the last character of the text.
+  text.includes('"') || text.length > QUOTE_LIMIT || countMatches(text.slice(0, -1), /[\x00-\x1F\x7F^]/g) >= ESCAPE_LIMIT;
 
 /**
  * @uses needsBraces, escapeBraces (src/data/escape.mjs), escapeInLines (src/data/escape.mjs),
@@ -102,7 +100,7 @@ const moldTime = (nanoseconds) => {
 const encodeHex = (character) => `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`;
 
 /**
- * @usedby MOLDERS
+ * @usedby moldBinary, MOLDERS
  */
 const moldByte = (byte) => byte.toString(16).toUpperCase().padStart(2, "0");
 
@@ -132,6 +130,19 @@ const moldDate = (date) => {
   const day = `${parts.day}-${MONTHS[parts.month - 1]}-${String(parts.year).padStart(4, "0")}`;
   if (date.time === null) return day;
   return `${day}/${moldTime(date.time)}${date.zone === 0 ? "" : moldZone(date.zone)}`;
+};
+
+/**
+ * @uses BINARY_LINE, moldByte
+ * @usedby MOLDERS
+ */
+const moldBinary = (bytes) => {
+  // A binary of 32 bytes or more shows in lines of 32 bytes.
+  if (bytes.length < BINARY_LINE) return `#{${bytes.map(moldByte).join("")}}`;
+  const lines = Array.from({ length: Math.ceil(bytes.length / BINARY_LINE) }, (unused, place) =>
+    bytes.slice(place * BINARY_LINE, (place + 1) * BINARY_LINE).map(moldByte).join(""),
+  );
+  return `#{\n${lines.join("\n")}\n}`;
 };
 
 /**
@@ -168,7 +179,7 @@ const moldObject = (store, object, depth) => {
 
 /**
  * @uses moldDecimal, moldString, readRest, moldChar, moldName, moldRest, moldPath, encodeHex, moldRaw, moldTime,
- *   moldByte, moldObject, moldMoney, moldDate, moldValue
+ *   moldBinary, moldObject, moldMoney, moldDate, moldByte, moldValue
  * @usedby moldValue
  */
 const MOLDERS = {
@@ -194,7 +205,7 @@ const MOLDERS = {
   tuple: (store, tuple) => tuple.value.join("."),
   pair: (store, pair) => pair.value.join("x"),
   time: (store, time) => moldTime(time.value),
-  binary: (store, binary) => `#{${readRest(store, binary).map(moldByte).join("")}}`,
+  binary: (store, binary) => moldBinary(readRest(store, binary)),
   logic: (store, logic) => String(logic.value),
   none: () => "none",
   unset: () => "unset",

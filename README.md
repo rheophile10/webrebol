@@ -26,6 +26,18 @@ const printed = machine.store.output;
 const nextDisk = machine.store.disk; // The page saves this, for example with its own encrypted file system.
 ```
 
+## Proof of the same behavior
+
+Three comparisons run the same code in REBOL 2.7.8 and in WebRebol:
+
+| Comparison | Command | Result on 2026-10-11 |
+|---|---|---|
+| Recorded cases of this project | `npm test` | All 1851 cases agree. |
+| Load of downloaded REBOL scripts | `node bin/compare.mjs` | 519 of 538 scripts agree (143726 lines of code). |
+| The public REBOL core test suite | `node bin/conform.mjs` | 3562 of 4586 tests give the same outcome. |
+
+The downloaded scripts and the reports are in `corpus/`, which is not in git. REBOL View runs in Docker without a network.
+
 ## The look of View
 
 The View functions are REBOL code on the web word `element`. A script changes the look with the object `theme`:
@@ -74,16 +86,16 @@ WebRebol has the MIT licence. See `LICENSE`.
 ## Route through the code
 
 <!-- ste-doc -->
-- [`scanTokens`](src/data/tokens.mjs#L63) — Divides a source text into its lexical parts, without the spaces and the comments.
-- [`readToken`](src/data/datum.mjs#L279) — Reads the REBOL value that one token shows.
-- [`loadSource`](src/data/load.mjs#L85) — Makes the block of REBOL values that a source text shows.
+- [`scanTokens`](src/data/tokens.mjs#L88) — Divides a source text into its lexical parts, without the spaces and the comments.
+- [`readToken`](src/data/datum.mjs#L280) — Reads the REBOL value that one token shows.
+- [`loadSource`](src/data/load.mjs#L181) — Makes the block of REBOL values that a source text shows.
 - [`allocate`](src/store/store.mjs#L117) — Moves a loaded value into a store.
 - [`makeMachine`](src/machine/machine.mjs#L210) — Makes a machine that is ready to evaluate a block.
-- [`runMachine`](src/machine/run.mjs#L60) — Does steps until the evaluation is done or the budget is used.
+- [`runMachine`](src/machine/run.mjs#L58) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
 - [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.
 - [`startCall`](src/machine/call.mjs#L175) — Starts the call of a function.
 - [`interpretSource`](src/session/interpret.mjs#L45) — Evaluates a REBOL source text in a new session, without an edge.
 - [`showResult`](src/session/interpret.mjs#L56) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L223) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L234) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

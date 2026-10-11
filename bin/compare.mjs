@@ -1,5 +1,5 @@
 // Start: node bin/compare.mjs
-// This program loads each script of corpus/rebol.org/ in REBOL View 2.7.8 (in Docker, without a network) and in WebRebol.
+// This program loads each script of corpus/scripts/ in REBOL View 2.7.8 (in Docker, without a network) and in WebRebol.
 // It compares the type and the text of each loaded value, and it shows how many scripts agree.
 import { execFileSync } from "node:child_process";
 import { readFileSync, readdirSync, writeFileSync } from "node:fs";
@@ -13,7 +13,7 @@ const ROOT = fileURLToPath(new URL("..", import.meta.url));
  * @uses ROOT
  * @usedby MOUNTS, loadScript, names
  */
-const CORPUS = `${ROOT}corpus/rebol.org`;
+const CORPUS = `${ROOT}corpus/scripts`;
 const LIMITS = { encoding: "latin1", timeout: 900000, maxBuffer: 1024 * 1024 * 1024 };
 const WORD_TYPES = ["word", "set-word", "get-word", "lit-word", "refinement"];
 /**
@@ -33,9 +33,9 @@ const DOCKER = ["run", "--rm", "--init", "--network", "none", "--entrypoint", "/
  */
 const walkValue = (store) => (value) => {
   // A block gives its type, its values, and a closing line. A word shows in small letters, as in the REBOL script.
-  if (isList(value)) return [`${value.type}! [`, ...readRest(store, value).flatMap(walkValue(store)), "]"];
+  if (isList(value)) return [`${value.type} [`, ...readRest(store, value).flatMap(walkValue(store)), "]"];
   const text = WORD_TYPES.includes(value.type) ? String(value.value).toLowerCase() : moldValue(store, value);
-  return [`${value.type}! ${text}`];
+  return [`${value.type} ${text}`];
 };
 
 /**
@@ -44,7 +44,8 @@ const walkValue = (store) => (value) => {
  * @usedby compareScript
  */
 const loadScript = (name) => {
-  const loaded = loadSource(readFileSync(`${CORPUS}/${name}`, "latin1"));
+  // The function read of REBOL changes each CR LF to a line feed. Do the same here.
+  const loaded = loadSource(readFileSync(`${CORPUS}/${name}`, "latin1").replace(/\r\n/g, "\n"));
   if (loaded.type === "error") return `LOAD-ERROR ${loaded.value}`;
   const made = allocate(EMPTY_STORE, loaded);
   return readRest(made.store, made.value).flatMap(walkValue(made.store)).join("\n");

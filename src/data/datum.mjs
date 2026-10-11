@@ -15,7 +15,7 @@ const CONSTRUCTS = { "#[true]": ["logic", true], "#[false]": ["logic", false], "
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 93 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
+ * @usedby 97 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
  */
 export const makeDatum = (type, value) => ({ type, value });
 
@@ -151,7 +151,8 @@ const decodeHex = (code, digits) => String.fromCharCode(parseInt(digits, 16));
  * @usedby RUN_READERS
  */
 const readFile = (text) =>
-  text === "%" ? INVALID : makeDatum("file", text.slice(1).replace(/%([0-9A-Fa-f]{2})/g, decodeHex));
+  // A backslash in a file name is a slash.
+  text === "%" ? INVALID : makeDatum("file", text.slice(1).replace(/\\/g, "/").replace(/%([0-9A-Fa-f]{2})/g, decodeHex));
 
 /**
  * @uses readRun, INVALID, makeDatum
@@ -274,6 +275,6 @@ const TOKEN_READERS = {
  * @returns {Datum}
  * @standard invalid - A token that shows no REBOL value gives an error datum with the text "syntax invalid". Its fields are a type name and the text of the token.
  * @uses TOKEN_READERS
- * @usedby addToken
+ * @usedby addToken, readParts, startPath
  */
 export const readToken = (token) => TOKEN_READERS[token.kind](token.text);

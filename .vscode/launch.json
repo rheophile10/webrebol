@@ -43,6 +43,13 @@
       "request": "launch",
       "program": "${workspaceFolder}/bin/compare.mjs",
       "console": "integratedTerminal"
+    },
+    {
+      "name": "conform: the public REBOL test suite in REBOL and in WebRebol",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/bin/conform.mjs",
+      "console": "integratedTerminal"
     }
   ]
 }
