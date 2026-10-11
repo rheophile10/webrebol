@@ -19,6 +19,13 @@ export const TYPES = [
   ...["binary", "logic", "none", "error", "unset", "datatype", "native", "op", "function", "object", "bitset", "money", "date", "action"],
 ];
 
+const FUNCTIONS = ["native", "action", "op", "function"];
+
+/**
+ * @usedby areEqual
+ */
+const trimTuple = (tuple) => tuple.value.join(".").replace(/(\.0)+$/, "");
+
 /**
  * @uses TOLERANCE
  * @usedby areEqual
@@ -37,8 +44,8 @@ const isNear = (left, right) => Math.abs(left - right) <= TOLERANCE * Math.max(M
  * @param {Datum} right
  * @returns {boolean}
  * @standard case - Two texts or two words are equal without regard to the case of the letters.
- * @uses NUMBERS, isNear, isText (src/store/store.mjs), readRest (src/store/store.mjs), WORDS,
- *   isList (src/store/store.mjs), areSameLists, RECORDS
+ * @uses NUMBERS, isNear, WORDS, isText (src/store/store.mjs), readRest (src/store/store.mjs),
+ *   isList (src/store/store.mjs), areSameLists, RECORDS, FUNCTIONS, trimTuple
  * @usedby areSame, areSameLists, COMPARE_NATIVES, switchValue, matchesItem, makeSearch, makeUnique, combine
  */
 export const areEqual = (store, left, right) => {
@@ -46,13 +53,19 @@ export const areEqual = (store, left, right) => {
   if (NUMBERS.includes(left.type) && NUMBERS.includes(right.type)) return isNear(left.value, right.value);
   // A char is equal to the integer of its code.
   if ([left.type, right.type].sort().join() === "char,integer") return left.value === right.value;
+  // Two words of different word types are equal if their spelling is equal.
+  if (WORDS.includes(left.type) && WORDS.includes(right.type)) return left.value.toLowerCase() === right.value.toLowerCase();
   if (left.type !== right.type) return false;
   // Texts and words are equal without regard to the case of the letters.
   if (isText(left)) return readRest(store, left).toLowerCase() === readRest(store, right).toLowerCase();
   if (WORDS.includes(left.type)) return left.value.toLowerCase() === right.value.toLowerCase();
   if (isList(left)) return areSameLists(store, readRest(store, left), readRest(store, right));
   if (RECORDS.includes(left.type)) return JSON.stringify(left.value) === JSON.stringify(right.value);
-  return left.type === "object" ? left.value.context === right.value.context : String(left.value) === String(right.value);
+  if (left.type === "object") return left.value.context === right.value.context;
+  // Two functions are equal only if they are the same function. A tuple ignores the zeros at its end.
+  if (FUNCTIONS.includes(left.type)) return left.value === right.value;
+  if (left.type === "tuple") return trimTuple(left) === trimTuple(right);
+  return String(left.value) === String(right.value);
 };
 
 /**
@@ -104,6 +117,7 @@ export const readOrder = (store, value) => {
   if (NUMBERS.includes(value.type)) return { group: "number", data: value.value };
   if (isText(value)) return { group: value.type, data: readRest(store, value).toLowerCase() };
   if (value.type === "money") return { group: `money ${value.value.code}`, data: value.value.amount };
+  if (value.type === "binary") return { group: "binary", data: readRest(store, value).map((byte) => String.fromCharCode(byte)).join("") };
   if (value.type === "tuple") return { group: "tuple", data: value.value.map((byte) => String.fromCharCode(byte)).join("") };
   // The order of two dates uses the time of the world, without the time zone.
   if (value.type === "date") return { group: "date", data: value.value.days * DAY + (value.value.time ?? 0) - value.value.zone };

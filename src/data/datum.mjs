@@ -8,14 +8,16 @@ const INTEGER_LIMIT = 2147483648;
 const NANOSECONDS = 1e9;
 const WORD = "[A-Za-z?!.*&|=_~+\\-^`](?<![+-](?=\\d))[A-Za-z0-9?!.*&|=_~+\\-^`']*";
 const BINARY_BASES = { 2: 8, 16: 2 };
-const CONSTRUCTS = { "#[true]": ["logic", true], "#[false]": ["logic", false], "#[none]": ["none", null] };
+const BASE_64 = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+const SIMPLE_CONSTRUCTS = { true: ["logic", true], false: ["logic", false], none: ["none", null], "unset!": ["unset", null] };
+const SERIES_CONSTRUCTS = ["string", "file", "email", "url", "tag", "issue", "binary", "block", "paren", "path", "set-path", "lit-path"];
 
 /**
  * Makes a datum from a type and its data.
  * @param {Datatype} type
  * @param {Datum["value"]} value - The data of the value.
  * @returns {Datum}
- * @usedby 97 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
+ * @usedby 100 declarations in datum, load, machine, path, bitsets, clock, compare, control, convert, digest, faults, files, items, loops, math, numbers, objects, parse, random, scalars, series, words, globals, parts, store, grid, layout, windows
  */
 export const makeDatum = (type, value) => ({ type, value });
 
@@ -232,13 +234,24 @@ const readRun = (text) => {
 };
 
 /**
- * @uses BINARY_BASES, INVALID, makeDatum
+ * @uses BASE_64
+ * @usedby readBinary
+ */
+const decode64 = (text) => {
+  // Each character gives 6 bits. Each full group of 8 bits is a byte.
+  const bits = [...text.replace(/[^A-Za-z0-9+/]/g, "")].map((sign) => BASE_64.indexOf(sign).toString(2).padStart(6, "0")).join("");
+  return Array.from({ length: Math.floor(bits.length / 8) }, (unused, place) => parseInt(bits.slice(place * 8, place * 8 + 8), 2));
+};
+
+/**
+ * @uses makeDatum, decode64, BINARY_BASES, INVALID
  * @usedby TOKEN_READERS
  */
 const readBinary = (text) => {
   // Find the base and the digits. Spaces between the digits have no meaning.
   const [, base = "16", body] = text.match(/^(\d*)#\{([^}]*)\}$/).map((part) => (part === "" ? undefined : part));
   const digits = (body ?? "").replace(/\s/g, "");
+  if (base === "64") return makeDatum("binary", decode64(digits));
   const width = BINARY_BASES[base];
   // Each group of digits must make one full byte.
   if (width === undefined || digits.length % width !== 0 || /[^0-9A-Fa-f]/.test(digits)) return INVALID;
@@ -250,23 +263,39 @@ const readBinary = (text) => {
  * @uses CONSTRUCTS, INVALID, makeDatum
  * @usedby TOKEN_READERS
  */
-const readConstruct = (text) =>
-  CONSTRUCTS[text] === undefined ? INVALID : makeDatum(...CONSTRUCTS[text]);
-
 /**
- * @uses makeDatum, unescapeText, readBinary, readConstruct, INVALID, readRun
+ * @uses makeDatum, unescapeText, readBinary, readRun, INVALID
  * @usedby readToken
  */
 const TOKEN_READERS = {
   char: (text) => makeDatum("char", unescapeText(text.slice(2, -1)).charCodeAt(0)),
   binary: readBinary,
-  construct: (text) => (readConstruct(text) === INVALID ? { ...INVALID, args: ["construct", text] } : readConstruct(text)),
   quotedFile: (text) => makeDatum("file", text.slice(2, -1)),
   string: (text) => makeDatum("string", unescapeText(text.slice(1, -1))),
   braces: (text) => makeDatum("string", unescapeText(text.slice(1, -1))),
   tag: (text) => makeDatum("tag", text.slice(1, -1)),
   run: readRun,
   invalid: (text) => ({ ...INVALID, args: ["string", text] }),
+};
+
+/**
+ * Makes the value of a construct: the values between "#[" and "]" in a source text.
+ * @param {Datum[]} items - The loaded values of the construct.
+ * @returns {Datum}
+ * @standard series - A series construct can have a position after its content, counted from 1.
+ * @uses SIMPLE_CONSTRUCTS, makeDatum, SERIES_CONSTRUCTS, INVALID
+ * @usedby closeFrame
+ */
+export const makeConstruct = (items) => {
+  const name = typeof items[0]?.value === "string" ? items[0].value.toLowerCase() : "";
+  if (SIMPLE_CONSTRUCTS[name] !== undefined && items.length === 1) return makeDatum(...SIMPLE_CONSTRUCTS[name]);
+  if (name === "datatype!" && items.length === 2) return makeDatum("datatype", String(items[1].value).toLowerCase().replace(/!$/, ""));
+  const type = name.replace(/!$/, "");
+  const content = items[1]?.value;
+  if (type === "bitset" && items[1]?.type === "binary") return makeDatum("bitset", content);
+  const fits = SERIES_CONSTRUCTS.includes(type) && (Array.isArray(content) || typeof content === "string");
+  if (!fits) return { ...INVALID, args: ["construct", name] };
+  return items[2] === undefined ? makeDatum(type, content) : { ...makeDatum(type, content), index: items[2].value - 1 };
 };
 
 /**

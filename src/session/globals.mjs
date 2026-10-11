@@ -53,7 +53,7 @@ import { runMachine } from "../machine/run.mjs";
  *   FILE_NATIVES (src/natives/files.mjs), RANDOM_NATIVES (src/natives/random.mjs),
  *   VIEW_NATIVES (src/view/layout.mjs), WEB_NATIVES (src/view/elements.mjs), WINDOW_NATIVES (src/view/windows.mjs),
  *   GRID_NATIVES (src/view/grid.mjs)
- * @usedby OVERRIDES, findAny, makeFunction, GLOBALS
+ * @usedby OVERRIDES, findAny, makeFunction, BUILT
  */
 const NATIVES = {
   ...MATH_NATIVES,
@@ -129,9 +129,21 @@ const OPERATORS = {
 
 /**
  * @uses makeLogic (src/machine/machine.mjs), NONE (src/store/store.mjs), makeDatum (src/data/datum.mjs)
- * @usedby GLOBALS
+ * @usedby BUILT
  */
-const CONSTANTS = { true: makeLogic(true), false: makeLogic(false), none: NONE, "pi": makeDatum("decimal", Math.PI) };
+const CONSTANTS = {
+  true: makeLogic(true),
+  false: makeLogic(false),
+  "on": makeLogic(true),
+  off: makeLogic(false),
+  yes: makeLogic(true),
+  "no": makeLogic(false),
+  none: NONE,
+  "pi": makeDatum("decimal", Math.PI),
+};
+
+// REBOL has these types, and WebRebol does not. Their words are there, thus a script can compare a type with them.
+const ABSENT_TYPES = ["routine", "library", "struct", "port", "event", "image", "hash", "list", "symbol"];
 
 /**
  * @usedby makeFunction
@@ -142,7 +154,7 @@ const readSpecItem = (item) => (item.type === "block" ? { ...item, value: item.v
  * @uses SPECS (src/natives/specs.mjs), VIEW_SPECS (src/view/data.mjs), WEB_SPECS (src/view/elements.mjs),
  *   GRID_SPECS (src/view/grid.mjs), parseSpec (src/machine/spec.mjs), loadSource (src/data/load.mjs), readSpecItem,
  *   makeDatum (src/data/datum.mjs), OVERRIDES, NATIVES
- * @usedby GLOBALS
+ * @usedby BUILT
  */
 const makeFunction = (type, name, sign) => {
   // The parameters come from REBOL, as text. The loader reads them.
@@ -154,16 +166,23 @@ const makeFunction = (type, name, sign) => {
 
 /**
  * @uses NATIVES, makeKey (src/store/store.mjs), makeFunction, OPERATORS, CONSTANTS, COLORS (src/view/data.mjs),
- *   makeDatum (src/data/datum.mjs), TYPES (src/natives/compare.mjs), TYPESETS
- * @usedby START_STORE
+ *   makeDatum (src/data/datum.mjs), TYPES (src/natives/compare.mjs), TYPESETS, ABSENT_TYPES
+ * @usedby GLOBALS
  */
-const GLOBALS = Object.fromEntries([
+const BUILT = Object.fromEntries([
   ...Object.keys(NATIVES).map((name) => [makeKey(name), makeFunction(null, name, name)]),
   ...Object.entries(OPERATORS).map(([sign, name]) => [makeKey(sign), makeFunction("op", name, sign)]),
   ...Object.entries(CONSTANTS).map(([name, value]) => [makeKey(name), value]),
   ...Object.entries(COLORS).map(([name, parts]) => [makeKey(name), makeDatum("tuple", parts)]),
-  ...[...TYPES, ...TYPESETS].map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
+  ...[...TYPES, ...TYPESETS, ...ABSENT_TYPES].map((type) => [makeKey(`${type}!`), makeDatum("datatype", type)]),
 ]);
+
+// The short name `abs` is the same function value as `absolute`, as in REBOL.
+/**
+ * @uses BUILT, makeKey (src/store/store.mjs)
+ * @usedby START_STORE
+ */
+const GLOBALS = { ...BUILT, [makeKey("abs")]: BUILT[makeKey("absolute")] };
 
 /**
  * The store at the start of a session. Its base has the natives, the operators, the constants and the datatypes.

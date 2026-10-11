@@ -1,5 +1,5 @@
 const NAMED_CODES = { null: 0, back: 8, tab: 9, line: 10, page: 12, esc: 27, del: 127 };
-const SIGN_CODES = { "/": 10, "-": 9, "~": 127 };
+const SIGN_CODES = { "/": 10, "-": 9, "~": 127, "^": 94, "!": 30 };
 const CODE_SIGNS = { 9: "^-", 10: "^/", 94: "^^", 127: "^~" };
 const CONTROL_SHIFT = 64;
 

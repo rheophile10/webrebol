@@ -19,7 +19,7 @@ const PIECES = [
   ["close", "[\\])]"],
   ["char", '#"(?:\\^\\([0-9A-Za-z]+\\)|\\^.|[^"^])"'],
   ["binary", "(?:2|16|64)?#\\{[^}]*\\}"],
-  ["construct", "#\\[[^\\]]*\\]"],
+  ["construct", "#\\["],
   ["quotedFile", '%"[^"]*"'],
   ["string", '"(?:\\^.|[^"^\\n])*"'],
   ["braces", Array.from({ length: BRACE_DEPTH }).reduce(nestBraces, NO_MATCH)],

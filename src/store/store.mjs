@@ -16,7 +16,7 @@ export const GLOBAL = 0;
 export const UNSET = makeDatum("unset", null);
 /**
  * @uses makeDatum (src/data/datum.mjs)
- * @usedby 52 declarations in call, path, bitsets, control, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
+ * @usedby 54 declarations in call, path, bitsets, control, encode, faults, files, flow, items, loops, objects, parse, random, report, search, series, words, globals, interpret, layout
  */
 export const NONE = makeDatum("none", null);
 /**
@@ -42,7 +42,7 @@ export const EMPTY_STORE = {
  * Makes the key of a word in a context. The key ignores the case of the letters.
  * @param {string} name - The spelling of the word.
  * @returns {string}
- * @usedby 19 declarations in path, spec, loops, objects, words, globals, store
+ * @usedby 21 declarations in path, spec, loops, objects, words, globals, store
  */
 export const makeKey = (name) => `$${name.toLowerCase()}`;
 
@@ -88,12 +88,19 @@ export const isSeries = (value) => isList(value) || isText(value) || value.type 
  * @param {string | number[] | Datum[]} content - The items of the series.
  * @returns {{ store: Store, value: Datum }}
  * @uses writeEntry, makeDatum (src/data/datum.mjs)
- * @usedby 38 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, layout, windows
+ * @usedby 39 declarations in call, control, convert, edit, encode, files, flow, items, objects, parse, search, series, text, words, store, layout, windows
  */
 export const makeSeries = (store, type, content) => ({
   store: { ...store, series: writeEntry(store.series, store.next, content), next: store.next + 1 },
   value: makeDatum(type, { id: store.next, index: 0 }),
 });
+
+/**
+ * @usedby allocate
+ */
+const placeSeries = (made, datum) =>
+  // A construct can give a position to its series.
+  datum.index === undefined ? made : { store: made.store, value: { ...made.value, value: { ...made.value.value, index: datum.index } } };
 
 /**
  * @uses allocate, pushItem (src/data/chunks.mjs)
@@ -110,17 +117,17 @@ const allocateItem = (made, item) => {
  * @param {Store} store
  * @param {Datum} datum - A value from the loader.
  * @returns {{ store: Store, value: Datum }}
- * @uses LIST_TYPES, allocateItem, EMPTY_CHUNKS (src/data/chunks.mjs), makeSeries, joinChunks (src/data/chunks.mjs),
- *   isSeries, WORD_TYPES, GLOBAL
+ * @uses LIST_TYPES, allocateItem, EMPTY_CHUNKS (src/data/chunks.mjs), placeSeries, makeSeries,
+ *   joinChunks (src/data/chunks.mjs), isSeries, WORD_TYPES, GLOBAL
  * @usedby 14 declarations in compare, conform, control, convert, files, words, globals, interpret, store, layout, load, machine
  */
 export const allocate = (store, datum) => {
   // A list holds values that also go into the store.
   if (LIST_TYPES.includes(datum.type)) {
     const made = datum.value.reduce(allocateItem, { store, values: EMPTY_CHUNKS });
-    return makeSeries(made.store, datum.type, joinChunks(made.values));
+    return placeSeries(makeSeries(made.store, datum.type, joinChunks(made.values)), datum);
   }
-  if (isSeries(datum)) return makeSeries(store, datum.type, datum.value);
+  if (isSeries(datum)) return placeSeries(makeSeries(store, datum.type, datum.value), datum);
   return { store, value: WORD_TYPES.includes(datum.type) ? { ...datum, bind: GLOBAL } : datum };
 };
 
@@ -130,7 +137,7 @@ export const allocate = (store, datum) => {
  * @param {Datum} series
  * @returns {string | number[] | Datum[]}
  * @uses readEntry
- * @usedby 88 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
+ * @usedby 89 declarations in compare, conform, path, bitsets, control, convert, digest, edit, encode, faults, files, flow, items, loops, objects, parse, random, search, series, strings, text, words, mold, store, elements, layout
  */
 export const readRest = (store, series) => readEntry(store.series, series.value.id).slice(series.value.index);
 
@@ -167,7 +174,7 @@ export const writeAll = (store, series, content) => ({
  * @returns {Datum}
  * @standard unset - A word without a value gives the unset value.
  * @uses makeKey, GLOBAL, readEntry, hashKey, UNSET
- * @usedby 16 declarations in call, evaluate, path, items, loops, objects, parse, words
+ * @usedby 18 declarations in call, evaluate, path, control, items, loops, objects, parse, words
  */
 export const readWord = (store, word) => {
   // The global words that the session set are in a table by the hash of the key. The base has the words of REBOL.
@@ -182,7 +189,7 @@ export const readWord = (store, word) => {
  * @param {number} context - The number of the context.
  * @returns {Object<string, Datum> | undefined}
  * @uses readEntry
- * @usedby 16 declarations in call, path, objects, series, words, mold, elements, layout, windows
+ * @usedby 17 declarations in call, path, objects, series, words, mold, elements, layout, windows
  */
 export const readContext = (store, context) => readEntry(store.contexts, context);
 
@@ -213,8 +220,8 @@ export const writeWord = (store, word, value) => {
  * @returns {Store}
  * @uses writeEntry
  * @usedby restoreBody (src/machine/call.mjs), invokeBody (src/machine/call.mjs),
- *   assignInObject (src/machine/path.mjs), makeObject (src/natives/objects.mjs), makeContext,
- *   changeText (src/view/windows.mjs)
+ *   assignInObject (src/machine/path.mjs), makeObject (src/natives/objects.mjs), setFields (src/natives/objects.mjs),
+ *   makeContext, changeText (src/view/windows.mjs)
  */
 export const writeContext = (store, context, values) => ({
   ...store,

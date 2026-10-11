@@ -28,7 +28,7 @@ export const isTrue = (value) => value.type !== "none" && value.value !== false;
  * @param {Datum} value
  * @returns {boolean}
  * @uses FUNCTION_TYPES
- * @usedby evaluateWord, walkPart, evaluatePath
+ * @usedby evaluateWord, evaluateOperand, walkPart, evaluatePath, doValue (src/natives/control.mjs)
  */
 export const isFunction = (value) => FUNCTION_TYPES.includes(value.type);
 
@@ -45,7 +45,7 @@ export const pushFrame = (machine, frame) => ({ ...machine, frames: { top: frame
  * Removes the top frame of the stack.
  * @param {Machine} machine
  * @returns {Machine}
- * @usedby 24 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
+ * @usedby 25 declarations in call, evaluate, machine, path, run, control, faults, flow, items, loops, objects, words
  */
 export const popFrame = (machine) => ({ ...machine, frames: machine.frames.below });
 
@@ -65,7 +65,7 @@ export const replaceTop = (machine, frame) => ({ ...machine, frames: { top: fram
  * @param {Machine} machine
  * @param {Datum} value
  * @returns {Machine}
- * @usedby 123 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
+ * @usedby 126 declarations in call, evaluate, machine, path, bitsets, clock, compare, control, convert, digest, edit, encode, faults, files, flow, items, loops, math, numbers, objects, parse, random, search, series, strings, text, words, elements, grid, layout, windows
  */
 export const giveValue = (machine, value) => ({ ...machine, value, mode: "give" });
 
@@ -87,7 +87,7 @@ export const throwValue = (machine, kind, value) => ({ ...machine, mode: "throw"
  * @param {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of the error.
  * @returns {Machine}
  * @uses throwValue, makeDatum (src/data/datum.mjs)
- * @usedby 33 declarations in call, evaluate, path, compare, control, convert, digest, edit, encode, files, items, math, numbers, objects, random, series, words
+ * @usedby 38 declarations in call, evaluate, path, bitsets, compare, control, convert, digest, edit, encode, files, items, math, numbers, random, series, words
  */
 export const failMachine = (machine, text, args = []) =>
   throwValue(machine, "error", { ...makeDatum("error", text), args });
@@ -140,7 +140,7 @@ export const answerRequest = (machine, answer) => machine.request.resume({ ...ma
  * @param {Machine} machine
  * @returns {boolean}
  * @uses readEntry (src/store/table.mjs)
- * @usedby 11 declarations in call, evaluate, machine, control, flow
+ * @usedby 12 declarations in call, evaluate, machine, control, flow
  */
 export const atEnd = (machine) => machine.cursor.index >= readEntry(machine.store.series, machine.cursor.id).length;
 

@@ -7,7 +7,7 @@ At this time, it evaluates REBOL source text with 327 of the 443 Core functions:
 
 - `node bin/webrebol.mjs 'print "hello" 1 + 2'` evaluates the source text. It shows the printed text and the molded result.
 - `WEBREBOL_DISK=./disk node bin/webrebol.mjs 'write %a.txt "hello"'` keeps the files of the session in the folder `./disk`.
-- `node bin/serve.mjs` serves the test page. Open `http://localhost:8017/browser/index.html`, write a script with `layout` and `view`, and push Run.
+- `node bin/serve.mjs` serves the pages. Open `http://localhost:8017/`. The start page lists the transitions, the games, and the page where you write a script.
 - `npm test` compares WebRebol with the recorded results of REBOL 2.7.8.
 - `npm run record` runs the cases of `test/cases/` in REBOL 2.7.8 and writes `test/golden/`.
 
@@ -33,8 +33,8 @@ Three comparisons run the same code in REBOL 2.7.8 and in WebRebol:
 | Comparison | Command | Result on 2026-10-11 |
 |---|---|---|
 | Recorded cases of this project | `npm test` | All 1851 cases agree. |
-| Load of downloaded REBOL scripts | `node bin/compare.mjs` | 519 of 538 scripts agree (143726 lines of code). |
-| The public REBOL core test suite | `node bin/conform.mjs` | 3562 of 4586 tests give the same outcome. |
+| Load of downloaded REBOL scripts | `node bin/compare.mjs` | 529 of 538 scripts agree (143726 lines of code). |
+| The public REBOL core test suite | `node bin/conform.mjs` | 4024 of 4586 tests give the same outcome (87.7%). 141 of the other tests use types or features that WebRebol does not have. |
 
 The downloaded scripts and the reports are in `corpus/`, which is not in git. REBOL View runs in Docker without a network.
 
@@ -87,15 +87,15 @@ WebRebol has the MIT licence. See `LICENSE`.
 
 <!-- ste-doc -->
 - [`scanTokens`](src/data/tokens.mjs#L88) — Divides a source text into its lexical parts, without the spaces and the comments.
-- [`readToken`](src/data/datum.mjs#L280) — Reads the REBOL value that one token shows.
-- [`loadSource`](src/data/load.mjs#L181) — Makes the block of REBOL values that a source text shows.
-- [`allocate`](src/store/store.mjs#L117) — Moves a loaded value into a store.
+- [`readToken`](src/data/datum.mjs#L309) — Reads the REBOL value that one token shows.
+- [`loadSource`](src/data/load.mjs#L183) — Makes the block of REBOL values that a source text shows.
+- [`allocate`](src/store/store.mjs#L124) — Moves a loaded value into a store.
 - [`makeMachine`](src/machine/machine.mjs#L210) — Makes a machine that is ready to evaluate a block.
 - [`runMachine`](src/machine/run.mjs#L58) — Does steps until the evaluation is done or the budget is used.
 - [`stepMachine`](src/machine/run.mjs#L40) — Does one step of the evaluation.
-- [`evaluateOperand`](src/machine/evaluate.mjs#L51) — Evaluates the value at the cursor, without a look for an operator after it.
+- [`evaluateOperand`](src/machine/evaluate.mjs#L52) — Evaluates the value at the cursor, without a look for an operator after it.
 - [`startCall`](src/machine/call.mjs#L175) — Starts the call of a function.
 - [`interpretSource`](src/session/interpret.mjs#L45) — Evaluates a REBOL source text in a new session, without an edge.
 - [`showResult`](src/session/interpret.mjs#L56) — Makes the text that shows the end of an evaluation: the molded result, or the error.
-- [`moldValue`](src/store/mold.mjs#L234) — Makes the REBOL source text of one value.
+- [`moldValue`](src/store/mold.mjs#L235) — Makes the REBOL source text of one value.
 <!-- /ste-doc -->

@@ -245,3 +245,53 @@ array 0
 ++ zzz
 apply :subtract [10 3]
 f: funct [x] [t: 0 foreach v x [t: t + v] t] f [1 2 3]
+to integer! "5"
+to string! 12
+to block! "a b"
+to decimal! 3
+to word! "abc"
+to char! 65
+to pair! [1 2]
+to time! 90
+to logic! 0
+to 1 "7"
+to "" 12
+make string! 10
+make block! 5
+make time! 90
+make char! 65
+make logic! 1
+make pair! [3 4]
+on
+off
+yes
+reduce [on off yes no]
+type? image!
+do reduce [:abs -1]
+do reduce [:add 1 2]
+error? try [a: ()]
+a: ()
+equal? first [a] first [/a]
+equal? first ['a] first [a:]
+strict-equal? first [a] first [a:]
+equal? 1.0.0.0 1.0.0
+not equal? func [] [] func [] []
+f: func [] [] equal? :f :f
+#"^(01)" and #"^(03)"
+#"^(01)" or #"^(02)"
+1.2.3 and 3.3.3
+1.2.3 or 4.0.0
+#{0F0F} and #{00FF}
+"^(03)^(00)" xor "^(02)^(00)"
+complement #"^@"
+complement #{00FF}
+cosine 90
+sine 180
+error? try [tangent 90]
+round 1:0:0.5
+round/to 1:18 0:15
+round/half-down 1.5
+round/half-ceiling -2.5
+round/even/to 1.15 0.1
+lesser? #{0141} #{0161}
+-2147483648x-2147483648 + -2147483648x-2147483648

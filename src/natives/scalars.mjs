@@ -66,7 +66,8 @@ const spread = (value, size) => (Array.isArray(value.value) ? value.value : Arra
 const combinePair = (call, left, right) => {
   if (right.type !== "pair" && !isNumber(right)) return null;
   const other = right.type === "pair" ? right.value : [right.value, right.value];
-  return makeDatum("pair", left.value.map((part, place) => Math.trunc(call.operation(part, other[place]))));
+  // Each part of a pair is a whole number of 32 bits.
+  return makeDatum("pair", left.value.map((part, place) => Math.trunc(call.operation(part, other[place])) | 0));
 };
 
 /**
@@ -158,7 +159,7 @@ export const combineScalars = (call, left, right) => COMBINERS[left.type]?.(call
  */
 const CHANGERS = {
   time: (value, change) => makeDatum("time", change(value.value)),
-  pair: (value, change) => makeDatum("pair", value.value.map(change)),
+  pair: (value, change) => makeDatum("pair", value.value.map((part) => change(part) | 0)),
   money: (value, change) => makeDatum("money", { ...value.value, amount: change(value.value.amount) }),
 };
 
@@ -169,7 +170,7 @@ const CHANGERS = {
  * @returns {Datum | null}
  * @standard none - A type without such an operation gives null.
  * @uses CHANGERS
- * @usedby change, roundNumber
+ * @usedby change
  */
 export const changeScalar = (value, change) => CHANGERS[value.type]?.(value, change) ?? null;
 

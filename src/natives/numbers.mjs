@@ -1,7 +1,9 @@
 import { makeDatum } from "../data/datum.mjs";
 import { failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
 import { complementBitset } from "./bitsets.mjs";
-import { changeScalar, readNumbers } from "./scalars.mjs";
+import { readNumbers } from "./scalars.mjs";
+import { readBytes } from "./digest.mjs";
+import { giveNew } from "./series.mjs";
 
 const DEGREES = Math.PI / 180;
 
@@ -33,11 +35,15 @@ const raise = (machine, [number, exponent]) =>
   giveDecimal(machine, number.value === 0 ? 0 : Math.pow(number.value, exponent.value));
 
 /**
- * @uses giveDecimal, DEGREES
+ * @uses DEGREES, failMachine (src/machine/machine.mjs), giveDecimal
  * @usedby NUMBER_NATIVES
  */
-const turn = (operation) => (machine, [angle], options) =>
-  giveDecimal(machine, operation(options.$radians === undefined ? angle.value * DEGREES : angle.value));
+const turn = (operation) => (machine, [angle], options) => {
+  // A result that is almost zero is zero, and a result that is too large is an error, as in REBOL.
+  const result = operation(options.$radians === undefined ? angle.value * DEGREES : angle.value);
+  if (Math.abs(result) > 1e15) return failMachine(machine, "math overflow");
+  return giveDecimal(machine, Math.abs(result) < 1e-15 ? 0 : result);
+};
 
 /**
  * @uses giveDecimal, DEGREES
@@ -65,7 +71,16 @@ const ROUNDERS = {
   $floor: Math.floor,
   $ceiling: Math.ceil,
   $even: roundEven,
+  "$half-down": (number) => Math.sign(number) * Math.ceil(Math.abs(number) - 0.5),
+  "$half-ceiling": (number) => Math.floor(number + 0.5),
 };
+
+const NANOSECONDS = 1e9;
+
+/**
+ * @usedby roundNumber
+ */
+const readAmount = (value) => (value.type === "money" ? value.value.amount : value.value);
 
 /**
  * @usedby roundNumber
@@ -73,39 +88,69 @@ const ROUNDERS = {
 const roundAway = (number) => Math.sign(number) * Math.floor(Math.abs(number) + 0.5);
 
 /**
- * @uses giveValue (src/machine/machine.mjs), changeScalar, roundAway, makeDatum (src/data/datum.mjs), ROUNDERS
+ * @uses NANOSECONDS, readAmount, failMachine (src/machine/machine.mjs), ROUNDERS, roundAway,
+ *   giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
  * @usedby NUMBER_NATIVES
  */
 const roundNumber = (machine, [number], options) => {
-  if (number.type === "money") return giveValue(machine, changeScalar(number, roundAway));
-  // With /to, the result is a multiple of the scale. An integer scale gives an integer.
-  const scale = options.$to === undefined ? makeDatum("integer", 1) : options.$to[0];
+  // With /to, the result is a multiple of the scale. A time uses seconds, and a money value uses its amount.
+  const unit = number.type === "time" ? NANOSECONDS : 1;
+  const scale = options.$to === undefined ? unit : readAmount(options.$to[0]);
+  if (scale === 0) return failMachine(machine, "math zero-divide");
   const name = Object.keys(ROUNDERS).find((key) => options[key] !== undefined);
-  const rounded = (name === undefined ? roundAway : ROUNDERS[name])(number.value / scale.value) * scale.value;
-  return giveValue(machine, makeDatum(scale.type === "integer" ? "integer" : "decimal", rounded));
+  // The quotient loses its last bits, thus 1.15 / 0.1 is 11.5 and not 11.499999999999998.
+  const quotient = Number((readAmount(number) / scale).toPrecision(16));
+  const rounded = (name === undefined ? roundAway : ROUNDERS[name])(quotient) * scale;
+  if (number.type === "time") return giveValue(machine, makeDatum("time", Math.round(rounded)));
+  if (number.type === "money") return giveValue(machine, makeDatum("money", { ...number.value, amount: rounded }));
+  const whole = options.$to === undefined || options.$to[0].type === "integer";
+  return giveValue(machine, makeDatum(whole ? "integer" : "decimal", rounded));
 };
 
 /**
- * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs),
- *   failMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
+ * @uses failMachine (src/machine/machine.mjs), makeDatum (src/data/datum.mjs)
+ * @usedby combineBits
+ */
+const failTypes = (machine, pair) =>
+  failMachine(machine, "script expect-set", pair.map((value) => makeDatum("datatype", value.type)));
+
+/**
+ * @uses readBytes, giveNew
+ * @usedby combineBits, complementValue
+ */
+const combineBytes = (machine, pair, bits) => {
+  // Two texts or two binaries give a new series. Each byte is the result of the two bytes at the same position.
+  const [left, right] = pair.map((value) => readBytes(machine.store, value));
+  const bytes = left.map((byte, place) => bits(byte, right[place] ?? 0) & 255);
+  return giveNew(machine, pair[0].type, pair[0].type === "binary" ? bytes : bytes.map((byte) => String.fromCharCode(byte)).join(""));
+};
+
+/**
+ * @uses giveValue (src/machine/machine.mjs), makeLogic (src/machine/machine.mjs), makeDatum (src/data/datum.mjs),
+ *   combineBytes, failTypes
  * @usedby NUMBER_NATIVES
  */
 const combineBits = (logic, bits) => (machine, [left, right]) => {
-  // Two logic values give a logic value. Two integers give an integer.
+  // Two logic values give a logic value. Integers, chars and tuples give a value of the type of the left value.
   if (left.type === "logic" && right.type === "logic") return giveValue(machine, makeLogic(logic(left.value, right.value)));
-  if (left.type !== "integer" || right.type !== "integer") {
-    return failMachine(machine, "script expect-set", [left, right].map((value) => makeDatum("datatype", value.type)));
+  if (left.type === "tuple" && ["tuple", "integer", "decimal"].includes(right.type)) {
+    const other = right.type === "tuple" ? right.value : left.value.map(() => Math.trunc(right.value));
+    return giveValue(machine, makeDatum("tuple", left.value.map((part, place) => bits(part, other[place] ?? 0) & 255)));
   }
-  return giveValue(machine, makeDatum("integer", bits(left.value, right.value)));
+  if (["string", "binary"].includes(left.type) && left.type === right.type) return combineBytes(machine, [left, right], bits);
+  const plain = ["integer", "char"].includes(left.type) && left.type === right.type;
+  return plain ? giveValue(machine, makeDatum(left.type, bits(left.value, right.value))) : failTypes(machine, [left, right]);
 };
 
 /**
- * @uses giveValue (src/machine/machine.mjs), complementBitset, makeDatum (src/data/datum.mjs),
+ * @uses giveValue (src/machine/machine.mjs), complementBitset, makeDatum (src/data/datum.mjs), combineBytes,
  *   makeLogic (src/machine/machine.mjs)
  * @usedby NUMBER_NATIVES
  */
 const complementValue = (machine, [value]) => {
   if (value.type === "bitset") return giveValue(machine, complementBitset(value));
+  if (value.type === "char") return giveValue(machine, makeDatum("char", 255 - value.value));
+  if (["string", "binary"].includes(value.type)) return combineBytes(machine, [value, value], (byte) => 255 - byte);
   if (value.type === "tuple") return giveValue(machine, makeDatum("tuple", value.value.map((byte) => 255 - byte)));
   return giveValue(machine, value.type === "logic" ? makeLogic(!value.value) : makeDatum("integer", ~value.value));
 };

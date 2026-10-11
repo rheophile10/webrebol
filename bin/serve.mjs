@@ -13,14 +13,19 @@ const TYPES = { html: "text/html", mjs: "text/javascript", "js": "text/javascrip
  * @usedby bin/serve.mjs
  */
 const sendFile = (request, response) => {
-  // Serve only files in the project. A path with ".." is not permitted.
+  // The start page is in the folder examples. Go to its address, so that its links are correct.
   const path = new URL(request.url, "http://localhost").pathname;
-  const safe = path.includes("..") ? "/browser/index.html" : path.replace(/\/$/, "/browser/index.html");
-  readFile(`${ROOT}${safe.slice(1)}`, (fault, content) => {
+  if (path === "/") {
+    response.writeHead(302, { Location: "/examples/index.html" });
+    return response.end();
+  }
+  // Serve only files in the project. A path with ".." is not permitted.
+  const safe = path.includes("..") ? "/examples/index.html" : path.replace(/\/$/, "/index.html");
+  return readFile(`${ROOT}${safe.slice(1)}`, (fault, content) => {
     const type = TYPES[safe.split(".").slice(-1)[0]] ?? "text/plain";
     response.writeHead(fault === null ? 200 : 404, { "Content-Type": `${type}; charset=utf-8`, "Cache-Control": "no-store" });
-    response.end(fault === null ? content : "This file is not in the project.");
+    response.end(fault === null ? content : "This file is not in the project. The start page is /examples/index.html");
   });
 };
 
-createServer(sendFile).listen(PORT, () => console.log(`WebRebol page: http://localhost:${PORT}/browser/index.html`));
+createServer(sendFile).listen(PORT, () => console.log(`WebRebol page: http://localhost:${PORT}/examples/index.html`));

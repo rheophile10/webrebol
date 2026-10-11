@@ -5,13 +5,14 @@ import { startCall } from "./call.mjs";
 import { evaluatePath, startSetPath } from "./path.mjs";
 
 /**
- * @uses popFrame, writeWord (src/store/store.mjs)
+ * @uses failMachine, popFrame, writeWord (src/store/store.mjs)
  * @usedby EVALUATORS
  */
-const stepSet = (machine, frame) => ({
-  ...popFrame(machine),
-  store: writeWord(machine.store, frame.word, machine.value),
-});
+const stepSet = (machine, frame) =>
+  // A set-word needs a value.
+  machine.value.type === "unset"
+    ? failMachine(popFrame(machine), "script need-value", [frame.word])
+    : { ...popFrame(machine), store: writeWord(machine.store, frame.word, machine.value) };
 
 /**
  * @uses readWord (src/store/store.mjs), failMachine, isFunction, startCall, giveValue
@@ -45,12 +46,14 @@ const EVALUATORS = {
  * @param {Machine} machine
  * @returns {Machine}
  * @standard end - At the end of the block, the result is the unset value.
- * @uses atEnd, giveValue, UNSET (src/store/store.mjs), readItem, EVALUATORS, advance
+ * @uses atEnd, giveValue, UNSET (src/store/store.mjs), readItem, isFunction, startCall, advance, EVALUATORS
  * @usedby MODES
  */
 export const evaluateOperand = (machine) => {
   // A type without an evaluator gives the value itself.
   if (atEnd(machine)) return giveValue(machine, UNSET);
   const item = readItem(machine);
+  // A function value in a block is called, as the function of a word is.
+  if (isFunction(item)) return startCall(advance(machine), item, { names: [], label: "function" });
   return (EVALUATORS[item.type] ?? giveValue)(advance(machine), item);
 };

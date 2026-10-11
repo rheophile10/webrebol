@@ -32,7 +32,7 @@
       "console": "integratedTerminal",
       "serverReadyAction": {
         "action": "debugWithChrome",
-        "pattern": "WebRebol page: (http://localhost:[0-9]+/browser/index.html)",
+        "pattern": "WebRebol page: (http://localhost:[0-9]+/examples/index.html)",
         "uriFormat": "%s",
         "webRoot": "${workspaceFolder}"
       }

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRebol: A pet</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
+      #screen { position: relative; height: 430px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #script { width: 100%; height: 220px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
+      #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
+      details { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>A pet</h1>
+    <p>Push a button to feed the pet, to play with it, or to let it sleep. One second is one hour for the pet.</p>
+    <div id="screen"></div>
+    <pre id="output"></pre>
+    <details>
+      <summary>The REBOL script of this page</summary>
+      <textarea id="script" spellcheck="false">hunger: 20 joy: 80 energy: 80 age: 0
+clamp: func [n] [max 0 min 100 n]
+mood: does [
+    case [
+        hunger &gt; 80 [&quot;😫&quot;]
+        energy &lt; 20 [&quot;😴&quot;]
+        joy &lt; 30 [&quot;😢&quot;]
+        true [&quot;😊&quot;]
+    ]
+]
+update: does [
+    pet/text: mood
+    stats/text: rejoin [&quot;Hunger &quot; hunger &quot;   Joy &quot; joy &quot;   Energy &quot; energy &quot;   Age &quot; age]
+    show pet
+    show stats
+]
+theme/font-family: &quot;Verdana, sans-serif&quot;
+append theme/css [button [border-radius 8]]
+lay: layout [
+    h2 &quot;WebRebol pet&quot;
+    pet: text 300x100 &quot;😊&quot; css [font-size 72 text-align &quot;center&quot;] rate 1 on-time [
+        hunger: clamp hunger + 3
+        joy: clamp joy - 2
+        energy: clamp energy - 1
+        age: age + 1
+        update
+    ]
+    stats: text 300 &quot;...&quot;
+    across
+    button 94 &quot;Feed&quot; [hunger: clamp hunger - 25 update]
+    button 94 &quot;Play&quot; [joy: clamp joy + 20 energy: clamp energy - 10 update]
+    button 94 &quot;Sleep&quot; [energy: clamp energy + 40 update]
+]
+update
+view lay</textarea>
+      <button id="run">Run again</button>
+    </details>
+    <script type="module" src="../../src/edge/page.mjs"></script>
+  </body>
+</html>

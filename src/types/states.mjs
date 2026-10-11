@@ -9,8 +9,8 @@
  * @property {number} [bind] - The number of the context of a word.
  * @property {Datum[]} [args] - The values of the fields arg1, arg2 and arg3 of an error.
  * @madeby readToken, loadSource, makeLogic, makeWord, readItem, findError, readContext
- * @changedby 19 declarations in datum, bitsets, loops, scalars, series, parts, store
- * @readby 42 declarations in call, machine, path, spec, bitsets, compare, control, digest, edit, faults, files, loops, report, scalars, series, mold, store, elements
+ * @changedby 20 declarations in datum, bitsets, loops, scalars, series, parts, store
+ * @readby 43 declarations in call, machine, path, spec, bitsets, compare, control, convert, digest, edit, faults, files, loops, report, scalars, series, mold, store, elements
  */
 
 /**
@@ -44,7 +44,7 @@
  * @property {object | null} [request] - The work that the machine waits for, when the mode is "wait".
  * @property {{ kind: string, value: Datum } | null} thrown - The error, the return or the break that moves up the stack.
  * @madeby interpretWithEdge, makeMachine, startSource, interpretSource
- * @changedby 31 declarations in drive, call, evaluate, machine, path, run, bitsets, control, edit, faults, files, loops, series
+ * @changedby 32 declarations in drive, call, evaluate, machine, path, run, bitsets, control, convert, edit, faults, files, loops, series
  * @readby atEnd, readItem, findError, showResult
  */
 

@@ -1,12 +1,12 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { makeDatum } from "../data/datum.mjs";
 import { NONE, isText, readRest } from "../store/store.mjs";
-import { giveValue, makeLogic } from "../machine/machine.mjs";
+import { failMachine, giveValue, makeLogic } from "../machine/machine.mjs";
 
 const BYTES = 32;
 
 /**
- * @usedby makeBitset, addItem
+ * @usedby makeBitset, addItem, makeCharset
  */
 const countUp = (size) => Array.from({ length: Math.max(size, 0) });
 
@@ -15,11 +15,10 @@ const countUp = (size) => Array.from({ length: Math.max(size, 0) });
  * @param {Datum} bitset
  * @param {number} code - The code of the character.
  * @returns {boolean}
- * @standard limit - A code above 255 is not in a bitset.
- * @uses BYTES
+ * @standard limit - A code that is larger than the count of the bits is not in a bitset.
  * @usedby findInBitset, matchInText
  */
-export const hasBit = (bitset, code) => code >= 0 && code < BYTES * 8 && ((bitset.value[code >> 3] >> (code & 7)) & 1) === 1;
+export const hasBit = (bitset, code) => code >= 0 && code < bitset.value.length * 8 && ((bitset.value[code >> 3] >> (code & 7)) & 1) === 1;
 
 /**
  * @uses countUp, makeDatum (src/data/datum.mjs), BYTES
@@ -46,11 +45,22 @@ const addItem = (store) => (state, item) => {
 };
 
 /**
- * @uses isText (src/store/store.mjs), readRest (src/store/store.mjs), giveValue (src/machine/machine.mjs),
- *   makeBitset, addItem
+ * @uses giveValue (src/machine/machine.mjs), makeDatum (src/data/datum.mjs), readRest (src/store/store.mjs), countUp,
+ *   failMachine (src/machine/machine.mjs), makeBitset, isText (src/store/store.mjs), addItem
  * @usedby BITSET_NATIVES
  */
 const makeCharset = (machine, [spec]) => {
+  // A binary gives its bytes as the bits. A number gives an empty bitset. A text or a block gives its characters.
+  if (spec.type === "bitset") return giveValue(machine, spec);
+  if (spec.type === "binary") {
+    return giveValue(machine, makeDatum("bitset", readRest(machine.store, spec)));
+  }
+  // A number is the count of the bits. It must be a multiple of 8.
+  if (spec.type === "integer") {
+    const valid = spec.value >= 0 && spec.value % 8 === 0;
+    return valid ? giveValue(machine, makeDatum("bitset", countUp(spec.value / 8).map(() => 0))) : failMachine(machine, "script invalid-arg", [spec]);
+  }
+  if (spec.type === "char") return giveValue(machine, makeBitset([spec.value]));
   const items = isText(spec) ? [spec] : readRest(machine.store, spec);
   return giveValue(machine, makeBitset(items.reduce(addItem(machine.store), { codes: [], last: 0, range: false }).codes));
 };
@@ -78,8 +88,9 @@ export const findInBitset = (machine, [bitset, char]) =>
 /**
  * The natives for bitsets. Each entry has the name of REBOL and the function.
  * @uses makeCharset
- * @usedby NATIVES (src/session/globals.mjs)
+ * @usedby convertValue, NATIVES (src/session/globals.mjs)
  */
 export const BITSET_NATIVES = {
   charset: makeCharset,
+  "to-bitset": makeCharset,
 };

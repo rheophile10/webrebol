@@ -10,6 +10,7 @@ import { guardSeries, makeContent, pickItem } from "../src/natives/series.mjs";
 import { readPart } from "../src/natives/edit.mjs";
 import { hasBit } from "../src/natives/bitsets.mjs";
 import { failSyntax } from "../src/natives/control.mjs";
+import { convertValue } from "../src/natives/convert.mjs";
 import { acceptsType, parseSpec } from "../src/machine/spec.mjs";
 import { callFunction, startCall, stepLook } from "../src/machine/call.mjs";
 import { bindLoop, startEach } from "../src/natives/loops.mjs";
@@ -239,4 +240,10 @@ test("startEach sequence: the results are in the sequence of the groups", () => 
   const keep = (machine, results) => ({ ...machine, kept: results.map((result) => result.value) });
   const machine = startEach(bound.machine, { words: bound.words, body: bound.body, values }, keep);
   assert.deepEqual(runMachine(machine, BATCHES).kept, [7, 8]);
+});
+
+test("convertValue unknown: a type without a conversion gives the error", () => {
+  const machine = convertValue(makeReady("1"), { type: "datatype", value: "port" }, UNSET);
+  assert.equal(machine.thrown.value.value, "script bad-make-arg");
+  assert.equal(convertValue(makeReady("1"), { type: "datatype", value: "logic" }, { type: "integer", value: 0 }).value.value, false);
 });

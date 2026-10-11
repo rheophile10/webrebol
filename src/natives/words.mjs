@@ -194,7 +194,7 @@ const stopMachine = (machine) => throwValue(machine, "quit", makeDatum("unset", 
 /**
  * The natives for functions, words and objects that are not basic. Each entry has the name of REBOL and the function.
  * @uses makeFunct, CONTROL_NATIVES, applyFunction, setDefault, reflectOn, reflectValue, findOwner, constructObject,
- *   causeError, assertBlock, loadText, stopMachine
+ *   causeError, assertBlock, loadText, giveValue (src/machine/machine.mjs), stopMachine
  * @usedby NATIVES (src/session/globals.mjs)
  */
 export const WORD_NATIVES = {
@@ -213,6 +213,9 @@ export const WORD_NATIVES = {
   "cause-error": causeError,
   assert: assertBlock,
   load: loadText,
+  // TODO: A protected word can change in WebRebol.
+  protect: (machine, [word]) => giveValue(machine, word),
+  unprotect: (machine, [word]) => giveValue(machine, word),
   quit: stopMachine,
   halt: stopMachine,
 };

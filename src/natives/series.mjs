@@ -74,6 +74,7 @@ const readMoment = (date) => date.value.days * DAY + (date.value.time ?? 0) - da
  */
 const OTHER_TYPES = {
   "length? tuple": ([tuple]) => makeDatum("integer", tuple.value.length),
+  "length? bitset": ([bitset]) => makeDatum("integer", bitset.value.length * 8),
   "pick tuple": ([tuple, index]) => readField(tuple, index) ?? NONE,
   "difference date": ([first, second]) => makeDatum("time", readMoment(first) - readMoment(second)),
 };
@@ -90,7 +91,7 @@ const OTHER_TYPES = {
  * @param {string | number[] | Datum[]} content
  * @returns {Machine}
  * @uses makeSeries (src/store/store.mjs), giveValue (src/machine/machine.mjs)
- * @usedby 20 declarations in digest, encode, files, items, random, words
+ * @usedby 21 declarations in digest, encode, files, items, numbers, random, words
  */
 export const giveNew = (machine, type, content) => {
   const made = makeSeries(machine.store, type, content);

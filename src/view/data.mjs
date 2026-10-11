@@ -55,7 +55,7 @@ const pickLines = (kind) => FACTS.filter((line) => line.startsWith(`${kind} `));
 /**
  * The color words of REBOL View. Each entry has the name and the three parts of the color.
  * @uses pickLines
- * @usedby GLOBALS (src/session/globals.mjs), readWordItem
+ * @usedby BUILT (src/session/globals.mjs), readWordItem
  */
 export const COLORS = Object.fromEntries(pickLines("color").map((line) => [line.split(" ")[1], line.split(" ")[2].split(".").map(Number)]));
 

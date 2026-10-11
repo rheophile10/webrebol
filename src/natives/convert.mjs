@@ -1,5 +1,7 @@
+/** @import { Datum, Machine } from "../types/states.mjs" */
 import { loadSource } from "../data/load.mjs";
 import { makeDatum } from "../data/datum.mjs";
+import { BITSET_NATIVES } from "./bitsets.mjs";
 import { countDays, makeDate } from "../data/dates.mjs";
 import { GLOBAL, allocate, isList, isText, makeSeries, readRest } from "../store/store.mjs";
 import { formValue } from "../store/mold.mjs";
@@ -189,10 +191,30 @@ const toScalar = (type) => (machine, [value]) => {
 const readFirst = (value) => (typeof value.value === "number" ? value.value : 0);
 
 /**
+ * @usedby convertValue
+ */
+const readTypeName = (type) => (type.type === "datatype" ? type.value : type.type);
+
+/**
+ * Makes a value of a different type, as the function `to` of REBOL does.
+ * @param {Machine} machine
+ * @param {Datum} type - A datatype, or a value that has the wanted type.
+ * @param {Datum} value
+ * @returns {Machine}
+ * @standard unknown - A type without a conversion gives the error "script bad-make-arg".
+ * @uses CONVERT_NATIVES, readTypeName, BITSET_NATIVES, failMachine (src/machine/machine.mjs)
+ * @usedby CONVERT_NATIVES, makeValue
+ */
+export const convertValue = (machine, type, value) => {
+  const convert = CONVERT_NATIVES[`to-${readTypeName(type)}`] ?? BITSET_NATIVES[`to-${readTypeName(type)}`];
+  return convert === undefined ? failMachine(machine, "script bad-make-arg", [type, value]) : convert(machine, [value], {});
+};
+
+/**
  * The natives that make a value of a different type. Each entry has the name of REBOL and the function.
  * @uses toText, toFile, toBinary, toList, toWordType, giveValue (src/machine/machine.mjs),
- *   makeDatum (src/data/datum.mjs), toLogic, toNumber, toBlock, toScalar
- * @usedby MAKERS, makeValue, NATIVES (src/session/globals.mjs)
+ *   makeDatum (src/data/datum.mjs), toLogic, toNumber, toBlock, convertValue, toScalar
+ * @usedby convertValue, MAKERS, makeValue, NATIVES (src/session/globals.mjs)
  */
 export const CONVERT_NATIVES = {
   "to-string": toText("string"),
@@ -219,6 +241,8 @@ export const CONVERT_NATIVES = {
   "to-decimal": toNumber("decimal", (number) => number),
   "to-block": toBlock,
   "to-word": toWordType("word"),
+  "to-block": toBlock,
+  "to": (machine, [type, value]) => convertValue(machine, type, value),
   "to-char": toScalar("char"),
   "to-time": toScalar("time"),
   "to-pair": toScalar("pair"),

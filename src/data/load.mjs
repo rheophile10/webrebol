@@ -1,9 +1,9 @@
 /** @import { Datum } from "../types/states.mjs" */
 import { scanTokens } from "./tokens.mjs";
-import { makeDatum, readToken } from "./datum.mjs";
+import { makeConstruct, makeDatum, readToken } from "./datum.mjs";
 import { EMPTY_CHUNKS, joinChunks, pushItem } from "./chunks.mjs";
 
-const OPEN_TYPES = { "[": "block", "(": "paren" };
+const OPEN_TYPES = { "[": "block", "(": "paren", "#[": "construct" };
 const CLOSE_TYPES = { "]": "block", ")": "paren" };
 const CLOSERS = { block: "]", paren: ")" };
 /**
@@ -37,16 +37,18 @@ const openFrame = (state, token) => ({
 });
 
 /**
- * @uses CLOSE_TYPES, makeDatum, joinChunks, addDatum, MISSING
+ * @uses CLOSE_TYPES, MISSING, joinChunks, makeConstruct, makeDatum, addDatum
  * @usedby STEPS
  */
 const closeFrame = (state, token) => {
   // A closing bracket must agree with the frame that is open.
   const top = state.frames[state.frames.length - 1];
-  const agrees = state.frames.length > 1 && top.type === CLOSE_TYPES[token.text];
-  // Put the complete frame into the frame below it.
-  const block = makeDatum(top.type, joinChunks(top.items));
-  return agrees ? { ...state, frames: addDatum(state.frames.slice(0, -1), block) } : { ...state, error: MISSING };
+  const wanted = top.type === "construct" ? "block" : top.type;
+  if (state.frames.length < 2 || wanted !== CLOSE_TYPES[token.text]) return { ...state, error: MISSING };
+  // Put the complete frame into the frame below it. A construct gives the value that its items describe.
+  const items = joinChunks(top.items);
+  const made = top.type === "construct" ? makeConstruct(items) : makeDatum(top.type, items);
+  return made.type === "error" ? { ...state, error: made } : { ...state, frames: addDatum(state.frames.slice(0, -1), made) };
 };
 
 /**
@@ -63,7 +65,7 @@ const addToken = (state, token) => {
  * @uses openFrame, closeFrame
  * @usedby stepToken
  */
-const STEPS = { open: openFrame, close: closeFrame };
+const STEPS = { open: openFrame, close: closeFrame, construct: openFrame };
 
 const WORD_KINDS = ["word", "get-word", "lit-word"];
 

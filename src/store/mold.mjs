@@ -100,11 +100,12 @@ const moldTime = (nanoseconds) => {
 const encodeHex = (character) => `%${character.charCodeAt(0).toString(16).toUpperCase().padStart(2, "0")}`;
 
 /**
- * @usedby moldBinary, MOLDERS
+ * @usedby moldBinary
  */
 const moldByte = (byte) => byte.toString(16).toUpperCase().padStart(2, "0");
 
 const INDENT = "    ";
+const DEPTH_LIMIT = 60;
 
 /**
  * @usedby MOLDERS
@@ -179,7 +180,7 @@ const moldObject = (store, object, depth) => {
 
 /**
  * @uses moldDecimal, moldString, readRest, moldChar, moldName, moldRest, moldPath, encodeHex, moldRaw, moldTime,
- *   moldBinary, moldObject, moldMoney, moldDate, moldByte, moldValue
+ *   moldBinary, moldObject, moldMoney, moldDate, moldValue
  * @usedby moldValue
  */
 const MOLDERS = {
@@ -217,7 +218,7 @@ const MOLDERS = {
   "op": () => "op",
   money: (store, money) => moldMoney(money.value),
   date: (store, date) => moldDate(date.value),
-  bitset: (store, bitset) => `make bitset! #{\n${bitset.value.map(moldByte).join("")}\n}`,
+  bitset: (store, bitset) => `make bitset! ${moldBinary(bitset.value)}`,
   function: (store, callee) => `func ${moldValue(store, callee.value.spec)}${moldValue(store, callee.value.body)}`,
 };
 
@@ -228,11 +229,12 @@ const MOLDERS = {
  * @param {number} [depth] - The number of blocks and objects around the value. It gives the indent of an object.
  * @returns {string}
  * @standard reference - The text is the text that `mold` of REBOL 2.7.8 gives.
- * @uses MOLDERS
+ * @uses DEPTH_LIMIT, MOLDERS
  * @usedby 13 declarations in compare, files, report, text, words, interpret, mold
  */
 export const moldValue = (store, value, depth = 0) =>
-  (MOLDERS[value.type] ?? (() => "?function?"))(store, value, depth);
+  // A value that holds itself has no end. Stop at a large depth.
+  depth > DEPTH_LIMIT ? "..." : (MOLDERS[value.type] ?? (() => "?function?"))(store, value, depth);
 
 /**
  * Makes the REBOL source text of the items of a block, without brackets around them.

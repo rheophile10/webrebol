@@ -4,7 +4,7 @@ import { areEqual } from "./compare.mjs";
 
 /**
  * @uses giveValue (src/machine/machine.mjs), popFrame (src/machine/machine.mjs)
- * @usedby stepScan, testNext, stepCase
+ * @usedby stepScan, testNext, stepCase, testAfter
  */
 const finishScan = (machine, frame, value) => giveValue({ ...popFrame(machine), cursor: frame.cursor }, value);
 
@@ -52,25 +52,36 @@ const switchValue = (machine, [value, cases, fallback]) => {
 const testNext = (machine, frame) => (atEnd(machine) ? finishScan(machine, frame, NONE) : { ...machine, mode: "next" });
 
 /**
- * @uses atEnd (src/machine/machine.mjs), finishScan, NONE (src/store/store.mjs), readItem (src/machine/machine.mjs),
- *   isTrue (src/machine/machine.mjs), testNext, advance (src/machine/machine.mjs),
- *   startBlock (src/machine/machine.mjs), replaceTop (src/machine/machine.mjs)
+ * @uses testAfter, replaceTop (src/machine/machine.mjs), atEnd (src/machine/machine.mjs), finishScan,
+ *   NONE (src/store/store.mjs), readItem (src/machine/machine.mjs), isTrue (src/machine/machine.mjs), testNext,
+ *   advance (src/machine/machine.mjs), startBlock (src/machine/machine.mjs)
  * @usedby chooseCase
  */
 const stepCase = (machine, frame) => {
   // The value is the result of a block, or it is a condition with its block at the cursor.
-  if (frame.running || atEnd(machine)) return finishScan(machine, frame, frame.running ? machine.value : NONE);
+  // With /all, the conditions after a true condition are also examined. The result is the result of the last block.
+  if (frame.running && frame.all) return testAfter(replaceTop(machine, { ...frame, running: false, last: machine.value }));
+  if (frame.running || atEnd(machine)) return finishScan(machine, frame, frame.running ? machine.value : (frame.last ?? NONE));
   const block = readItem(machine);
   if (!isTrue(machine.value)) return testNext(advance(machine), frame);
   return startBlock(replaceTop(advance(machine), { ...frame, running: true }), block);
 };
 
 /**
+ * @uses atEnd (src/machine/machine.mjs), finishScan
+ * @usedby stepCase
+ */
+const testAfter = (machine) => {
+  const frame = machine.frames.top;
+  return atEnd(machine) ? finishScan(machine, frame, frame.last) : { ...machine, mode: "next" };
+};
+
+/**
  * @uses stepCase, testNext, pushFrame (src/machine/machine.mjs)
  * @usedby FLOW_NATIVES
  */
-const chooseCase = (machine, [block]) => {
-  const frame = { step: stepCase, running: false, cursor: machine.cursor };
+const chooseCase = (machine, [block], options) => {
+  const frame = { step: stepCase, running: false, cursor: machine.cursor, all: options.$all !== undefined };
   return testNext({ ...pushFrame(machine, frame), cursor: { ...block.value } }, frame);
 };
 

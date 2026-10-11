@@ -1,8 +1,8 @@
 import { makeDatum } from "../data/datum.mjs";
 import { bindCopy, bindInPlace, GLOBAL, isList, isSeries, makeContext, makeKey, makeSeries, NONE, readContext, readRest, readWord, UNSET, writeContext, writeWord } from "../store/store.mjs";
-import { CONVERT_NATIVES } from "./convert.mjs";
+import { CONVERT_NATIVES, convertValue } from "./convert.mjs";
 import { makeError } from "./faults.mjs";
-import { failMachine, giveValue, makeLogic, popFrame, pushFrame, startBlock } from "../machine/machine.mjs";
+import { giveValue, makeLogic, popFrame, pushFrame, startBlock } from "../machine/machine.mjs";
 
 /**
  * @uses makeKey (src/store/store.mjs)
@@ -79,6 +79,13 @@ const giveSeries = (type, empty) => (machine, spec) => {
   return giveValue({ ...machine, store: made.store }, made.value);
 };
 
+const LIST_NAMES = ["block", "paren", "path", "set-path", "lit-path"];
+/**
+ * @uses LIST_NAMES
+ * @usedby makeValue
+ */
+const SERIES_NAMES = [...LIST_NAMES, "string", "file", "email", "url", "tag", "issue", "binary"];
+
 /**
  * @uses makeObject, giveSeries, makeError, CONVERT_NATIVES
  * @usedby makeValue
@@ -93,14 +100,21 @@ const MAKERS = {
 };
 
 /**
- * @uses makeObject, CONVERT_NATIVES, MAKERS, failMachine (src/machine/machine.mjs)
+ * @uses makeObject, CONVERT_NATIVES, MAKERS, SERIES_NAMES, convertValue, makeSeries (src/store/store.mjs),
+ *   LIST_NAMES, giveValue (src/machine/machine.mjs)
  * @usedby OBJECT_NATIVES
  */
 const makeValue = (machine, [type, spec]) => {
   if (type.type === "object") return makeObject(machine, type, spec);
   if (type.value === "block" && spec.type === "string") return CONVERT_NATIVES["to-block"](machine, [spec]);
   const maker = type.type === "datatype" ? MAKERS[type.value] : undefined;
-  return maker === undefined ? failMachine(machine, "script bad-make-arg") : maker(machine, spec);
+  if (maker !== undefined) return maker(machine, spec);
+  // A number for a series type gives an empty series. Other types use the conversion of `to`.
+  const name = type.type === "datatype" ? type.value : type.type;
+  const sized = SERIES_NAMES.includes(name) && (spec.type === "integer" || spec.type === "decimal");
+  if (!sized) return convertValue(machine, type, spec);
+  const made = makeSeries(machine.store, name, LIST_NAMES.includes(name) || name === "binary" ? [] : "");
+  return giveValue({ ...machine, store: made.store }, made.value);
 };
 
 /**
@@ -114,11 +128,26 @@ const findInObject = (machine, [object, word]) => {
 };
 
 /**
- * @uses readRest (src/store/store.mjs), writeWord (src/store/store.mjs), NONE (src/store/store.mjs),
+ * @uses readRest (src/store/store.mjs), readContext (src/store/store.mjs), makeKey (src/store/store.mjs),
+ *   NONE (src/store/store.mjs), giveValue (src/machine/machine.mjs), writeContext (src/store/store.mjs)
+ * @usedby setWords
+ */
+const setFields = (machine, object, value) => {
+  // An object gets the values of a block for its words, in their sequence.
+  const values = value.type === "block" ? readRest(machine.store, value) : null;
+  const old = readContext(machine.store, object.value.context);
+  const entries = object.value.words.map((word, place) => [makeKey(word), values === null ? value : (values[place] ?? NONE)]);
+  const fields = Object.fromEntries(entries.filter(([, item]) => item.type !== "unset"));
+  return giveValue({ ...machine, store: writeContext(machine.store, object.value.context, { ...old, ...fields }) }, value);
+};
+
+/**
+ * @uses setFields, readRest (src/store/store.mjs), writeWord (src/store/store.mjs), NONE (src/store/store.mjs),
  *   giveValue (src/machine/machine.mjs)
  * @usedby OBJECT_NATIVES
  */
 const setWords = (machine, [target, value]) => {
+  if (target.type === "object") return setFields(machine, target, value);
   // A block of words takes the items of a block of values. Without a block of values, each word gets the value.
   const words = target.type === "block" ? readRest(machine.store, target) : [target];
   const values = target.type === "block" && value.type === "block" ? readRest(machine.store, value) : null;

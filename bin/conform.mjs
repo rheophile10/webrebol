@@ -1,8 +1,9 @@
-// Start: node bin/conform.mjs
+// Start: node bin/conform.mjs          (use the outcomes of REBOL that are in corpus/tests-reference.json)
+// Start: node bin/conform.mjs record   (run REBOL again)
 // This program runs the public REBOL core test suite (corpus/github/rebolsource_rebol-test/core-tests.r)
 // in REBOL View 2.7.8 (in Docker, without a network) and in WebRebol. It compares the outcome of each test.
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { fileURLToPath } from "node:url";
 import { loadSource } from "../src/data/load.mjs";
@@ -116,7 +117,23 @@ const tests = readTests(readFileSync(SUITE, "latin1"));
  * @uses runReference, tests
  * @usedby stops, judged, same, different, lines
  */
-const reference = runReference(tests);
+// The outcomes of REBOL do not change. Keep them in a file, and run REBOL again only with the argument "record".
+/**
+ * @uses ROOT
+ * @usedby cached, reference, bin/conform.mjs
+ */
+const CACHE = `${ROOT}corpus/tests-reference.json`;
+/**
+ * @uses CACHE
+ * @usedby reference
+ */
+const cached = process.argv[2] !== "record" && existsSync(CACHE);
+/**
+ * @uses cached, CACHE, runReference, tests
+ * @usedby bin/conform.mjs, stops, judged, same, different, lines
+ */
+const reference = cached ? JSON.parse(readFileSync(CACHE, "utf8")) : runReference(tests);
+writeFileSync(CACHE, JSON.stringify(reference));
 /**
  * @uses tests, reference
  * @usedby actual, summary

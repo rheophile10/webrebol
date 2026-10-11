@@ -7,7 +7,7 @@ import { startCall } from "./call.mjs";
 
 /**
  * @uses readWord (src/store/store.mjs)
- * @usedby walkPart, stepSetPath
+ * @usedby walkPart, putField, stepSetPath
  */
 const resolvePart = (store, part) => (part.type === "get-word" ? readWord(store, part) : part);
 
@@ -39,16 +39,23 @@ const selectInText = (text, part) => {
 };
 
 /**
+ * @uses NONE (src/store/store.mjs), makeDatum (src/data/datum.mjs)
+ * @usedby selectPart
+ */
+const makeByte = (byte) => (byte === undefined ? NONE : makeDatum("integer", byte));
+
+/**
  * @uses readContext (src/store/store.mjs), makeKey (src/store/store.mjs), isList (src/store/store.mjs), selectInList,
- *   readRest (src/store/store.mjs), isText (src/store/store.mjs), selectInText, readField (src/store/parts.mjs),
- *   NONE (src/store/store.mjs)
- * @usedby walkPart, stepSetPath
+ *   readRest (src/store/store.mjs), isText (src/store/store.mjs), selectInText, makeByte,
+ *   readField (src/store/parts.mjs), NONE (src/store/store.mjs)
+ * @usedby walkPart, putField, stepSetPath
  */
 const selectPart = (store, value, part) => {
   // Give null if the value has no part with this name.
   if (value.type === "object") return readContext(store, value.value.context)[makeKey(String(part.value))] ?? null;
   if (isList(value)) return selectInList(readRest(store, value), part);
   if (isText(value)) return selectInText(readRest(store, value), part);
+  if (value.type === "binary") return part.type === "integer" ? makeByte(readRest(store, value)[part.value - 1]) : null;
   // A value that is not a series can have fields. A position without a field gives none.
   const field = readField(value, part);
   return field === null && part.type === "integer" ? NONE : (field ?? null);
@@ -74,7 +81,7 @@ const walkPart = (store) => (state, part) => {
  * @standard invalid - A part that the value does not have gives the error "script invalid-path".
  * @uses readRest (src/store/store.mjs), readWord (src/store/store.mjs), failMachine, isFunction, walkPart, giveValue,
  *   startCall
- * @usedby EVALUATORS
+ * @usedby EVALUATORS, doValue (src/natives/control.mjs)
  */
 export const evaluatePath = (machine, path) => {
   const [head, ...parts] = readRest(machine.store, path);
@@ -130,7 +137,7 @@ const assignInSeries = (store, series, change) => {
 
 /**
  * @uses assignInObject, isList (src/store/store.mjs), isText (src/store/store.mjs), assignInSeries
- * @usedby stepSetPath
+ * @usedby putField, stepSetPath
  */
 const assignPart = (store, container, change) => {
   if (container.type === "object") return assignInObject(store, container, change);
@@ -138,8 +145,23 @@ const assignPart = (store, container, change) => {
 };
 
 /**
+ * @uses selectPart, resolvePart, readWord (src/store/store.mjs), assignPart, failMachine, popFrame
+ * @usedby stepSetPath
+ */
+const putField = (machine, target) => {
+  // The value with the changed field goes back into the object or the series that holds it.
+  const select = (current, part) =>
+    current === null ? null : selectPart(machine.store, current, resolvePart(machine.store, part));
+  const owner = target.parts.slice(0, -2).reduce(select, readWord(machine.store, target.head));
+  const change = { part: resolvePart(machine.store, target.parts[target.parts.length - 2]), value: target.changed };
+  const made = owner === null ? { error: "script invalid-path" } : assignPart(machine.store, owner, change);
+  if (made.error !== undefined) return failMachine(popFrame(machine), made.error, made.args);
+  return { ...popFrame(machine), store: made.store };
+};
+
+/**
  * @uses readRest (src/store/store.mjs), selectPart, resolvePart, readWord (src/store/store.mjs), failMachine,
- *   popFrame, writeField (src/store/parts.mjs), writeWord (src/store/store.mjs), assignPart
+ *   popFrame, writeField (src/store/parts.mjs), writeWord (src/store/store.mjs), putField, assignPart
  * @usedby startSetPath
  */
 const stepSetPath = (machine, frame) => {
@@ -150,8 +172,10 @@ const stepSetPath = (machine, frame) => {
   const container = parts.slice(0, -1).reduce(select, readWord(machine.store, head));
   if (container === null) return failMachine(popFrame(machine), "script invalid-path");
   // A field of a value that is not a series changes the value of the word.
-  const changed = parts.length === 1 ? writeField(container, resolvePart(machine.store, parts[0]), machine.value) : null;
-  if (changed !== null) return { ...popFrame(machine), store: writeWord(machine.store, head, changed) };
+  const last = resolvePart(machine.store, parts[parts.length - 1]);
+  const changed = writeField(container, last, machine.value);
+  if (changed !== null && parts.length === 1) return { ...popFrame(machine), store: writeWord(machine.store, head, changed) };
+  if (changed !== null) return putField(machine, { head, parts, changed });
   // The last part gets the value. The value is also the result.
   const change = { part: resolvePart(machine.store, parts[parts.length - 1]), value: machine.value };
   const made = assignPart(machine.store, container, change);

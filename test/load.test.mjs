@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { loadSource } from "../src/data/load.mjs";
-import { readToken } from "../src/data/datum.mjs";
+import { makeConstruct, readToken } from "../src/data/datum.mjs";
 import { EMPTY_STORE, allocate } from "../src/store/store.mjs";
 import { moldRest, moldValue } from "../src/store/mold.mjs";
 import { readGolden } from "./golden.edge.mjs";
@@ -65,4 +65,10 @@ test("moldValue reference: a decimal of 16 digits shows 15 digits and an exponen
 
 test("moldRest reference: a space divides the values", () => {
   assert.equal(moldSource("1 [a] {b}"), '1 [a] "b"');
+});
+
+test("makeConstruct series: a block construct with a position gives the block at that position", () => {
+  const made = makeConstruct([{ type: "word", value: "block!" }, { type: "block", value: [] }, { type: "integer", value: 2 }]);
+  assert.deepEqual(made, { type: "block", value: [], index: 1 });
+  assert.equal(makeConstruct([{ type: "word", value: "foo" }]).type, "error");
 });

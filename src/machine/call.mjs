@@ -170,7 +170,7 @@ const stepArguments = (machine, frame) =>
  * @returns {Machine}
  * @standard refinements - The arguments of the refinements come after the usual arguments, in the sequence of the call.
  * @uses findParams, failMachine, makeWord, requestArgument, pushFrame, stepArguments
- * @usedby evaluateWord, evaluatePath
+ * @usedby evaluateWord, evaluateOperand, evaluatePath, doValue (src/natives/control.mjs)
  */
 export const startCall = (machine, callee, call) => {
   // A refinement that the function does not have is an error.

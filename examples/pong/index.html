@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRebol: Pong</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
+      #screen { position: relative; height: 430px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #script { width: 100%; height: 220px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
+      #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
+      details { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Pong</h1>
+    <p>Use the arrow keys Up and Down to move the paddle. Each hit gives one point.</p>
+    <div id="screen"></div>
+    <pre id="output"></pre>
+    <details>
+      <summary>The REBOL script of this page</summary>
+      <textarea id="script" spellcheck="false">score: 0 speed: 4x3
+step: does [
+    ball/offset: ball/offset + speed
+    if any [ball/offset/y &lt; 0 ball/offset/y &gt; 290] [speed: speed * 1x-1]
+    if ball/offset/x &gt; 390 [speed: speed * -1x1]
+    if all [
+        speed/x &lt; 0
+        ball/offset/x &lt; 18
+        ball/offset/x &gt; 4
+        ball/offset/y + 10 &gt; paddle/offset/y
+        ball/offset/y &lt; (paddle/offset/y + 60)
+    ] [
+        speed: speed * -1x1
+        score: score + 1
+        label/text: form score
+    ]
+    if ball/offset/x &lt; -10 [score: 0 label/text: &quot;0&quot; ball/offset: 200x150 speed: 4x3]
+    show court
+]
+court: layout [
+    origin 0x0 space 0x0
+    box 400x300 20.20.40 rate 60 on-time [step] on-key [
+        if all [key = &quot;ArrowUp&quot; paddle/offset/y &gt; 0] [paddle/offset: paddle/offset - 0x20]
+        if all [key = &quot;ArrowDown&quot; paddle/offset/y &lt; 240] [paddle/offset: paddle/offset + 0x20]
+    ]
+    at 10x120 paddle: box 8x60 white
+    at 200x150 ball: box 10x10 yellow css [border-radius 5]
+    at 150x8 label: text 100x30 &quot;0&quot; css [color 255.255.255 font-size 22 text-align &quot;center&quot;]
+]
+view court</textarea>
+      <button id="run">Run again</button>
+    </details>
+    <script type="module" src="../../src/edge/page.mjs"></script>
+  </body>
+</html>

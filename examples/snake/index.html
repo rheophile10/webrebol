@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>WebRebol: Snake</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; margin: 12px; background: #20232a; color: #e0e0e0; }
+      #screen { position: relative; height: 430px; background: #2c313c; border: 1px solid #555555; margin: 8px 0; overflow: hidden; }
+      #script { width: 100%; height: 220px; font-family: monospace; font-size: 12px; box-sizing: border-box; background: #16181d; color: #c8e1ff; }
+      #output { background: #101216; color: #ffb4b4; padding: 8px; min-height: 20px; white-space: pre-wrap; margin: 0; }
+      details { margin-top: 8px; }
+    </style>
+  </head>
+  <body>
+    <h1>Snake</h1>
+    <p>Use the arrow keys to turn the snake. Eat the red food. Do not hit the wall or the snake.</p>
+    <div id="screen"></div>
+    <pre id="output"></pre>
+    <details>
+      <summary>The REBOL script of this page</summary>
+      <textarea id="script" spellcheck="false">cell: 15 dir: 1x0 snake: copy [5x5 4x5 3x5] food: 10x8 alive: true
+make-part: func [pos color /local made] [
+    made: layout [box 15x15]
+    made: first made/pane
+    made/offset: pos * cell
+    made/color: color
+    made
+]
+draw-board: does [
+    clear next board/pane
+    foreach part snake [append board/pane make-part part 60.200.80]
+    append board/pane make-part food 220.50.50
+    show board
+]
+turn: does [
+    switch key [
+        &quot;ArrowUp&quot; [if dir &lt;&gt; 0x1 [dir: 0x-1]]
+        &quot;ArrowDown&quot; [if dir &lt;&gt; 0x-1 [dir: 0x1]]
+        &quot;ArrowLeft&quot; [if dir &lt;&gt; 1x0 [dir: -1x0]]
+        &quot;ArrowRight&quot; [if dir &lt;&gt; -1x0 [dir: 1x0]]
+    ]
+]
+tick: does [
+    if alive [
+        head-pos: (first snake) + dir
+        either any [head-pos/x &lt; 0 head-pos/x &gt; 19 head-pos/y &lt; 0 head-pos/y &gt; 19 find snake head-pos] [
+            alive: false
+            print [&quot;Game over. Length:&quot; length? snake]
+        ] [
+            insert snake head-pos
+            either head-pos = food [
+                food: as-pair (random 20) - 1 (random 20) - 1
+            ] [
+                remove back tail snake
+            ]
+        ]
+        draw-board
+    ]
+]
+board: layout [
+    origin 0x0 space 0x0
+    box 300x300 10.30.10 rate 8 on-time [tick] on-key [turn]
+]
+draw-board
+view board</textarea>
+      <button id="run">Run again</button>
+    </details>
+    <script type="module" src="../../src/edge/page.mjs"></script>
+  </body>
+</html>

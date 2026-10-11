@@ -1,9 +1,11 @@
 /** @import { Datum, Machine } from "../types/states.mjs" */
 import { loadSource } from "../data/load.mjs";
 import { makeDatum } from "../data/datum.mjs";
-import { NONE, UNSET, allocate, bindCopy, isList, makeContext, makeSeries, readRest } from "../store/store.mjs";
-import { atEnd, failMachine, giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue } from "../machine/machine.mjs";
+import { NONE, UNSET, allocate, bindCopy, isList, makeContext, makeSeries, readRest, readWord } from "../store/store.mjs";
+import { atEnd, failMachine, giveValue, isTrue, popFrame, pushFrame, replaceTop, startBlock, stopThrown, throwValue, isFunction } from "../machine/machine.mjs";
 import { parseSpec } from "../machine/spec.mjs";
+import { startCall } from "../machine/call.mjs";
+import { evaluatePath } from "../machine/path.mjs";
 
 /**
  * @uses startBlock (src/machine/machine.mjs), pushFrame (src/machine/machine.mjs),
@@ -106,11 +108,16 @@ const doText = (machine, text) => {
 };
 
 /**
- * @uses startBlock (src/machine/machine.mjs), doText, giveValue (src/machine/machine.mjs)
+ * @uses startBlock (src/machine/machine.mjs), isFunction (src/machine/machine.mjs), startCall (src/machine/call.mjs),
+ *   giveValue (src/machine/machine.mjs), readWord (src/store/store.mjs), evaluatePath (src/machine/path.mjs), doText
  * @usedby CONTROL_NATIVES
  */
 const doValue = (machine, [value]) => {
   if (value.type === "block" || value.type === "paren") return startBlock(machine, value);
+  // A function value is called with the arguments that come after it. A word or a path gives its value.
+  if (isFunction(value)) return startCall(machine, value, { names: [], label: "do" });
+  if (value.type === "word") return giveValue(machine, readWord(machine.store, value));
+  if (value.type === "path") return evaluatePath(machine, value);
   return value.type === "string" ? doText(machine, value) : giveValue(machine, value);
 };
 
